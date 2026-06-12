@@ -1,0 +1,176 @@
+# Panel Admin - Lo Quiero Aca
+
+Base de panel comercial construida sobre Odoo + Docker.
+
+## Que incluye
+
+- Odoo 18 con Postgres 16 en Docker Compose.
+- Addon custom `lqa_admin_panel`.
+- Menu principal `Panel Comercial`.
+- Navbar compacto y sidebar desplegable para navegar modulos y secciones.
+- Dashboard inicial con modulos:
+  - `MercadoLibre`
+  - `Automeli`
+- Seccion `MercadoLibre / Catalogo` conectada a la API de rendimiento:
+  - Primera pagina de hasta 100 productos.
+  - Tarjetas con precio, stock, facturacion, ordenes, unidades, visitas y conversion.
+  - Filtros por busqueda, marca, categoria, dominio, estado, condicion, SKU,
+    ordenes, visitas, facturacion, fechas y ordenamiento.
+  - Seleccion multiple de cards para eliminacion masiva con confirmacion.
+- Seccion `MercadoLibre / Eliminador`:
+  - Carga de MLAs por texto o archivo CSV.
+  - Confirmacion obligatoria antes de ejecutar.
+  - Historial persistente por lote y por publicacion.
+- Seccion `Automeli / Catalogo` conectada a la API de snapshots:
+  - Filtros basicos y avanzados.
+  - Cards con costos, stock, peso y estados Amazon/MercadoLibre.
+- Grupos de seguridad para usuarios comerciales y administradores del panel.
+- Configuracion preparada para APIs internas: entorno, URL base, token, rutas por modulo y timeout.
+
+## Levantar el proyecto
+
+```bash
+docker compose up -d
+```
+
+Luego abrir:
+
+```text
+http://localhost:8069
+```
+
+Para crear una base de prueba ya con el addon instalado:
+
+```bash
+docker exec lqa-panel-odoo odoo -c /etc/odoo/odoo.conf -d lqa_panel_test -i lqa_admin_panel --stop-after-init --no-http
+```
+
+Luego entrar con:
+
+```text
+Base: lqa_panel_test
+Usuario: admin
+Password: admin
+```
+
+Si preferis crearlo desde la UI de Odoo:
+
+1. Crear una base de datos.
+2. Entrar en modo desarrollador.
+3. Ir a `Apps`.
+4. Actualizar la lista de aplicaciones.
+5. Instalar `LQA Admin Panel`.
+
+Usuario administrador inicial de Odoo: el que crees al crear la base.
+
+## Despliegue de produccion
+
+La configuracion productiva usa PostgreSQL, Odoo multiproceso y Caddy como
+proxy HTTPS:
+
+```bash
+cp .env.production.example .env.production
+chmod 600 .env.production
+```
+
+Completar contrasenas y credenciales en `.env.production`. Para inicializar
+una base nueva e instalar el addon:
+
+```bash
+chmod +x deploy/bootstrap-database.sh deploy/backup.sh
+./deploy/bootstrap-database.sh
+```
+
+Para actualizaciones posteriores:
+
+```bash
+docker compose --env-file .env.production -f docker-compose.prod.yml \
+  run --rm odoo odoo -c /etc/odoo/odoo.conf -d lqa_panel_prod \
+  -u lqa_admin_panel --stop-after-init --no-http
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d
+```
+
+Backup manual:
+
+```bash
+./deploy/backup.sh
+```
+
+El DNS de `admin.loquieroaca.com.ar` debe apuntar a la IP publica del
+servidor. Caddy obtiene y renueva automaticamente el certificado TLS.
+
+## Configurar usuarios comerciales
+
+En `Ajustes > Usuarios`, asignar uno de estos permisos:
+
+- `Panel Comercial / Usuario comercial`
+- `Panel Comercial / Administrador del panel`
+
+El administrador del panel hereda el acceso comercial y puede editar la configuracion funcional.
+
+## Configurar APIs internas
+
+Ir a `Ajustes > Panel Comercial` y completar:
+
+- Entorno: desarrollo, staging o produccion.
+- URL base de API.
+- Token interno.
+- Ruta MercadoLibre.
+- Ruta Automeli.
+- URL de Catalogo MercadoLibre.
+- URL y clave interna del Eliminador MercadoLibre.
+- URL de Catalogo Automeli.
+- Timeout.
+
+El dashboard lee esta configuracion sin mostrar secretos. Las llamadas quedan
+centralizadas en `lqa.api.client`. El catalogo de MercadoLibre usa por defecto:
+
+```text
+https://catalog-meli.loquieroaca.com/analytics/products/performance
+```
+
+## Estructura
+
+```text
+addons/lqa_admin_panel/
+  models/
+    api_client.py
+    automeli_catalog_item.py
+    dashboard_service.py
+    mercadolibre_deletion.py
+    mercadolibre_catalog_service.py
+    panel_module.py
+    res_config_settings.py
+  views/
+    automeli_catalog_views.xml
+    panel_data.xml
+    panel_menu_views.xml
+    panel_module_views.xml
+    res_config_settings_views.xml
+  security/
+    ir.model.access.csv
+    lqa_security.xml
+  static/src/
+    js/dashboard.js
+    js/mercadolibre_catalog.js
+    js/mercadolibre_deleter.js
+    js/automeli_catalog.js
+    js/navigation.js
+    scss/dashboard.scss
+    scss/mercadolibre_catalog.scss
+    scss/mercadolibre_deleter.scss
+    scss/automeli_catalog.scss
+    xml/dashboard.xml
+    xml/mercadolibre_catalog.xml
+    xml/mercadolibre_deleter.xml
+    xml/automeli_catalog.xml
+```
+
+## Proximo paso recomendado
+
+Definir los contratos de API para:
+
+- Estado/resumen de MercadoLibre.
+- Sincronizacion de catalogo Automeli.
+- Autenticacion y scopes del token interno.
+# admin-panel
