@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="lqa_admin_panel.Dashboard">
+        <div class="o_lqa_dashboard">
+            <div class="o_lqa_dashboard__header">
+                <div>
+                    <p class="o_lqa_dashboard__eyebrow">Panel Comercial</p>
+                    <h1>Operaciones comerciales</h1>
+                    <p class="o_lqa_dashboard__subtitle">
+                        Modulos internos para MercadoLibre, Automeli y nuevas funcionalidades comerciales.
+                    </p>
+                </div>
+                <div class="o_lqa_dashboard__status">
+                    <span t-att-class="state.apiConfigured ? 'is-ready' : 'is-pending'"/>
+                    <div>
+                        <strong t-esc="state.environment"/>
+                        <small t-esc="state.apiConfigured ? 'API configurada' : 'API pendiente'"/>
+                    </div>
+                </div>
+            </div>
+
+            <div class="o_lqa_dashboard__nav" t-if="state.navigationModules.length > 1">
+                <button
+                    type="button"
+                    t-att-class="!state.selectedModuleCode ? 'is-active' : ''"
+                    t-on-click="() => this.loadDashboard(false)"
+                >
+                    Todos
+                </button>
+                <button
+                    type="button"
+                    t-foreach="state.navigationModules"
+                    t-as="module"
+                    t-key="module.code"
+                    t-att-class="state.selectedModuleCode === module.code ? 'is-active' : ''"
+                    t-on-click="() => this.openModule(module)"
+                >
+                    <t t-esc="module.name"/>
+                </button>
+            </div>
+
+            <div class="o_lqa_dashboard__loading" t-if="state.loading">
+                Cargando panel...
+            </div>
+
+            <div class="o_lqa_dashboard__grid" t-else="">
+                <section
+                    class="o_lqa_module"
+                    t-foreach="state.modules"
+                    t-as="module"
+                    t-key="module.code"
+                >
+                    <div t-att-class="'o_lqa_module__brand is-' + module.code">
+                        <img
+                            t-if="module.code === 'automeli'"
+                            src="/lqa_admin_panel/static/src/img/automeli-logo.png?v=2"
+                            alt="Automeli"
+                        />
+                        <img
+                            t-elif="module.code === 'mercadolibre'"
+                            src="/lqa_admin_panel/static/src/img/mercadolibre-logo.png?v=2"
+                            alt="Mercado Libre"
+                        />
+                    </div>
+                    <div class="o_lqa_module__body">
+                        <div class="o_lqa_module__title">
+                            <div>
+                                <p t-esc="module.code"/>
+                                <h2 t-esc="module.name"/>
+                            </div>
+                            <button
+                                type="button"
+                                class="btn btn-secondary"
+                                t-if="!state.selectedModuleCode"
+                                t-on-click="() => this.openModule(module)"
+                            >
+                                Abrir
+                            </button>
+                        </div>
+                        <p class="o_lqa_module__description" t-esc="module.description"/>
+
+                        <div class="o_lqa_metrics" t-if="module.metrics.length">
+                            <div
+                                class="o_lqa_metric"
+                                t-foreach="module.metrics"
+                                t-as="metric"
+                                t-key="metric.label"
+                            >
+                                <strong t-esc="metric.value"/>
+                                <span t-esc="metric.label"/>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="o_lqa_sections">
+                        <button
+                            type="button"
+                            class="o_lqa_section"
+                            t-foreach="module.sections"
+                            t-as="section"
+                            t-key="section.code"
+                            t-on-click="() => this.openSection(section)"
+                        >
+                            <div>
+                                <span t-att-class="'o_lqa_section__state is-' + section.status"/>
+                                <strong t-esc="section.name"/>
+                                <p t-esc="section.description"/>
+                            </div>
+                            <small t-if="section.badge" t-esc="section.badge"/>
+                        </button>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </t>
+</templates>

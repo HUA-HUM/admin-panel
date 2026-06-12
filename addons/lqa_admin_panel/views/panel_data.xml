@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="panel_module_mercadolibre" model="lqa.panel.module">
+        <field name="name">MercadoLibre</field>
+        <field name="code">mercadolibre</field>
+        <field name="description">Gestion comercial y operativa de integraciones MercadoLibre.</field>
+        <field name="sequence">10</field>
+        <field name="dashboard_action_xmlid">lqa_admin_panel.action_lqa_mercadolibre_dashboard</field>
+    </record>
+
+    <record id="panel_module_automeli" model="lqa.panel.module">
+        <field name="name">Automeli</field>
+        <field name="code">automeli</field>
+        <field name="description">Herramientas internas de Automeli para operar catalogo y procesos comerciales.</field>
+        <field name="sequence">20</field>
+        <field name="dashboard_action_xmlid">lqa_admin_panel.action_lqa_automeli_dashboard</field>
+    </record>
+
+    <record id="panel_section_automeli_catalog" model="lqa.panel.section">
+        <field name="module_id" ref="panel_module_automeli"/>
+        <field name="name">Catalogo</field>
+        <field name="code">catalog</field>
+        <field name="description">Snapshots de productos Automeli con costos, stock y estado de publicaciones.</field>
+        <field name="badge">Activo</field>
+        <field name="status">available</field>
+        <field name="sequence">10</field>
+        <field name="action_xmlid">lqa_admin_panel.action_lqa_automeli_catalog_api</field>
+    </record>
+
+    <record id="panel_section_mercadolibre_placeholder" model="lqa.panel.section">
+        <field name="module_id" ref="panel_module_mercadolibre"/>
+        <field name="name">Catalogo</field>
+        <field name="code">catalog</field>
+        <field name="description">Productos MercadoLibre con rendimiento, ventas, visitas, stock y facturacion.</field>
+        <field name="badge">Activo</field>
+        <field name="status">available</field>
+        <field name="sequence">10</field>
+        <field name="action_xmlid">lqa_admin_panel.action_lqa_mercadolibre_catalog</field>
+    </record>
+
+    <record id="panel_section_mercadolibre_deleter" model="lqa.panel.section">
+        <field name="module_id" ref="panel_module_mercadolibre"/>
+        <field name="name">Eliminador</field>
+        <field name="code">deleter</field>
+        <field name="description">Eliminacion masiva de publicaciones por texto, CSV o seleccion desde el catalogo.</field>
+        <field name="badge">Activo</field>
+        <field name="status">available</field>
+        <field name="sequence">20</field>
+        <field name="action_xmlid">lqa_admin_panel.action_lqa_mercadolibre_deleter</field>
+    </record>
+
+    <function model="lqa.panel.section" name="write">
+        <value eval="[ref('panel_section_mercadolibre_placeholder')]"/>
+        <value
+            eval="{
+                'name': 'Catalogo',
+                'code': 'catalog',
+                'description': 'Productos MercadoLibre con rendimiento, ventas, visitas, stock y facturacion.',
+                'badge': 'Activo',
+                'status': 'available',
+                'action_xmlid': 'lqa_admin_panel.action_lqa_mercadolibre_catalog',
+            }"
+        />
+    </function>
+
+    <function model="lqa.panel.section" name="write">
+        <value eval="[ref('panel_section_automeli_catalog')]"/>
+        <value
+            eval="{
+                'description': 'Snapshots de productos Automeli con costos, stock y estado de publicaciones.',
+                'badge': 'Activo',
+                'status': 'available',
+                'action_xmlid': 'lqa_admin_panel.action_lqa_automeli_catalog_api',
+            }"
+        />
+    </function>
+</odoo>

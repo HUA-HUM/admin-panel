@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t
+        t-name="lqa_admin_panel.NavBarBrand"
+        t-inherit="web.NavBar"
+        t-inherit-mode="extension"
+    >
+        <xpath expr="//t[@t-call='web.NavBar.AppsMenu']" position="replace">
+            <button
+                type="button"
+                class="o_lqa_mobile_menu"
+                aria-label="Abrir menu"
+                title="Abrir menu"
+                t-on-click="lqaOpenMobileSidebar"
+            >
+                <i class="fa fa-bars"/>
+            </button>
+            <a
+                href="/odoo"
+                class="o_lqa_navbar_logo"
+                aria-label="Tienda Lo Quiero Aca"
+                title="Tienda Lo Quiero Aca"
+            >
+                <img
+                    src="/lqa_admin_panel/static/src/img/tienda-logo-navbar.png?v=2"
+                    alt="Tienda Lo Quiero Aca"
+                />
+            </a>
+        </xpath>
+        <xpath expr="//header" position="after">
+            <aside
+                t-att-class="{
+                    'o_lqa_sidebar': true,
+                    'is-mobile-open': lqaNavigation.mobileOpen,
+                }"
+                aria-label="Navegacion del panel"
+            >
+                <div class="o_lqa_sidebar__brand">
+                    <img
+                        src="/lqa_admin_panel/static/src/img/tienda-logo-navbar.png?v=2"
+                        alt="Tienda Lo Quiero Aca"
+                    />
+                    <button
+                        type="button"
+                        aria-label="Cerrar menu"
+                        title="Cerrar menu"
+                        t-on-click="lqaCloseMobileSidebar"
+                    >
+                        <i class="fa fa-times"/>
+                    </button>
+                </div>
+
+                <nav class="o_lqa_sidebar__nav">
+                    <button
+                        t-if="currentApp"
+                        type="button"
+                        class="o_lqa_sidebar__home"
+                        t-on-click="() => this.lqaSelectMenu(currentApp)"
+                    >
+                        <i class="fa fa-th-large"/>
+                        <span>Panel principal</span>
+                    </button>
+
+                    <div
+                        class="o_lqa_sidebar__group"
+                        t-foreach="lqaSidebarSections"
+                        t-as="section"
+                        t-key="section.id"
+                    >
+                        <button
+                            t-if="section.childrenTree.length"
+                            type="button"
+                            class="o_lqa_sidebar__group-toggle"
+                            t-on-click="() => this.lqaToggleSection(section)"
+                        >
+                            <span>
+                                <i
+                                    t-att-class="section.name === 'MercadoLibre'
+                                        ? 'fa fa-shopping-bag'
+                                        : section.name === 'Automeli'
+                                            ? 'fa fa-cubes'
+                                            : 'fa fa-folder-o'"
+                                />
+                                <t t-esc="section.name"/>
+                            </span>
+                            <i
+                                t-att-class="lqaIsExpanded(section)
+                                    ? 'fa fa-chevron-up'
+                                    : 'fa fa-chevron-down'"
+                            />
+                        </button>
+
+                        <div
+                            class="o_lqa_sidebar__children"
+                            t-if="section.childrenTree.length and lqaIsExpanded(section)"
+                        >
+                            <button
+                                type="button"
+                                t-foreach="section.childrenTree"
+                                t-as="child"
+                                t-key="child.id"
+                                t-on-click="() => this.lqaSelectMenu(child)"
+                            >
+                                <i
+                                    t-att-class="child.name === 'Dashboard'
+                                        ? 'fa fa-line-chart'
+                                        : child.name === 'Catalogo'
+                                            ? 'fa fa-th'
+                                            : child.name === 'Eliminador'
+                                                ? 'fa fa-trash-o'
+                                                : 'fa fa-circle-o'"
+                                />
+                                <span t-esc="child.name"/>
+                            </button>
+                        </div>
+
+                        <button
+                            t-if="!section.childrenTree.length"
+                            type="button"
+                            class="o_lqa_sidebar__single"
+                            t-on-click="() => this.lqaSelectMenu(section)"
+                        >
+                            <i class="fa fa-cog"/>
+                            <span t-esc="section.name"/>
+                        </button>
+                    </div>
+                </nav>
+
+                <div class="o_lqa_sidebar__footer">
+                    <span>Panel Comercial</span>
+                    <small>Lo Quiero Aca</small>
+                </div>
+            </aside>
+            <button
+                t-if="lqaNavigation.mobileOpen"
+                type="button"
+                class="o_lqa_sidebar_backdrop"
+                aria-label="Cerrar menu"
+                t-on-click="lqaCloseMobileSidebar"
+            />
+        </xpath>
+    </t>
+</templates>

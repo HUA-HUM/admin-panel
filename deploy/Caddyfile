@@ -1,0 +1,9 @@
+admin.loquieroaca.com.ar {
+	encode zstd gzip
+
+	@websocket path /websocket*
+	reverse_proxy @websocket odoo:8072
+	reverse_proxy odoo:8069
+
+	header Strict-Transport-Security "max-age=31536000; includeSubDomains"
+}

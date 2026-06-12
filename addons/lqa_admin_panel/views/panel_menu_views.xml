@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="action_lqa_dashboard" model="ir.actions.client">
+        <field name="name">Panel Comercial</field>
+        <field name="tag">lqa_admin_panel.dashboard</field>
+    </record>
+
+    <record id="action_lqa_mercadolibre_dashboard" model="ir.actions.client">
+        <field name="name">MercadoLibre</field>
+        <field name="tag">lqa_admin_panel.dashboard</field>
+        <field name="params" eval="{'module_code': 'mercadolibre'}"/>
+    </record>
+
+    <record id="action_lqa_automeli_dashboard" model="ir.actions.client">
+        <field name="name">Automeli</field>
+        <field name="tag">lqa_admin_panel.dashboard</field>
+        <field name="params" eval="{'module_code': 'automeli'}"/>
+    </record>
+
+    <record id="action_lqa_mercadolibre_catalog" model="ir.actions.client">
+        <field name="name">Catalogo MercadoLibre</field>
+        <field name="tag">lqa_admin_panel.mercadolibre_catalog</field>
+    </record>
+
+    <record id="action_lqa_automeli_catalog_api" model="ir.actions.client">
+        <field name="name">Catalogo Automeli</field>
+        <field name="tag">lqa_admin_panel.automeli_catalog</field>
+    </record>
+
+    <record id="action_lqa_mercadolibre_deleter" model="ir.actions.client">
+        <field name="name">Eliminador MercadoLibre</field>
+        <field name="tag">lqa_admin_panel.mercadolibre_deleter</field>
+    </record>
+
+    <record id="action_lqa_settings" model="ir.actions.act_window">
+        <field name="name">Configuracion</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="target">current</field>
+        <field name="context">{'module': 'lqa_admin_panel'}</field>
+    </record>
+
+    <menuitem
+        id="menu_lqa_root"
+        name="Panel Comercial"
+        action="action_lqa_dashboard"
+        web_icon="lqa_admin_panel,static/src/img/tienda-logo-app.png"
+        sequence="5"
+        groups="lqa_admin_panel.group_lqa_commercial_user"
+    />
+
+    <menuitem
+        id="menu_lqa_mercadolibre"
+        name="MercadoLibre"
+        parent="menu_lqa_root"
+        action="action_lqa_mercadolibre_dashboard"
+        sequence="10"
+        groups="lqa_admin_panel.group_lqa_commercial_user"
+    />
+
+    <menuitem
+        id="menu_lqa_mercadolibre_dashboard"
+        name="Dashboard"
+        parent="menu_lqa_mercadolibre"
+        action="action_lqa_mercadolibre_dashboard"
+        sequence="10"
+        groups="lqa_admin_panel.group_lqa_commercial_user"
+    />
+
+    <menuitem
+        id="menu_lqa_mercadolibre_catalog"
+        name="Catalogo"
+        parent="menu_lqa_mercadolibre"
+        action="action_lqa_mercadolibre_catalog"
+        sequence="20"
+        groups="lqa_admin_panel.group_lqa_commercial_user"
+    />
+
+    <menuitem
+        id="menu_lqa_mercadolibre_deleter"
+        name="Eliminador"
+        parent="menu_lqa_mercadolibre"
+        action="action_lqa_mercadolibre_deleter"
+        sequence="30"
+        groups="lqa_admin_panel.group_lqa_commercial_user"
+    />
+
+    <menuitem
+        id="menu_lqa_automeli"
+        name="Automeli"
+        parent="menu_lqa_root"
+        action="action_lqa_automeli_dashboard"
+        sequence="20"
+        groups="lqa_admin_panel.group_lqa_commercial_user"
+    />
+
+    <menuitem
+        id="menu_lqa_automeli_dashboard"
+        name="Dashboard"
+        parent="menu_lqa_automeli"
+        action="action_lqa_automeli_dashboard"
+        sequence="10"
+        groups="lqa_admin_panel.group_lqa_commercial_user"
+    />
+
+    <menuitem
+        id="menu_lqa_config"
+        name="Configuracion"
+        parent="menu_lqa_root"
+        action="action_lqa_settings"
+        sequence="90"
+        groups="lqa_admin_panel.group_lqa_admin"
+    />
+</odoo>

@@ -1,0 +1,353 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="lqa_admin_panel.AutomeliCatalog">
+        <div class="o_lqa_automeli_catalog">
+            <header class="o_lqa_automeli_catalog__header">
+                <div>
+                    <p>Automeli</p>
+                    <h1>Catalogo de productos</h1>
+                    <span>
+                        Costos, stock y estado operativo de las publicaciones sincronizadas.
+                    </span>
+                </div>
+                <img
+                    src="/lqa_admin_panel/static/src/img/automeli-logo.png?v=2"
+                    alt="Automeli"
+                />
+            </header>
+
+            <form
+                class="o_lqa_automeli_filters"
+                t-on-submit.prevent="applyFilters"
+            >
+                <div class="o_lqa_automeli_filters__heading">
+                    <div>
+                        <h2>Filtros</h2>
+                        <span>Busca publicaciones y combina rangos comerciales.</span>
+                    </div>
+                    <div class="o_lqa_automeli_filters__actions">
+                        <button
+                            type="button"
+                            class="btn btn-secondary"
+                            t-on-click="clearFilters"
+                        >
+                            Limpiar
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            Aplicar filtros
+                        </button>
+                    </div>
+                </div>
+
+                <div class="o_lqa_automeli_filters__grid">
+                    <label>
+                        <span>Publicacion MLA</span>
+                        <input
+                            type="text"
+                            class="form-control"
+                            placeholder="MLA1488473899"
+                            t-model="state.filters.mla"
+                        />
+                    </label>
+                    <label>
+                        <span>SKU</span>
+                        <input
+                            type="text"
+                            class="form-control"
+                            placeholder="B0BLHBC7JM"
+                            t-model="state.filters.sku"
+                        />
+                    </label>
+                    <label>
+                        <span>Estado Amazon</span>
+                        <select class="form-select" t-model="state.filters.amzStatus">
+                            <option value="">Todos</option>
+                            <option value="Disponible">Disponible</option>
+                            <option value="Agotado">Agotado</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>Estado MercadoLibre</span>
+                        <select class="form-select" t-model="state.filters.meliStatus">
+                            <option value="">Todos</option>
+                            <option value="active">Activa</option>
+                            <option value="paused">Pausada</option>
+                            <option value="under_review">En revision</option>
+                            <option value="closed">Cerrada</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>Tipo de publicacion</span>
+                        <select class="form-select" t-model="state.filters.listingTypeId">
+                            <option value="">Todos</option>
+                            <option value="gold_pro">Premium</option>
+                            <option value="gold_special">Clasica</option>
+                            <option value="free">Gratuita</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>Estado en la app</span>
+                        <select class="form-select" t-model="state.filters.appStatus">
+                            <option value="">Todos</option>
+                            <option value="1">Habilitado</option>
+                            <option value="0">Deshabilitado</option>
+                        </select>
+                    </label>
+                </div>
+
+                <details class="o_lqa_automeli_filters__advanced">
+                    <summary>Filtros avanzados</summary>
+                    <div class="o_lqa_automeli_filters__grid">
+                        <label>
+                            <span>Costo total exacto</span>
+                            <input type="number" step="0.01" class="form-control"
+                                t-model="state.filters.totalPrice"/>
+                        </label>
+                        <label>
+                            <span>Costo total minimo</span>
+                            <input type="number" step="0.01" class="form-control"
+                                t-model="state.filters.totalPriceMin"/>
+                        </label>
+                        <label>
+                            <span>Costo total maximo</span>
+                            <input type="number" step="0.01" class="form-control"
+                                t-model="state.filters.totalPriceMax"/>
+                        </label>
+                        <label>
+                            <span>Precio scrapeado exacto</span>
+                            <input type="number" step="0.01" class="form-control"
+                                t-model="state.filters.scrapedPrice"/>
+                        </label>
+                        <label>
+                            <span>Precio scrapeado minimo</span>
+                            <input type="number" step="0.01" class="form-control"
+                                t-model="state.filters.scrapedPriceMin"/>
+                        </label>
+                        <label>
+                            <span>Precio scrapeado maximo</span>
+                            <input type="number" step="0.01" class="form-control"
+                                t-model="state.filters.scrapedPriceMax"/>
+                        </label>
+                        <label>
+                            <span>Stock exacto</span>
+                            <input type="number" min="0" class="form-control"
+                                t-model="state.filters.stockQuantity"/>
+                        </label>
+                        <label>
+                            <span>Stock minimo</span>
+                            <input type="number" min="0" class="form-control"
+                                t-model="state.filters.stockQuantityMin"/>
+                        </label>
+                        <label>
+                            <span>Stock maximo</span>
+                            <input type="number" min="0" class="form-control"
+                                t-model="state.filters.stockQuantityMax"/>
+                        </label>
+                        <label>
+                            <span>Peso exacto</span>
+                            <input type="number" min="0" class="form-control"
+                                t-model="state.filters.maxWeight"/>
+                        </label>
+                        <label>
+                            <span>Peso minimo</span>
+                            <input type="number" min="0" class="form-control"
+                                t-model="state.filters.maxWeightMin"/>
+                        </label>
+                        <label>
+                            <span>Peso maximo</span>
+                            <input type="number" min="0" class="form-control"
+                                t-model="state.filters.maxWeightMax"/>
+                        </label>
+                        <label>
+                            <span>Precio ML exacto</span>
+                            <input type="number" min="0" class="form-control"
+                                t-model="state.filters.meliSalePrice"/>
+                        </label>
+                        <label>
+                            <span>Precio ML minimo</span>
+                            <input type="number" min="0" class="form-control"
+                                t-model="state.filters.meliSalePriceMin"/>
+                        </label>
+                        <label>
+                            <span>Precio ML maximo</span>
+                            <input type="number" min="0" class="form-control"
+                                t-model="state.filters.meliSalePriceMax"/>
+                        </label>
+                        <label>
+                            <span>Cambio detectado</span>
+                            <input type="text" class="form-control" placeholder="-- o Bajo"
+                                t-model="state.filters.changed"/>
+                        </label>
+                        <label>
+                            <span>Subestado</span>
+                            <input type="text" class="form-control"
+                                placeholder="out_of_stock"
+                                t-model="state.filters.subStatus"/>
+                        </label>
+                        <label>
+                            <span>Creado desde</span>
+                            <input type="datetime-local" class="form-control"
+                                t-model="state.filters.createdAtFrom"/>
+                        </label>
+                        <label>
+                            <span>Creado hasta</span>
+                            <input type="datetime-local" class="form-control"
+                                t-model="state.filters.createdAtTo"/>
+                        </label>
+                        <label>
+                            <span>Actualizado desde</span>
+                            <input type="datetime-local" class="form-control"
+                                t-model="state.filters.updatedAtFrom"/>
+                        </label>
+                        <label>
+                            <span>Actualizado hasta</span>
+                            <input type="datetime-local" class="form-control"
+                                t-model="state.filters.updatedAtTo"/>
+                        </label>
+                    </div>
+                </details>
+            </form>
+
+            <section class="o_lqa_automeli_results">
+                <div class="o_lqa_automeli_results__bar">
+                    <div>
+                        <strong t-esc="formatNumber(state.pagination.total || 0)"/>
+                        <span>productos encontrados</span>
+                    </div>
+                    <div t-if="state.pagination.total_pages">
+                        Pagina
+                        <strong t-esc="formatNumber(state.pagination.page)"/>
+                        de
+                        <strong t-esc="formatNumber(state.pagination.total_pages)"/>
+                    </div>
+                </div>
+
+                <div class="o_lqa_automeli_loading" t-if="state.loading">
+                    Cargando productos...
+                </div>
+                <div class="o_lqa_automeli_empty" t-elif="!state.products.length">
+                    No hay productos para los filtros seleccionados.
+                </div>
+                <div class="o_lqa_automeli_products" t-else="">
+                    <article
+                        class="o_lqa_automeli_product"
+                        t-foreach="state.products"
+                        t-as="product"
+                        t-key="product.mla + '-' + product.sku + '-' + product.listingTypeId"
+                    >
+                        <div class="o_lqa_automeli_product__top">
+                            <div class="o_lqa_automeli_product__icon">
+                                <i class="fa fa-cube"/>
+                            </div>
+                            <span
+                                t-att-class="'o_lqa_automeli_status is-' + product.meliStatus"
+                                t-esc="meliStatusLabel(product.meliStatus)"
+                            />
+                        </div>
+
+                        <div class="o_lqa_automeli_product__content">
+                            <span class="o_lqa_automeli_product__sku"
+                                t-esc="product.sku || 'Sin SKU'"/>
+                            <h2 t-esc="product.mla || 'Sin publicacion MLA'"/>
+                            <div class="o_lqa_automeli_product__tags">
+                                <span t-esc="listingLabel(product.listingTypeId)"/>
+                                <span t-esc="product.amzStatus || 'Sin estado Amazon'"/>
+                            </div>
+
+                            <div class="o_lqa_automeli_product__price">
+                                <div>
+                                    <span>Precio MercadoLibre</span>
+                                    <strong t-esc="formatCurrency(product.meliSalePrice)"/>
+                                </div>
+                                <div>
+                                    <span>Costo total</span>
+                                    <strong
+                                        t-esc="formatCurrency(product.totalPrice, 'USD', 2)"
+                                    />
+                                </div>
+                            </div>
+
+                            <dl class="o_lqa_automeli_product__metrics">
+                                <div>
+                                    <dt>Precio scrapeado</dt>
+                                    <dd
+                                        t-esc="formatCurrency(product.scrapedPrice, 'USD', 2)"
+                                    />
+                                </div>
+                                <div>
+                                    <dt>Stock</dt>
+                                    <dd t-esc="formatNumber(product.stockQuantity)"/>
+                                </div>
+                                <div>
+                                    <dt>Peso maximo</dt>
+                                    <dd>
+                                        <t t-esc="formatNumber(product.maxWeight)"/>
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>Cambio</dt>
+                                    <dd t-esc="product.changed || '--'"/>
+                                </div>
+                                <div>
+                                    <dt>Estado app</dt>
+                                    <dd t-esc="appStatusLabel(product.appStatus)"/>
+                                </div>
+                                <div>
+                                    <dt>Subestado</dt>
+                                    <dd t-esc="product.subStatus || '-'"/>
+                                </div>
+                            </dl>
+
+                            <div class="o_lqa_automeli_product__dates">
+                                <span>
+                                    Actualizado
+                                    <b t-esc="formatDateTime(product.updatedAt)"/>
+                                </span>
+                                <span>
+                                    Creado
+                                    <b t-esc="formatDateTime(product.createdAt)"/>
+                                </span>
+                            </div>
+                        </div>
+
+                        <footer class="o_lqa_automeli_product__footer">
+                            <span t-esc="product.amzStatus || 'Amazon sin estado'"/>
+                            <a
+                                t-if="productUrl(product)"
+                                t-att-href="productUrl(product)"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                Ver publicacion
+                            </a>
+                        </footer>
+                    </article>
+                </div>
+
+                <div class="o_lqa_automeli_pagination" t-if="state.products.length">
+                    <button
+                        type="button"
+                        class="btn btn-secondary"
+                        t-att-disabled="!state.pagination.has_previous"
+                        t-on-click="previousPage"
+                    >
+                        Anterior
+                    </button>
+                    <span>
+                        Mostrando
+                        <strong t-esc="formatNumber(state.products.length)"/>
+                        productos
+                    </span>
+                    <button
+                        type="button"
+                        class="btn btn-primary"
+                        t-att-disabled="!state.pagination.has_next"
+                        t-on-click="nextPage"
+                    >
+                        Siguiente
+                    </button>
+                </div>
+            </section>
+        </div>
+    </t>
+</templates>

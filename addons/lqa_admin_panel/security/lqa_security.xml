@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="module_category_lqa_panel" model="ir.module.category">
+        <field name="name">Panel Comercial</field>
+        <field name="sequence">30</field>
+    </record>
+
+    <record id="group_lqa_commercial_user" model="res.groups">
+        <field name="name">Usuario comercial</field>
+        <field name="category_id" ref="module_category_lqa_panel"/>
+    </record>
+
+    <record id="group_lqa_admin" model="res.groups">
+        <field name="name">Administrador del panel</field>
+        <field name="category_id" ref="module_category_lqa_panel"/>
+        <field name="implied_ids" eval="[(4, ref('group_lqa_commercial_user'))]"/>
+    </record>
+
+    <record id="base.group_system" model="res.groups">
+        <field name="implied_ids" eval="[(4, ref('group_lqa_admin'))]"/>
+    </record>
+</odoo>

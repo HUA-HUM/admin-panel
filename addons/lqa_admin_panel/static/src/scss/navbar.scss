@@ -1,0 +1,275 @@
+$lqa-sidebar-width: 248px;
+$lqa-navbar-height: 48px;
+
+.o_main_navbar {
+    min-height: $lqa-navbar-height;
+    border-bottom: 1px solid #e2e8f0;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
+    color: #334155;
+
+    .o_menu_systray {
+        color: #334155;
+    }
+
+    .o_menu_brand,
+    .o_navbar_breadcrumbs,
+    .o_menu_sections {
+        display: none !important;
+    }
+}
+
+.o_main_navbar .o_lqa_navbar_logo {
+    display: flex;
+    align-items: center;
+    align-self: stretch;
+    flex: 0 0 auto;
+    padding: 5px 16px;
+    background: #fff;
+
+    img {
+        display: block;
+        width: auto;
+        height: 30px;
+        max-width: 108px;
+        object-fit: contain;
+    }
+}
+
+.o_lqa_mobile_menu {
+    display: none;
+    width: 42px;
+    border: 0;
+    border-right: 1px solid #e2e8f0;
+    background: transparent;
+    color: #475569;
+    font-size: 17px;
+}
+
+.o_lqa_sidebar {
+    position: fixed;
+    z-index: 1010;
+    top: $lqa-navbar-height;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    width: $lqa-sidebar-width;
+    overflow: hidden;
+    flex-direction: column;
+    border-right: 1px solid #dce3eb;
+    background: #172033;
+    color: #dbe4f0;
+    box-shadow: 5px 0 18px rgba(15, 23, 42, 0.06);
+}
+
+.o_lqa_sidebar__brand {
+    display: none;
+}
+
+.o_lqa_sidebar__nav {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 18px 12px;
+}
+
+.o_lqa_sidebar__home,
+.o_lqa_sidebar__group-toggle,
+.o_lqa_sidebar__single,
+.o_lqa_sidebar__children button {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 40px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    font-weight: 600;
+    text-align: left;
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.08);
+        color: #fff;
+    }
+}
+
+.o_lqa_sidebar__home {
+    gap: 11px;
+    margin-bottom: 16px;
+    padding: 0 12px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+
+    i {
+        width: 18px;
+        text-align: center;
+    }
+}
+
+.o_lqa_sidebar__group {
+    margin-bottom: 6px;
+}
+
+.o_lqa_sidebar__group-toggle {
+    justify-content: space-between;
+    padding: 0 10px;
+    color: #f1f5f9;
+
+    > span {
+        display: flex;
+        align-items: center;
+        min-width: 0;
+        gap: 11px;
+    }
+
+    > span i {
+        width: 18px;
+        color: #98a8bd;
+        text-align: center;
+    }
+
+    > i {
+        color: #718096;
+        font-size: 10px;
+    }
+}
+
+.o_lqa_sidebar__children {
+    position: relative;
+    margin: 2px 0 8px 18px;
+    padding-left: 12px;
+
+    &::before {
+        position: absolute;
+        top: 2px;
+        bottom: 2px;
+        left: 0;
+        width: 1px;
+        background: #344158;
+        content: "";
+    }
+
+    button {
+        gap: 10px;
+        min-height: 36px;
+        padding: 0 10px;
+        color: #aebbc9;
+        font-size: 13px;
+        font-weight: 500;
+    }
+
+    i {
+        width: 15px;
+        color: #718096;
+        text-align: center;
+    }
+}
+
+.o_lqa_sidebar__single {
+    gap: 11px;
+    padding: 0 10px;
+
+    i {
+        width: 18px;
+        color: #98a8bd;
+        text-align: center;
+    }
+}
+
+.o_lqa_sidebar__footer {
+    flex: 0 0 auto;
+    padding: 16px 22px;
+    border-top: 1px solid #2d3a50;
+    background: #141c2d;
+
+    span,
+    small {
+        display: block;
+    }
+
+    span {
+        color: #f8fafc;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    small {
+        margin-top: 2px;
+        color: #7f90a5;
+        font-size: 11px;
+    }
+}
+
+.o_web_client > .o_action_manager {
+    margin-left: $lqa-sidebar-width;
+}
+
+.o_lqa_sidebar_backdrop {
+    display: none;
+}
+
+@media (max-width: 991px) {
+    .o_lqa_mobile_menu {
+        display: block;
+    }
+
+    .o_main_navbar .o_lqa_navbar_logo {
+        padding-inline: 10px;
+
+        img {
+            height: 26px;
+            max-width: 82px;
+        }
+    }
+
+    .o_lqa_sidebar {
+        top: 0;
+        z-index: 1060;
+        width: 84vw;
+        max-width: 286px;
+        transform: translateX(-100%);
+        transition: transform 180ms ease;
+    }
+
+    .o_lqa_sidebar.is-mobile-open {
+        transform: translateX(0);
+    }
+
+    .o_lqa_sidebar__brand {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 62px;
+        padding: 9px 12px 9px 18px;
+        border-bottom: 1px solid #2d3a50;
+        background: #fff;
+
+        img {
+            width: 96px;
+            height: 38px;
+            object-fit: contain;
+        }
+
+        button {
+            width: 38px;
+            height: 38px;
+            border: 0;
+            border-radius: 6px;
+            background: #eef2f7;
+            color: #475569;
+        }
+    }
+
+    .o_lqa_sidebar_backdrop {
+        position: fixed;
+        z-index: 1050;
+        inset: 0;
+        display: block;
+        border: 0;
+        background: rgba(15, 23, 42, 0.48);
+    }
+
+    .o_web_client > .o_action_manager {
+        margin-left: 0;
+    }
+}

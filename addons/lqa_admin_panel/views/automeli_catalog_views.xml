@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="view_lqa_automeli_catalog_item_list" model="ir.ui.view">
+        <field name="name">lqa.automeli.catalog.item.list</field>
+        <field name="model">lqa.automeli.catalog.item</field>
+        <field name="arch" type="xml">
+            <list string="Catalogo Automeli">
+                <field name="name"/>
+                <field name="sku"/>
+                <field name="external_id"/>
+                <field name="category"/>
+                <field name="price"/>
+                <field name="stock_qty"/>
+                <field name="status"/>
+                <field name="last_sync_at"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_lqa_automeli_catalog_item_form" model="ir.ui.view">
+        <field name="name">lqa.automeli.catalog.item.form</field>
+        <field name="model">lqa.automeli.catalog.item</field>
+        <field name="arch" type="xml">
+            <form string="Item de catalogo">
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1>
+                            <field name="name" placeholder="Nombre del producto"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="sku"/>
+                            <field name="external_id"/>
+                            <field name="category"/>
+                            <field name="status"/>
+                        </group>
+                        <group>
+                            <field name="price"/>
+                            <field name="stock_qty"/>
+                            <field name="last_sync_at"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="API">
+                            <field name="api_payload_preview" nolabel="1" placeholder="Resumen del payload recibido o enviado"/>
+                        </page>
+                        <page string="Notas">
+                            <field name="notes" nolabel="1"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_lqa_automeli_catalog_item_search" model="ir.ui.view">
+        <field name="name">lqa.automeli.catalog.item.search</field>
+        <field name="model">lqa.automeli.catalog.item</field>
+        <field name="arch" type="xml">
+            <search string="Buscar catalogo Automeli">
+                <field name="name"/>
+                <field name="sku"/>
+                <field name="external_id"/>
+                <field name="category"/>
+                <filter string="Listos" name="ready" domain="[('status', '=', 'ready')]"/>
+                <filter string="Sincronizados" name="synced" domain="[('status', '=', 'synced')]"/>
+                <filter string="Con error" name="error" domain="[('status', '=', 'error')]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter string="Estado" name="group_status" context="{'group_by': 'status'}"/>
+                    <filter string="Categoria" name="group_category" context="{'group_by': 'category'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_lqa_automeli_catalog" model="ir.actions.act_window">
+        <field name="name">Catalogo Automeli</field>
+        <field name="res_model">lqa.automeli.catalog.item</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_lqa_automeli_catalog_item_search"/>
+        <field name="context">{'search_default_group_status': 1}</field>
+    </record>
+
+    <menuitem
+        id="menu_lqa_automeli_catalog"
+        name="Catalogo"
+        parent="menu_lqa_automeli"
+        action="action_lqa_automeli_catalog_api"
+        sequence="20"
+        groups="lqa_admin_panel.group_lqa_commercial_user"
+    />
+</odoo>

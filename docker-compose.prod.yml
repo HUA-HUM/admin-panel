@@ -1,0 +1,87 @@
+name: lqa-panel
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${ODOO_DB_NAME}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - odoo-db-data:/var/lib/postgresql/data
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  odoo:
+    image: ${ODOO_IMAGE:-odoo:18.0}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      HOST: db
+      PORT: 5432
+      USER: ${POSTGRES_USER}
+      PASSWORD: ${POSTGRES_PASSWORD}
+      LQA_API_TOKEN: ${LQA_API_TOKEN:-}
+      LQA_MERCADOLIBRE_DELETE_URL: ${LQA_MERCADOLIBRE_DELETE_URL:-}
+      LQA_MERCADOLIBRE_DELETE_API_KEY: ${LQA_MERCADOLIBRE_DELETE_API_KEY:-}
+    expose:
+      - "8069"
+      - "8072"
+    volumes:
+      - odoo-web-data:/var/lib/odoo
+      - ./config/odoo.prod.conf:/etc/odoo/odoo.conf:ro
+      - ./addons:/mnt/extra-addons:ro
+    command:
+      - odoo
+      - --config=/etc/odoo/odoo.conf
+      - --admin-passwd=${ODOO_MASTER_PASSWORD}
+      - --db_password=${POSTGRES_PASSWORD}
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - odoo
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  odoo-db-data:
+    name: lqa-panel-db-data
+  odoo-web-data:
+    name: lqa-panel-web-data
+  caddy-data:
+    name: lqa-panel-caddy-data
+  caddy-config:
+    name: lqa-panel-caddy-config

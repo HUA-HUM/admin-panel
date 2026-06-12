@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="lqa_admin_panel.MercadolibreDeleter">
+        <div class="o_lqa_deleter">
+            <header class="o_lqa_deleter__header">
+                <div>
+                    <p>MercadoLibre</p>
+                    <h1>Eliminador de publicaciones</h1>
+                    <span>
+                        Carga MLAs manualmente o desde un CSV y conserva el historial de ejecuciones.
+                    </span>
+                </div>
+                <img
+                    src="/lqa_admin_panel/static/src/img/mercadolibre-logo.png?v=2"
+                    alt="Mercado Libre"
+                />
+            </header>
+
+            <section class="o_lqa_deleter__workspace">
+                <div class="o_lqa_deleter__input">
+                    <div class="o_lqa_deleter__section_heading">
+                        <div>
+                            <h2>Publicaciones a eliminar</h2>
+                            <span>Una por linea o separadas por coma.</span>
+                        </div>
+                        <strong>
+                            <t t-esc="state.parsedIds.length"/>
+                            MLAs validos
+                        </strong>
+                    </div>
+
+                    <textarea
+                        class="form-control"
+                        rows="12"
+                        placeholder="MLA1457225727&#10;MLA1488457181&#10;MLA1504439295"
+                        t-att-value="state.idsText"
+                        t-on-input="onIdsInput"
+                    />
+
+                    <div class="o_lqa_deleter__import">
+                        <label class="btn btn-secondary">
+                            <i class="fa fa-upload"/>
+                            Importar CSV
+                            <input
+                                type="file"
+                                accept=".csv,text/csv,text/plain"
+                                t-on-change="onCsvSelected"
+                            />
+                        </label>
+                        <span t-if="state.csvName" t-esc="state.csvName"/>
+                        <span t-else="">Se busca cualquier valor con formato MLA + numeros.</span>
+                    </div>
+
+                    <div class="o_lqa_deleter__controls">
+                        <label>
+                            <span>App key</span>
+                            <input
+                                type="text"
+                                class="form-control"
+                                t-model="state.appKey"
+                            />
+                        </label>
+                        <div>
+                            <button
+                                type="button"
+                                class="btn btn-secondary"
+                                t-on-click="clearIds"
+                            >
+                                Limpiar
+                            </button>
+                            <button
+                                type="button"
+                                class="btn btn-danger"
+                                t-att-disabled="!state.parsedIds.length"
+                                t-on-click="openConfirmation"
+                            >
+                                <i class="fa fa-trash"/>
+                                Eliminar publicaciones
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <aside class="o_lqa_deleter__summary">
+                    <h2>Antes de ejecutar</h2>
+                    <ul>
+                        <li>Los MLAs duplicados se envian una sola vez.</li>
+                        <li>Los valores con formato invalido se ignoran.</li>
+                        <li>Cada ejecucion queda registrada con usuario y fecha.</li>
+                        <li>La accion requiere confirmacion final.</li>
+                    </ul>
+                    <div>
+                        <span>Lote actual</span>
+                        <strong t-esc="state.parsedIds.length"/>
+                        <small>publicaciones</small>
+                    </div>
+                </aside>
+            </section>
+
+            <section class="o_lqa_deleter_history">
+                <div class="o_lqa_deleter__section_heading">
+                    <div>
+                        <h2>Historial de eliminaciones</h2>
+                        <span>Ultimos lotes procesados y detalle de cada MLA.</span>
+                    </div>
+                    <button
+                        type="button"
+                        class="btn btn-secondary"
+                        t-on-click="loadHistory"
+                    >
+                        <i class="fa fa-refresh"/>
+                        Actualizar
+                    </button>
+                </div>
+
+                <div class="o_lqa_deleter__loading" t-if="state.loadingHistory">
+                    Cargando historial...
+                </div>
+                <div class="o_lqa_deleter__empty" t-elif="!state.history.length">
+                    Todavia no hay eliminaciones registradas.
+                </div>
+                <div class="o_lqa_deleter_batches" t-else="">
+                    <details
+                        class="o_lqa_deleter_batch"
+                        t-foreach="state.history"
+                        t-as="batch"
+                        t-key="batch.id"
+                    >
+                        <summary>
+                            <div>
+                                <span
+                                    t-att-class="'o_lqa_deleter_status is-' + batch.status"
+                                    t-esc="statusLabel(batch.status)"
+                                />
+                                <strong>
+                                    Lote #<t t-esc="batch.id"/>
+                                </strong>
+                                <span t-esc="formatDateTime(batch.date)"/>
+                            </div>
+                            <div>
+                                <span>
+                                    <b t-esc="batch.deleted_count"/>
+                                    eliminados
+                                </span>
+                                <span t-if="batch.failed_count">
+                                    <b t-esc="batch.failed_count"/>
+                                    fallidos
+                                </span>
+                                <span t-esc="batch.user"/>
+                            </div>
+                        </summary>
+
+                        <p t-if="batch.error_message" t-esc="batch.error_message"/>
+                        <div class="o_lqa_deleter_lines">
+                            <div
+                                t-foreach="batch.lines"
+                                t-as="line"
+                                t-key="line.id"
+                            >
+                                <strong t-esc="line.mla"/>
+                                <span
+                                    t-att-class="'is-' + line.status"
+                                    t-esc="statusLabel(line.status)"
+                                />
+                                <small t-if="line.message" t-esc="line.message"/>
+                            </div>
+                        </div>
+                    </details>
+                </div>
+            </section>
+
+            <div class="o_lqa_delete_modal" t-if="state.showConfirmation">
+                <button
+                    type="button"
+                    class="o_lqa_delete_modal__backdrop"
+                    aria-label="Cancelar eliminacion"
+                    t-on-click="closeConfirmation"
+                />
+                <section role="dialog" aria-modal="true" aria-labelledby="delete-title">
+                    <div class="o_lqa_delete_modal__icon">
+                        <i class="fa fa-exclamation-triangle"/>
+                    </div>
+                    <h2 id="delete-title">Confirmar eliminacion</h2>
+                    <p>
+                        Se enviaran
+                        <strong t-esc="state.parsedIds.length"/>
+                        publicaciones a la API de eliminacion. Esta operacion no se puede deshacer desde el panel.
+                    </p>
+                    <div class="o_lqa_delete_modal__actions">
+                        <button
+                            type="button"
+                            class="btn btn-secondary"
+                            t-att-disabled="state.processing"
+                            t-on-click="closeConfirmation"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="button"
+                            class="btn btn-danger"
+                            t-att-disabled="state.processing"
+                            t-on-click="confirmDeletion"
+                        >
+                            <t t-if="state.processing">Procesando...</t>
+                            <t t-else="">Si, eliminar</t>
+                        </button>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </t>
+</templates>

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_lqa_admin_panel" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.lqa.admin.panel</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app string="Panel Comercial" name="lqa_admin_panel">
+                    <block title="APIs internas">
+                        <setting string="Entorno" help="Permite separar desarrollo, staging y produccion.">
+                            <field name="lqa_api_environment"/>
+                        </setting>
+                        <setting string="URL base" help="URL base de las APIs internas de la empresa.">
+                            <field name="lqa_api_base_url" placeholder="https://api.tu-dominio.com"/>
+                        </setting>
+                        <setting string="Token interno" help="Se usa como Bearer token para llamadas server-to-server.">
+                            <field name="lqa_api_token" password="True"/>
+                        </setting>
+                        <setting string="Timeout" help="Tiempo maximo de espera para cada llamada a la API.">
+                            <field name="lqa_api_timeout_seconds"/>
+                        </setting>
+                    </block>
+                    <block title="Rutas por modulo">
+                        <setting string="MercadoLibre">
+                            <field name="lqa_mercadolibre_api_path"/>
+                        </setting>
+                        <setting string="Catalogo MercadoLibre">
+                            <field name="lqa_mercadolibre_catalog_url"/>
+                        </setting>
+                        <setting string="Eliminador MercadoLibre">
+                            <field name="lqa_mercadolibre_delete_url"/>
+                            <field
+                                name="lqa_mercadolibre_delete_api_key"
+                                password="True"
+                                placeholder="Clave interna"
+                            />
+                        </setting>
+                        <setting string="Automeli">
+                            <field name="lqa_automeli_api_path"/>
+                        </setting>
+                        <setting string="Catalogo Automeli">
+                            <field name="lqa_automeli_catalog_url"/>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+</odoo>
