@@ -1,0 +1,334 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="lqa_admin_panel.Retailers">
+        <div class="o_lqa_retailers">
+            <header class="o_lqa_retailers__header">
+                <div>
+                    <p>Retailers</p>
+                    <h1 t-if="showGrid">Marketplaces</h1>
+                    <h1 t-else="" t-esc="selectedMarketplace.name"/>
+                    <span t-if="showGrid">Canales retail separados por productos, imports y status.</span>
+                    <span t-else="" t-esc="selectedMarketplace.description"/>
+                </div>
+                <div class="o_lqa_retailers__actions">
+                    <button
+                        t-if="!showGrid"
+                        type="button"
+                        class="btn btn-secondary"
+                        t-on-click="backToGrid"
+                    >
+                        <i class="fa fa-arrow-left"/>
+                        Volver
+                    </button>
+                    <button
+                        t-if="!showGrid"
+                        type="button"
+                        class="btn btn-secondary"
+                        t-att-disabled="state.loadingProducts || state.loadingImports || state.loadingStatus"
+                        t-on-click="refreshCurrent"
+                    >
+                        <i class="fa fa-refresh"/>
+                        Actualizar
+                    </button>
+                </div>
+            </header>
+
+            <section t-if="showGrid" class="o_lqa_retailers_grid">
+                <button
+                    type="button"
+                    t-foreach="state.marketplaces"
+                    t-as="marketplace"
+                    t-key="marketplace.id"
+                    t-att-class="'o_lqa_retailer_card is-' + marketplace.accent"
+                    t-on-click="() => this.openMarketplace(marketplace)"
+                >
+                    <div class="o_lqa_retailer_card__brand">
+                        <span t-esc="marketplace.name"/>
+                    </div>
+                    <div class="o_lqa_retailer_card__body">
+                        <small t-esc="marketplace.subtitle"/>
+                        <h2 t-esc="marketplace.name"/>
+                        <p t-esc="marketplace.description"/>
+                        <div class="o_lqa_retailer_card__tabs">
+                            <span>Products</span>
+                            <span>Imports</span>
+                            <span>Status</span>
+                        </div>
+                    </div>
+                </button>
+            </section>
+
+            <section t-if="!showGrid" class="o_lqa_retailers_detail">
+                <div t-att-class="'o_lqa_retailers_detail__brand is-' + selectedMarketplace.accent">
+                    <span t-esc="selectedMarketplace.name"/>
+                    <small>
+                        /admin/marketplace/<t t-esc="selectedMarketplace.id"/>
+                    </small>
+                </div>
+
+                <nav class="o_lqa_retailers_tabs">
+                    <button
+                        type="button"
+                        t-att-class="state.activeTab === 'products' ? 'is-active' : ''"
+                        t-on-click="() => this.setTab('products')"
+                    >
+                        Products
+                    </button>
+                    <button
+                        type="button"
+                        t-att-class="state.activeTab === 'imports' ? 'is-active' : ''"
+                        t-on-click="() => this.setTab('imports')"
+                    >
+                        Imports
+                    </button>
+                    <button
+                        type="button"
+                        t-att-class="state.activeTab === 'status' ? 'is-active' : ''"
+                        t-on-click="() => this.setTab('status')"
+                    >
+                        Status
+                    </button>
+                </nav>
+
+                <section t-if="state.activeTab === 'products'" class="o_lqa_retailers_panel">
+                    <form class="o_lqa_retailers_toolbar" t-on-submit.prevent="applyProductFilters">
+                        <label class="o_lqa_retailers_search">
+                            <i class="fa fa-search"/>
+                            <input
+                                type="search"
+                                placeholder="Buscar SKU"
+                                t-model="state.productFilters.sku"
+                            />
+                        </label>
+                        <select class="form-select" t-model="state.productFilters.status">
+                            <option value="">Todos los estados</option>
+                            <option value="ACTIVE">ACTIVE</option>
+                            <option value="ERROR">ERROR</option>
+                        </select>
+                        <select class="form-select" t-model="state.productFilters.limit">
+                            <option value="10">10 por pagina</option>
+                            <option value="25">25 por pagina</option>
+                            <option value="50">50 por pagina</option>
+                        </select>
+                        <button type="submit" class="btn btn-primary">
+                            Aplicar
+                        </button>
+                    </form>
+
+                    <div class="o_lqa_retailers_table_head">
+                        <div>
+                            <h2>Productos publicados</h2>
+                            <span>
+                                <t t-esc="formatNumber(state.products.pagination.count || 0)"/>
+                                visibles de
+                                <t t-esc="formatNumber(state.products.pagination.total || 0)"/>
+                            </span>
+                        </div>
+                        <div class="o_lqa_retailers_pager">
+                            <button type="button" class="btn btn-secondary" t-att-disabled="!state.products.pagination.has_previous" t-on-click="previousProductsPage">Anterior</button>
+                            <span>Pagina <t t-esc="state.products.pagination.page || 1"/></span>
+                            <button type="button" class="btn btn-secondary" t-att-disabled="!state.products.pagination.has_next" t-on-click="nextProductsPage">Siguiente</button>
+                        </div>
+                    </div>
+
+                    <div t-if="state.loadingProducts" class="o_lqa_retailers_empty">
+                        Cargando productos del marketplace...
+                    </div>
+                    <div t-elif="!state.products.items.length" class="o_lqa_retailers_empty">
+                        No hay productos para los filtros seleccionados.
+                    </div>
+                    <div t-else="" class="o_lqa_products_grid">
+                        <article
+                            class="o_lqa_product_card"
+                            t-foreach="state.products.items"
+                            t-as="product"
+                            t-key="product.id || product.sku"
+                        >
+                            <div class="o_lqa_product_card__media">
+                                <img t-if="product.image" t-att-src="product.image" t-att-alt="product.title"/>
+                                <span t-else="" t-esc="product.sku || 'SKU'"/>
+                            </div>
+                            <div class="o_lqa_product_card__body">
+                                <div class="o_lqa_product_card__top">
+                                    <span
+                                        t-att-class="'o_lqa_retailers_badge ' + statusClass(product.status)"
+                                        t-esc="statusLabel(product.status)"
+                                    />
+                                    <small t-esc="product.external_id"/>
+                                </div>
+                                <h3 t-esc="product.title"/>
+                                <dl>
+                                    <div>
+                                        <dt>SKU</dt>
+                                        <dd t-esc="product.sku || '-'"/>
+                                    </div>
+                                    <div>
+                                        <dt>Precio</dt>
+                                        <dd t-esc="formatCurrency(product.price)"/>
+                                    </div>
+                                    <div>
+                                        <dt>Stock</dt>
+                                        <dd t-esc="formatNumber(product.stock)"/>
+                                    </div>
+                                    <div>
+                                        <dt>Ultima deteccion</dt>
+                                        <dd t-esc="formatDateTime(product.last_detected_at)"/>
+                                    </div>
+                                </dl>
+                            </div>
+                        </article>
+                    </div>
+                </section>
+
+                <section t-if="state.activeTab === 'imports'" class="o_lqa_retailers_panel">
+                    <div class="o_lqa_retailers_import_head">
+                        <div>
+                            <h2>Imports</h2>
+                            <span>Sincroniza productos, stock, precios y datos disponibles.</span>
+                        </div>
+                        <button type="button" class="btn btn-primary" t-on-click="openImportConfirmation">
+                            <i class="fa fa-play"/>
+                            Disparar import
+                        </button>
+                    </div>
+
+                    <div class="o_lqa_retailers_table_head">
+                        <div>
+                            <h2>Historial de ejecuciones</h2>
+                            <span>
+                                <t t-esc="formatNumber(state.imports.pagination.count || 0)"/>
+                                visibles de
+                                <t t-esc="formatNumber(state.imports.pagination.total || 0)"/>
+                            </span>
+                        </div>
+                        <div class="o_lqa_retailers_pager">
+                            <button type="button" class="btn btn-secondary" t-att-disabled="!state.imports.pagination.has_previous" t-on-click="previousImportsPage">Anterior</button>
+                            <span>Pagina <t t-esc="state.imports.pagination.page || 1"/></span>
+                            <button type="button" class="btn btn-secondary" t-att-disabled="!state.imports.pagination.has_next" t-on-click="nextImportsPage">Siguiente</button>
+                        </div>
+                    </div>
+
+                    <div t-if="state.loadingImports" class="o_lqa_retailers_empty">
+                        Cargando historial de imports...
+                    </div>
+                    <div t-elif="!state.imports.items.length" class="o_lqa_retailers_empty">
+                        Todavia no hay ejecuciones registradas.
+                    </div>
+                    <div t-else="" class="o_lqa_retailers_table_wrap">
+                        <table class="o_lqa_retailers_table">
+                            <thead>
+                                <tr>
+                                    <th>Run</th>
+                                    <th>Estado</th>
+                                    <th>Progreso</th>
+                                    <th>Inicio</th>
+                                    <th>Fin</th>
+                                    <th>Detalle</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="state.imports.items" t-as="run" t-key="run.id || run.started_at">
+                                    <td>
+                                        <strong t-esc="run.id || '-'"/>
+                                        <small t-esc="run.marketplace"/>
+                                    </td>
+                                    <td>
+                                        <span
+                                            t-att-class="'o_lqa_retailers_badge ' + statusClass(run.status)"
+                                            t-esc="statusLabel(run.status)"
+                                        />
+                                    </td>
+                                    <td>
+                                        <strong>
+                                            <t t-esc="run.progress || 0"/>%
+                                        </strong>
+                                        <small>
+                                            <t t-esc="formatNumber(run.processed)"/>
+                                            /
+                                            <t t-esc="formatNumber(run.total)"/>
+                                        </small>
+                                    </td>
+                                    <td t-esc="formatDateTime(run.started_at)"/>
+                                    <td t-esc="formatDateTime(run.finished_at)"/>
+                                    <td>
+                                        <small t-esc="run.message || '-'"/>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section t-if="state.activeTab === 'status'" class="o_lqa_retailers_panel">
+                    <div class="o_lqa_retailers_status_head">
+                        <div>
+                            <h2>Status de publicaciones</h2>
+                            <span>Distribucion de estados del marketplace.</span>
+                        </div>
+                        <strong>
+                            <t t-esc="formatNumber(state.status.total || 0)"/>
+                            publicaciones
+                        </strong>
+                    </div>
+
+                    <div t-if="state.loadingStatus" class="o_lqa_retailers_empty">
+                        Cargando status del marketplace...
+                    </div>
+                    <div t-elif="!state.status.statuses.length" class="o_lqa_retailers_empty">
+                        No hay status disponibles.
+                    </div>
+                    <div t-else="" class="o_lqa_status_grid">
+                        <article
+                            t-foreach="state.status.statuses"
+                            t-as="status"
+                            t-key="status.status"
+                        >
+                            <div>
+                                <span
+                                    t-att-class="'o_lqa_retailers_badge ' + statusClass(status.status)"
+                                    t-esc="statusLabel(status.status)"
+                                />
+                                <strong t-esc="formatNumber(status.count)"/>
+                            </div>
+                            <div class="o_lqa_status_bar">
+                                <span t-att-style="'width: ' + (status.percentage || 0) + '%;'"/>
+                            </div>
+                            <small>
+                                <t t-esc="status.percentage || 0"/>%
+                            </small>
+                        </article>
+                    </div>
+                </section>
+            </section>
+
+            <div class="o_lqa_modal_backdrop" t-if="state.confirmImport">
+                <div class="o_lqa_retailers_modal">
+                    <h2>Confirmar import</h2>
+                    <p>
+                        Vas a iniciar una importacion asincronica para
+                        <strong t-esc="selectedMarketplace.name"/>.
+                    </p>
+                    <p>El proceso puede tardar varios minutos y se va a seguir desde el historial.</p>
+                    <div class="o_lqa_retailers_modal__actions">
+                        <button
+                            type="button"
+                            class="btn btn-secondary"
+                            t-att-disabled="state.runningImport"
+                            t-on-click="closeImportConfirmation"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="button"
+                            class="btn btn-danger"
+                            t-att-disabled="state.runningImport"
+                            t-on-click="confirmRunImport"
+                        >
+                            Confirmar import
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

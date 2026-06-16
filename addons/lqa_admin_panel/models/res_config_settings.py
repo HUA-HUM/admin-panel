@@ -136,6 +136,21 @@ class ResConfigSettings(models.TransientModel):
         ),
         config_parameter="lqa_admin_panel.automeli_catalog_url",
     )
+    lqa_retailers_madre_api_url = fields.Char(
+        string="URL Madre Retailers",
+        default="https://api.madre.loquieroaca.com",
+        config_parameter="lqa_admin_panel.retailers_madre_api_url",
+    )
+    lqa_retailers_products_api_url = fields.Char(
+        string="URL Products Retailers",
+        default="https://api.madre.loquieroaca.com",
+        config_parameter="lqa_admin_panel.retailers_products_api_url",
+    )
+    lqa_retailers_timeout_seconds = fields.Integer(
+        string="Timeout Retailers",
+        default=60,
+        config_parameter="lqa_admin_panel.retailers_timeout_seconds",
+    )
     lqa_api_timeout_seconds = fields.Integer(
         string="Timeout API",
         default=20,

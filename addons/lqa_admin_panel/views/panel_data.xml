@@ -16,6 +16,14 @@
         <field name="dashboard_action_xmlid">lqa_admin_panel.action_lqa_automeli_dashboard</field>
     </record>
 
+    <record id="panel_module_retailers" model="lqa.panel.module">
+        <field name="name">Retailers</field>
+        <field name="code">retailers</field>
+        <field name="description">Marketplaces retail con productos, imports y estado operativo por canal.</field>
+        <field name="sequence">30</field>
+        <field name="dashboard_action_xmlid">lqa_admin_panel.action_lqa_retailers_dashboard</field>
+    </record>
+
     <record id="panel_section_automeli_catalog" model="lqa.panel.section">
         <field name="module_id" ref="panel_module_automeli"/>
         <field name="name">Catalogo</field>
@@ -60,6 +68,50 @@
         <field name="action_xmlid">lqa_admin_panel.action_lqa_mercadolibre_promotions</field>
     </record>
 
+    <record id="panel_section_retailers_google_merchant" model="lqa.panel.section">
+        <field name="module_id" ref="panel_module_retailers"/>
+        <field name="name">Google Merchant</field>
+        <field name="code">google-merchant</field>
+        <field name="description">Feed, productos e imports para Google Merchant Center.</field>
+        <field name="badge">Activo</field>
+        <field name="status">available</field>
+        <field name="sequence">10</field>
+        <field name="action_xmlid">lqa_admin_panel.action_lqa_retailers_google_merchant</field>
+    </record>
+
+    <record id="panel_section_retailers_fravega" model="lqa.panel.section">
+        <field name="module_id" ref="panel_module_retailers"/>
+        <field name="name">Fravega</field>
+        <field name="code">fravega</field>
+        <field name="description">Productos publicados, imports y estados de Fravega.</field>
+        <field name="badge">Activo</field>
+        <field name="status">available</field>
+        <field name="sequence">20</field>
+        <field name="action_xmlid">lqa_admin_panel.action_lqa_retailers_fravega</field>
+    </record>
+
+    <record id="panel_section_retailers_oncity" model="lqa.panel.section">
+        <field name="module_id" ref="panel_module_retailers"/>
+        <field name="name">OnCity</field>
+        <field name="code">oncity</field>
+        <field name="description">Productos publicados, imports y estados de OnCity.</field>
+        <field name="badge">Activo</field>
+        <field name="status">available</field>
+        <field name="sequence">30</field>
+        <field name="action_xmlid">lqa_admin_panel.action_lqa_retailers_oncity</field>
+    </record>
+
+    <record id="panel_section_retailers_megatone" model="lqa.panel.section">
+        <field name="module_id" ref="panel_module_retailers"/>
+        <field name="name">Megatone</field>
+        <field name="code">megatone</field>
+        <field name="description">Productos publicados, imports y estados de Megatone.</field>
+        <field name="badge">Activo</field>
+        <field name="status">available</field>
+        <field name="sequence">40</field>
+        <field name="action_xmlid">lqa_admin_panel.action_lqa_retailers_megatone</field>
+    </record>
+
     <function model="lqa.panel.section" name="write">
         <value eval="[ref('panel_section_mercadolibre_placeholder')]"/>
         <value
@@ -94,6 +146,16 @@
                 'badge': 'Nuevo',
                 'status': 'available',
                 'action_xmlid': 'lqa_admin_panel.action_lqa_mercadolibre_promotions',
+            }"
+        />
+    </function>
+
+    <function model="lqa.panel.module" name="write">
+        <value eval="[ref('panel_module_retailers')]"/>
+        <value
+            eval="{
+                'description': 'Marketplaces retail con productos, imports y estado operativo por canal.',
+                'dashboard_action_xmlid': 'lqa_admin_panel.action_lqa_retailers_dashboard',
             }"
         />
     </function>

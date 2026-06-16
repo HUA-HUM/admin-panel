@@ -78,6 +78,12 @@ class LqaDashboardService(models.AbstractModel):
                 {"label": "Seccion", "value": "Catalogo"},
                 {"label": "API", "value": "Conectada"},
             ]
+        if code == "retailers":
+            return [
+                {"label": "Marketplaces", "value": 4},
+                {"label": "Tabs", "value": "3 por canal"},
+                {"label": "Imports", "value": "Manual"},
+            ]
         return []
 
     def _action_id_from_xmlid(self, xmlid):

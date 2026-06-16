@@ -17,6 +17,35 @@
         <field name="params" eval="{'module_code': 'automeli'}"/>
     </record>
 
+    <record id="action_lqa_retailers_dashboard" model="ir.actions.client">
+        <field name="name">Retailers</field>
+        <field name="tag">lqa_admin_panel.retailers</field>
+    </record>
+
+    <record id="action_lqa_retailers_google_merchant" model="ir.actions.client">
+        <field name="name">Google Merchant</field>
+        <field name="tag">lqa_admin_panel.retailers</field>
+        <field name="params" eval="{'marketplace_id': 'google-merchant'}"/>
+    </record>
+
+    <record id="action_lqa_retailers_fravega" model="ir.actions.client">
+        <field name="name">Fravega</field>
+        <field name="tag">lqa_admin_panel.retailers</field>
+        <field name="params" eval="{'marketplace_id': 'fravega'}"/>
+    </record>
+
+    <record id="action_lqa_retailers_oncity" model="ir.actions.client">
+        <field name="name">OnCity</field>
+        <field name="tag">lqa_admin_panel.retailers</field>
+        <field name="params" eval="{'marketplace_id': 'oncity'}"/>
+    </record>
+
+    <record id="action_lqa_retailers_megatone" model="ir.actions.client">
+        <field name="name">Megatone</field>
+        <field name="tag">lqa_admin_panel.retailers</field>
+        <field name="params" eval="{'marketplace_id': 'megatone'}"/>
+    </record>
+
     <record id="action_lqa_mercadolibre_catalog" model="ir.actions.client">
         <field name="name">Catalogo MercadoLibre</field>
         <field name="tag">lqa_admin_panel.mercadolibre_catalog</field>
@@ -119,6 +148,60 @@
         parent="menu_lqa_automeli"
         action="action_lqa_automeli_dashboard"
         sequence="10"
+        groups="lqa_admin_panel.group_lqa_commercial_user"
+    />
+
+    <menuitem
+        id="menu_lqa_retailers"
+        name="Retailers"
+        parent="menu_lqa_root"
+        action="action_lqa_retailers_dashboard"
+        sequence="30"
+        groups="lqa_admin_panel.group_lqa_commercial_user"
+    />
+
+    <menuitem
+        id="menu_lqa_retailers_dashboard"
+        name="Dashboard"
+        parent="menu_lqa_retailers"
+        action="action_lqa_retailers_dashboard"
+        sequence="10"
+        groups="lqa_admin_panel.group_lqa_commercial_user"
+    />
+
+    <menuitem
+        id="menu_lqa_retailers_google_merchant"
+        name="Google Merchant"
+        parent="menu_lqa_retailers"
+        action="action_lqa_retailers_google_merchant"
+        sequence="20"
+        groups="lqa_admin_panel.group_lqa_commercial_user"
+    />
+
+    <menuitem
+        id="menu_lqa_retailers_fravega"
+        name="Fravega"
+        parent="menu_lqa_retailers"
+        action="action_lqa_retailers_fravega"
+        sequence="30"
+        groups="lqa_admin_panel.group_lqa_commercial_user"
+    />
+
+    <menuitem
+        id="menu_lqa_retailers_oncity"
+        name="OnCity"
+        parent="menu_lqa_retailers"
+        action="action_lqa_retailers_oncity"
+        sequence="40"
+        groups="lqa_admin_panel.group_lqa_commercial_user"
+    />
+
+    <menuitem
+        id="menu_lqa_retailers_megatone"
+        name="Megatone"
+        parent="menu_lqa_retailers"
+        action="action_lqa_retailers_megatone"
+        sequence="50"
         groups="lqa_admin_panel.group_lqa_commercial_user"
     />
 

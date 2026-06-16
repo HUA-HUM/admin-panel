@@ -58,6 +58,11 @@
                         <setting string="Catalogo Automeli">
                             <field name="lqa_automeli_catalog_url"/>
                         </setting>
+                        <setting string="Retailers">
+                            <field name="lqa_retailers_madre_api_url"/>
+                            <field name="lqa_retailers_products_api_url"/>
+                            <field name="lqa_retailers_timeout_seconds"/>
+                        </setting>
                     </block>
                 </app>
             </xpath>
