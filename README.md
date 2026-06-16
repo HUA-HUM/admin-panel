@@ -149,6 +149,9 @@ Ir a `Ajustes > Panel Comercial` y completar:
 - URL de Catalogo Automeli.
 - URLs base Madre y Products para Retailers.
 - Timeout.
+- Variables de entorno Retailers:
+  - `NEXT_PUBLIC_MADRE_API_URL=https://api.madre.loquieroaca.com`
+  - `NEXT_PUBLIC_PRODUCTS_API_URL=https://api.products.loquieroaca.com`
 
 El dashboard lee esta configuracion sin mostrar secretos. Las llamadas quedan
 centralizadas en `lqa.api.client`. El catalogo de MercadoLibre usa por defecto:
@@ -183,7 +186,7 @@ Retailers usa por defecto:
 https://api.madre.loquieroaca.com/api/internal/marketplace/products/items/all
 https://api.madre.loquieroaca.com/api/internal/product-sync/runs
 https://api.madre.loquieroaca.com/api/internal/marketplace/products/{marketplace}/status
-https://api.madre.loquieroaca.com/api/internal/import/{marketplace}/run
+https://api.products.loquieroaca.com/api/internal/import/{marketplace}/run
 ```
 
 Si el servicio de imports vive en otro host, configurar `URL Products Retailers`

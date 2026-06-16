@@ -43,7 +43,7 @@
                     t-on-click="() => this.openMarketplace(marketplace)"
                 >
                     <div class="o_lqa_retailer_card__brand">
-                        <span t-esc="marketplace.name"/>
+                        <img t-att-src="marketplace.logo" t-att-alt="marketplace.name"/>
                     </div>
                     <div class="o_lqa_retailer_card__body">
                         <small t-esc="marketplace.subtitle"/>
@@ -60,7 +60,7 @@
 
             <section t-if="!showGrid" class="o_lqa_retailers_detail">
                 <div t-att-class="'o_lqa_retailers_detail__brand is-' + selectedMarketplace.accent">
-                    <span t-esc="selectedMarketplace.name"/>
+                    <img t-att-src="selectedMarketplace.logo" t-att-alt="selectedMarketplace.name"/>
                     <small>
                         /admin/marketplace/<t t-esc="selectedMarketplace.id"/>
                     </small>

@@ -96,30 +96,66 @@
                             class="o_lqa_sidebar__children"
                             t-if="section.childrenTree.length and lqaIsExpanded(section)"
                         >
-                            <button
-                                type="button"
+                            <div
                                 t-foreach="section.childrenTree"
                                 t-as="child"
                                 t-key="child.id"
-                                t-on-click="() => this.lqaSelectMenu(child)"
+                                class="o_lqa_sidebar__child"
                             >
-                                <i
-                                    t-att-class="child.name === 'Dashboard'
-                                        ? 'fa fa-line-chart'
-                                        : child.name === 'Catalogo'
-                                            ? 'fa fa-th'
-                                            : child.name === 'Eliminador'
-                                                ? 'fa fa-trash-o'
-                                                : child.name === 'Usuarios'
-                                                    ? 'fa fa-users'
-                                                    : child.name === 'Central de Promociones'
-                                                        ? 'fa fa-bullhorn'
-                                                        : ['Google Merchant', 'Fravega', 'OnCity', 'Megatone'].includes(child.name)
-                                                            ? 'fa fa-shopping-cart'
-                                                            : 'fa fa-circle-o'"
-                                />
-                                <span t-esc="child.name"/>
-                            </button>
+                                <button
+                                    t-if="child.childrenTree.length"
+                                    type="button"
+                                    class="o_lqa_sidebar__child-toggle"
+                                    t-on-click="() => this.lqaToggleSection(child)"
+                                >
+                                    <span>
+                                        <i class="fa fa-shopping-cart"/>
+                                        <t t-esc="child.name"/>
+                                    </span>
+                                    <i
+                                        t-att-class="lqaIsExpanded(child)
+                                            ? 'fa fa-chevron-up'
+                                            : 'fa fa-chevron-down'"
+                                    />
+                                </button>
+                                <div
+                                    t-if="child.childrenTree.length and lqaIsExpanded(child)"
+                                    class="o_lqa_sidebar__grandchildren"
+                                >
+                                    <button
+                                        type="button"
+                                        t-foreach="child.childrenTree"
+                                        t-as="grandchild"
+                                        t-key="grandchild.id"
+                                        t-on-click="() => this.lqaSelectMenu(grandchild)"
+                                    >
+                                        <i class="fa fa-shopping-cart"/>
+                                        <span t-esc="grandchild.name"/>
+                                    </button>
+                                </div>
+                                <button
+                                    t-if="!child.childrenTree.length"
+                                    type="button"
+                                    t-on-click="() => this.lqaSelectMenu(child)"
+                                >
+                                    <i
+                                        t-att-class="child.name === 'Dashboard'
+                                            ? 'fa fa-line-chart'
+                                            : child.name === 'Catalogo'
+                                                ? 'fa fa-th'
+                                                : child.name === 'Eliminador'
+                                                    ? 'fa fa-trash-o'
+                                                    : child.name === 'Usuarios'
+                                                        ? 'fa fa-users'
+                                                        : child.name === 'Central de Promociones'
+                                                            ? 'fa fa-bullhorn'
+                                                            : child.name === 'Marketplaces'
+                                                                ? 'fa fa-shopping-cart'
+                                                                : 'fa fa-circle-o'"
+                                    />
+                                    <span t-esc="child.name"/>
+                                </button>
+                            </div>
                         </div>
 
                         <button

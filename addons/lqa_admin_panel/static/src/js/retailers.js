@@ -6,11 +6,12 @@ import { useService } from "@web/core/utils/hooks";
 
 const MARKETPLACES = [
     {
-        id: "google-merchant",
-        name: "Google Merchant",
-        subtitle: "Feed y Merchant Center",
-        description: "Productos, imports y estado de publicaciones para Google Merchant.",
-        accent: "google",
+        id: "oncity",
+        name: "OnCity",
+        subtitle: "Retail marketplace",
+        description: "Productos publicados, imports y estados de publicaciones de OnCity.",
+        accent: "oncity",
+        logo: "/lqa_admin_panel/static/src/img/marketplace/oncity.png?v=1",
     },
     {
         id: "fravega",
@@ -18,13 +19,15 @@ const MARKETPLACES = [
         subtitle: "Retail marketplace",
         description: "Catalogo publicado, sincronizaciones y salud operativa de Fravega.",
         accent: "fravega",
+        logo: "/lqa_admin_panel/static/src/img/marketplace/fravega.png?v=1",
     },
     {
-        id: "oncity",
-        name: "OnCity",
-        subtitle: "Retail marketplace",
-        description: "Productos publicados, imports y estados de publicaciones de OnCity.",
-        accent: "oncity",
+        id: "google-merchant",
+        name: "Google Merchant",
+        subtitle: "Feed y Merchant Center",
+        description: "Productos, imports y estado de publicaciones para Google Merchant.",
+        accent: "google",
+        logo: "/lqa_admin_panel/static/src/img/marketplace/google-merchant.png?v=1",
     },
     {
         id: "megatone",
@@ -32,6 +35,7 @@ const MARKETPLACES = [
         subtitle: "Retail marketplace",
         description: "Catalogo, stock, precios e importaciones asincronicas de Megatone.",
         accent: "megatone",
+        logo: "/lqa_admin_panel/static/src/img/marketplace/megatone.svg?v=1",
     },
 ];
 

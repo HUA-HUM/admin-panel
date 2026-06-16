@@ -172,6 +172,34 @@ $lqa-navbar-height: 48px;
     }
 }
 
+.o_lqa_sidebar__child-toggle {
+    justify-content: space-between;
+
+    > span {
+        display: flex;
+        align-items: center;
+        min-width: 0;
+        gap: 10px;
+    }
+
+    > i {
+        width: auto;
+        font-size: 10px;
+    }
+}
+
+.o_lqa_sidebar__grandchildren {
+    display: grid;
+    gap: 2px;
+    margin: 2px 0 6px 18px;
+
+    button {
+        min-height: 32px;
+        color: #97a6ba;
+        font-size: 12px;
+    }
+}
+
 .o_lqa_sidebar__single {
     gap: 11px;
     padding: 0 10px;

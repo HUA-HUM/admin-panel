@@ -170,38 +170,47 @@
     />
 
     <menuitem
+        id="menu_lqa_retailers_marketplaces"
+        name="Marketplaces"
+        parent="menu_lqa_retailers"
+        action="action_lqa_retailers_dashboard"
+        sequence="20"
+        groups="lqa_admin_panel.group_lqa_commercial_user"
+    />
+
+    <menuitem
         id="menu_lqa_retailers_google_merchant"
         name="Google Merchant"
-        parent="menu_lqa_retailers"
+        parent="menu_lqa_retailers_marketplaces"
         action="action_lqa_retailers_google_merchant"
-        sequence="20"
+        sequence="30"
         groups="lqa_admin_panel.group_lqa_commercial_user"
     />
 
     <menuitem
         id="menu_lqa_retailers_fravega"
         name="Fravega"
-        parent="menu_lqa_retailers"
+        parent="menu_lqa_retailers_marketplaces"
         action="action_lqa_retailers_fravega"
-        sequence="30"
+        sequence="20"
         groups="lqa_admin_panel.group_lqa_commercial_user"
     />
 
     <menuitem
         id="menu_lqa_retailers_oncity"
         name="OnCity"
-        parent="menu_lqa_retailers"
+        parent="menu_lqa_retailers_marketplaces"
         action="action_lqa_retailers_oncity"
-        sequence="40"
+        sequence="10"
         groups="lqa_admin_panel.group_lqa_commercial_user"
     />
 
     <menuitem
         id="menu_lqa_retailers_megatone"
         name="Megatone"
-        parent="menu_lqa_retailers"
+        parent="menu_lqa_retailers_marketplaces"
         action="action_lqa_retailers_megatone"
-        sequence="50"
+        sequence="40"
         groups="lqa_admin_panel.group_lqa_commercial_user"
     />
 

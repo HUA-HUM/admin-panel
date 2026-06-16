@@ -1,3 +1,5 @@
+import os
+
 from odoo import _, api, models
 from odoo.exceptions import AccessError, UserError
 
@@ -7,28 +9,32 @@ class LqaRetailersService(models.AbstractModel):
     _description = "Servicio de retailers y marketplaces"
 
     DEFAULT_MADRE_API_URL = "https://api.madre.loquieroaca.com"
-    DEFAULT_PRODUCTS_API_URL = "https://api.madre.loquieroaca.com"
+    DEFAULT_PRODUCTS_API_URL = "https://api.products.loquieroaca.com"
     DEFAULT_TIMEOUT_SECONDS = 60
     MARKETPLACES = {
-        "google-merchant": {
-            "name": "Google Merchant",
-            "description": "Feed y publicaciones para Google Merchant Center.",
-            "accent": "google",
+        "oncity": {
+            "name": "OnCity",
+            "description": "Publicaciones y sincronizaciones para OnCity.",
+            "accent": "oncity",
+            "logo": "/lqa_admin_panel/static/src/img/marketplace/oncity.png?v=1",
         },
         "fravega": {
             "name": "Fravega",
             "description": "Catalogo, stock y precios publicados en Fravega.",
             "accent": "fravega",
+            "logo": "/lqa_admin_panel/static/src/img/marketplace/fravega.png?v=1",
         },
-        "oncity": {
-            "name": "OnCity",
-            "description": "Publicaciones y sincronizaciones para OnCity.",
-            "accent": "oncity",
+        "google-merchant": {
+            "name": "Google Merchant",
+            "description": "Feed y publicaciones para Google Merchant Center.",
+            "accent": "google",
+            "logo": "/lqa_admin_panel/static/src/img/marketplace/google-merchant.png?v=1",
         },
         "megatone": {
             "name": "Megatone",
             "description": "Productos, importaciones y estados de Megatone.",
             "accent": "megatone",
+            "logo": "/lqa_admin_panel/static/src/img/marketplace/megatone.svg?v=1",
         },
     }
 
@@ -169,8 +175,9 @@ class LqaRetailersService(models.AbstractModel):
         return (
             params.get_param(
                 "lqa_admin_panel.retailers_madre_api_url",
-                self.DEFAULT_MADRE_API_URL,
+                "",
             )
+            or os.environ.get("NEXT_PUBLIC_MADRE_API_URL")
             or self.DEFAULT_MADRE_API_URL
         ).strip()
 
@@ -179,8 +186,9 @@ class LqaRetailersService(models.AbstractModel):
         return (
             params.get_param(
                 "lqa_admin_panel.retailers_products_api_url",
-                self.DEFAULT_PRODUCTS_API_URL,
+                "",
             )
+            or os.environ.get("NEXT_PUBLIC_PRODUCTS_API_URL")
             or self.DEFAULT_PRODUCTS_API_URL
         ).strip()
 

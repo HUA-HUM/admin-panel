@@ -68,6 +68,18 @@
         <field name="action_xmlid">lqa_admin_panel.action_lqa_mercadolibre_promotions</field>
     </record>
 
+    <record id="panel_section_retailers_marketplaces" model="lqa.panel.section">
+        <field name="module_id" ref="panel_module_retailers"/>
+        <field name="name">Marketplaces</field>
+        <field name="code">marketplaces</field>
+        <field name="description">Google Merchant, Fravega, OnCity y Megatone con productos, imports y status.</field>
+        <field name="badge">4 canales</field>
+        <field name="status">available</field>
+        <field name="sequence">10</field>
+        <field name="action_xmlid">lqa_admin_panel.action_lqa_retailers_dashboard</field>
+        <field name="active">True</field>
+    </record>
+
     <record id="panel_section_retailers_google_merchant" model="lqa.panel.section">
         <field name="module_id" ref="panel_module_retailers"/>
         <field name="name">Google Merchant</field>
@@ -77,6 +89,7 @@
         <field name="status">available</field>
         <field name="sequence">10</field>
         <field name="action_xmlid">lqa_admin_panel.action_lqa_retailers_google_merchant</field>
+        <field name="active">False</field>
     </record>
 
     <record id="panel_section_retailers_fravega" model="lqa.panel.section">
@@ -88,6 +101,7 @@
         <field name="status">available</field>
         <field name="sequence">20</field>
         <field name="action_xmlid">lqa_admin_panel.action_lqa_retailers_fravega</field>
+        <field name="active">False</field>
     </record>
 
     <record id="panel_section_retailers_oncity" model="lqa.panel.section">
@@ -99,6 +113,7 @@
         <field name="status">available</field>
         <field name="sequence">30</field>
         <field name="action_xmlid">lqa_admin_panel.action_lqa_retailers_oncity</field>
+        <field name="active">False</field>
     </record>
 
     <record id="panel_section_retailers_megatone" model="lqa.panel.section">
@@ -110,6 +125,7 @@
         <field name="status">available</field>
         <field name="sequence">40</field>
         <field name="action_xmlid">lqa_admin_panel.action_lqa_retailers_megatone</field>
+        <field name="active">False</field>
     </record>
 
     <function model="lqa.panel.section" name="write">

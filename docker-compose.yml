@@ -20,6 +20,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    environment:
+      NEXT_PUBLIC_MADRE_API_URL: ${NEXT_PUBLIC_MADRE_API_URL:-https://api.madre.loquieroaca.com}
+      NEXT_PUBLIC_PRODUCTS_API_URL: ${NEXT_PUBLIC_PRODUCTS_API_URL:-https://api.products.loquieroaca.com}
     ports:
       - "${ODOO_PORT:-8069}:8069"
     volumes:

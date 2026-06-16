@@ -143,7 +143,7 @@ class ResConfigSettings(models.TransientModel):
     )
     lqa_retailers_products_api_url = fields.Char(
         string="URL Products Retailers",
-        default="https://api.madre.loquieroaca.com",
+        default="https://api.products.loquieroaca.com",
         config_parameter="lqa_admin_panel.retailers_products_api_url",
     )
     lqa_retailers_timeout_seconds = fields.Integer(
