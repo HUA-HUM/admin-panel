@@ -6,12 +6,18 @@
     padding: 24px;
     background: #f5f7fa;
     color: #202a37;
+
+    * {
+        box-sizing: border-box;
+    }
 }
 
 .o_lqa_users__header,
+.o_lqa_users_metrics,
 .o_lqa_users__layout {
-    max-width: 1440px;
-    margin-inline: auto;
+    max-width: 1520px;
+    margin-right: auto;
+    margin-left: auto;
 }
 
 .o_lqa_users__header {
@@ -26,14 +32,17 @@
         color: #ff4f5a;
         font-size: 12px;
         font-weight: 800;
+        letter-spacing: 0;
         text-transform: uppercase;
     }
 
     h1 {
         margin: 0;
-        font-size: 32px;
+        color: #1f2937;
+        font-size: 34px;
         font-weight: 800;
         letter-spacing: 0;
+        line-height: 1.15;
     }
 
     span {
@@ -42,15 +51,56 @@
         color: #607086;
     }
 
+    .btn {
+        min-height: 38px;
+        border-color: #d4dce8;
+        background: #fff;
+        color: #314158;
+        font-weight: 700;
+    }
+
     i {
         margin-right: 6px;
     }
 }
 
+.o_lqa_users_metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+
+    article {
+        min-height: 92px;
+        padding: 16px;
+        border: 1px solid #d9e1ec;
+        border-radius: 8px;
+        background: #fff;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+    }
+
+    span {
+        display: block;
+        color: #66778c;
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+
+    strong {
+        display: block;
+        margin-top: 8px;
+        color: #1f2937;
+        font-size: 30px;
+        line-height: 1;
+    }
+}
+
 .o_lqa_users__layout {
     display: grid;
-    grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+    grid-template-columns: minmax(340px, 420px) minmax(0, 1fr);
     gap: 16px;
+    align-items: start;
 }
 
 .o_lqa_users_form,
@@ -58,21 +108,16 @@
     border: 1px solid #d9e1ec;
     border-radius: 8px;
     background: #fff;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
 }
 
 .o_lqa_users_form {
+    position: sticky;
+    top: 16px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    padding: 16px;
-
-    label > span {
-        display: block;
-        margin-bottom: 5px;
-        color: #42526a;
-        font-size: 12px;
-        font-weight: 800;
-    }
+    min-width: 0;
+    overflow: hidden;
 }
 
 .o_lqa_users_form__head,
@@ -81,36 +126,101 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 12px;
+    padding: 16px;
+    border-bottom: 1px solid #e2e8f0;
 
     h2 {
         margin: 0;
+        color: #1f2937;
         font-size: 18px;
         font-weight: 800;
     }
 
     span {
+        display: block;
+        margin-top: 4px;
         color: #607086;
+        font-size: 13px;
+        overflow-wrap: anywhere;
+    }
+}
+
+.o_lqa_users_form__head .btn {
+    flex: 0 0 auto;
+}
+
+.o_lqa_users_form__body {
+    display: grid;
+    gap: 12px;
+    padding: 16px;
+
+    label {
+        min-width: 0;
+    }
+
+    label > span {
+        display: block;
+        margin-bottom: 5px;
+        color: #42526a;
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+
+    .form-control,
+    .form-select {
+        width: 100%;
+        min-height: 40px;
+        border-color: #d6dee8;
+        border-radius: 7px;
+        color: #253348;
+    }
+
+    .form-control:focus,
+    .form-select:focus {
+        border-color: #ff6b74;
+        box-shadow: 0 0 0 3px rgba(255, 79, 90, 0.12);
     }
 }
 
 .o_lqa_users_form__toggle {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 9px;
+    min-height: 40px;
+    padding: 10px 12px;
+    border: 1px solid #d9e1ec;
+    border-radius: 7px;
+    background: #f8fafc;
 
     input {
         width: 16px;
         height: 16px;
+        margin: 0;
+        accent-color: #ff4f5a;
     }
 
     span {
         margin: 0;
+        color: #314158;
+        font-size: 13px;
+        font-weight: 700;
+        text-transform: none;
     }
 }
 
 .o_lqa_users_form__actions {
     display: flex;
     justify-content: flex-end;
+    padding: 0 16px 16px;
+
+    .btn {
+        min-height: 40px;
+        border-color: #ff4f5a;
+        background: #ff4f5a;
+        color: #fff;
+        font-weight: 800;
+    }
 }
 
 .o_lqa_users_list {
@@ -120,13 +230,12 @@
 
 .o_lqa_users_list__head {
     align-items: center;
-    padding: 14px 16px;
-    border-bottom: 1px solid #e2e8f0;
 }
 
 .o_lqa_users_search {
     position: relative;
-    width: min(380px, 100%);
+    width: 100%;
+    max-width: 420px;
 
     i {
         position: absolute;
@@ -138,31 +247,42 @@
 
     input {
         width: 100%;
-        min-height: 38px;
+        min-height: 40px;
         padding: 0 12px 0 36px;
         border: 1px solid #d6dee8;
         border-radius: 8px;
+        color: #253348;
+    }
+
+    input:focus {
+        border-color: #ff6b74;
+        box-shadow: 0 0 0 3px rgba(255, 79, 90, 0.12);
+        outline: 0;
     }
 }
 
 .o_lqa_users_table_wrap {
+    max-height: 660px;
     overflow: auto;
 }
 
 .o_lqa_users_table {
     width: 100%;
-    min-width: 760px;
+    min-width: 860px;
     border-collapse: collapse;
 
     th,
     td {
-        padding: 12px 14px;
+        padding: 13px 16px;
         border-bottom: 1px solid #e2e8f0;
         text-align: left;
         vertical-align: middle;
     }
 
     th {
+        position: sticky;
+        z-index: 1;
+        top: 0;
         background: #f8fafc;
         color: #6b7788;
         font-size: 11px;
@@ -170,9 +290,47 @@
         text-transform: uppercase;
     }
 
+    tr:hover td {
+        background: #fcfdff;
+    }
+
+    td {
+        color: #263243;
+    }
+
+    td:last-child {
+        text-align: right;
+    }
+
+    .btn {
+        min-height: 34px;
+        border-color: #d4dce8;
+        background: #eef2f7;
+        color: #314158;
+        font-weight: 700;
+    }
+
+    .btn i {
+        margin-right: 5px;
+    }
+}
+
+.o_lqa_users_identity {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    gap: 10px;
+
     strong,
     small {
         display: block;
+        max-width: 360px;
+        overflow-wrap: anywhere;
+    }
+
+    strong {
+        color: #1f2937;
+        font-weight: 800;
     }
 
     small {
@@ -180,23 +338,57 @@
         color: #607086;
     }
 
-    td:last-child {
-        text-align: right;
+    em {
+        display: inline-flex;
+        margin-left: 6px;
+        padding: 2px 6px;
+        border-radius: 999px;
+        background: #fff1f2;
+        color: #be123c;
+        font-size: 10px;
+        font-style: normal;
+        font-weight: 800;
+        vertical-align: middle;
     }
+}
+
+.o_lqa_users_avatar {
+    display: inline-flex;
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #fecdd3;
+    border-radius: 10px;
+    background: #fff1f2;
+    color: #be123c;
+    font-size: 12px;
+    font-weight: 900;
+}
+
+.o_lqa_users_login {
+    max-width: 260px;
+    overflow-wrap: anywhere;
+    color: #405064;
 }
 
 .o_lqa_users_badge,
 .o_lqa_users_state {
     display: inline-flex;
+    min-width: 92px;
     justify-content: center;
     padding: 5px 10px;
+    border: 1px solid transparent;
     border-radius: 999px;
     font-size: 12px;
     font-weight: 800;
+    line-height: 1.2;
+    text-align: center;
 }
 
 .o_lqa_users_badge {
-    border: 1px solid #cfe1f7;
+    border-color: #cfe1f7;
     background: #eff6ff;
     color: #1d4ed8;
 }
@@ -214,24 +406,34 @@
 }
 
 .o_lqa_users_state.is-active {
+    border-color: #bbf7d0;
     background: #ecfdf5;
     color: #047857;
 }
 
 .o_lqa_users_state.is-inactive {
+    border-color: #cbd5e1;
     background: #f1f5f9;
     color: #64748b;
 }
 
 .o_lqa_users_empty {
-    padding: 42px 18px;
+    padding: 46px 18px;
     color: #607086;
     text-align: center;
 }
 
-@media (max-width: 980px) {
+@media (max-width: 1180px) {
+    .o_lqa_users_metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .o_lqa_users__layout {
         grid-template-columns: 1fr;
+    }
+
+    .o_lqa_users_form {
+        position: static;
     }
 }
 
@@ -246,7 +448,15 @@
         flex-direction: column;
     }
 
+    .o_lqa_users__header h1 {
+        font-size: 28px;
+    }
+
+    .o_lqa_users_metrics {
+        grid-template-columns: 1fr;
+    }
+
     .o_lqa_users_search {
-        width: 100%;
+        max-width: none;
     }
 }

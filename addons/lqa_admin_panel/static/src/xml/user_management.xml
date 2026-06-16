@@ -19,12 +19,31 @@
                 </button>
             </header>
 
+            <section class="o_lqa_users_metrics">
+                <article>
+                    <span>Total usuarios</span>
+                    <strong t-esc="userSummary.total"/>
+                </article>
+                <article>
+                    <span>Activos</span>
+                    <strong t-esc="userSummary.active"/>
+                </article>
+                <article>
+                    <span>Administradores</span>
+                    <strong t-esc="userSummary.admins"/>
+                </article>
+                <article>
+                    <span>Comerciales</span>
+                    <strong t-esc="userSummary.commercial"/>
+                </article>
+            </section>
+
             <section class="o_lqa_users__layout">
                 <form class="o_lqa_users_form" t-on-submit.prevent="saveUser">
                     <div class="o_lqa_users_form__head">
                         <div>
                             <h2 t-esc="isEditing ? 'Editar usuario' : 'Crear usuario'"/>
-                            <span>Alta manual con contrasena propia.</span>
+                            <span t-esc="isEditing ? state.form.login : 'Alta manual sin invitacion por email'"/>
                         </div>
                         <button
                             type="button"
@@ -36,54 +55,56 @@
                         </button>
                     </div>
 
-                    <label>
-                        <span>Nombre</span>
-                        <input
-                            type="text"
-                            class="form-control"
-                            t-model="state.form.name"
-                            required="required"
-                        />
-                    </label>
-                    <label>
-                        <span>Email / Login</span>
-                        <input
-                            type="email"
-                            class="form-control"
-                            t-model="state.form.login"
-                            required="required"
-                        />
-                    </label>
-                    <label>
-                        <span>Email visible</span>
-                        <input
-                            type="email"
-                            class="form-control"
-                            t-model="state.form.email"
-                        />
-                    </label>
-                    <label>
-                        <span>Permiso</span>
-                        <select class="form-select" t-model="state.form.role">
-                            <option value="commercial">Usuario comercial</option>
-                            <option value="admin">Administrador del panel</option>
-                        </select>
-                    </label>
-                    <label class="o_lqa_users_form__toggle">
-                        <input type="checkbox" t-model="state.form.active"/>
-                        <span>Usuario activo</span>
-                    </label>
-                    <label>
-                        <span t-esc="isEditing ? 'Nueva contrasena' : 'Contrasena'"/>
-                        <input
-                            type="password"
-                            class="form-control"
-                            t-model="state.form.password"
-                            t-att-required="!isEditing"
-                            minlength="8"
-                            autocomplete="new-password"
-                        />
-                    </label>
+                    <div class="o_lqa_users_form__body">
+                        <label>
+                            <span>Nombre</span>
+                            <input
+                                type="text"
+                                class="form-control"
+                                t-model="state.form.name"
+                                required="required"
+                            />
+                        </label>
+                        <label>
+                            <span>Email / Login</span>
+                            <input
+                                type="email"
+                                class="form-control"
+                                t-model="state.form.login"
+                                required="required"
+                            />
+                        </label>
+                        <label>
+                            <span>Email visible</span>
+                            <input
+                                type="email"
+                                class="form-control"
+                                t-model="state.form.email"
+                            />
+                        </label>
+                        <label>
+                            <span>Permiso</span>
+                            <select class="form-select" t-model="state.form.role">
+                                <option value="commercial">Usuario comercial</option>
+                                <option value="admin">Administrador del panel</option>
+                            </select>
+                        </label>
+                        <label>
+                            <span t-esc="isEditing ? 'Nueva contrasena' : 'Contrasena'"/>
+                            <input
+                                type="password"
+                                class="form-control"
+                                t-model="state.form.password"
+                                t-att-required="!isEditing"
+                                minlength="8"
+                                autocomplete="new-password"
+                            />
+                        </label>
+                        <label class="o_lqa_users_form__toggle">
+                            <input type="checkbox" t-model="state.form.active"/>
+                            <span>Usuario activo</span>
+                        </label>
+                    </div>
 
                     <div class="o_lqa_users_form__actions">
                         <button
@@ -136,10 +157,18 @@
                             <tbody>
                                 <tr t-foreach="filteredUsers" t-as="user" t-key="user.id">
                                     <td>
-                                        <strong t-esc="user.name"/>
-                                        <small t-esc="user.email"/>
+                                        <div class="o_lqa_users_identity">
+                                            <span class="o_lqa_users_avatar" t-esc="initials(user.name)"/>
+                                            <div>
+                                                <strong>
+                                                    <t t-esc="user.name"/>
+                                                    <em t-if="user.is_current_user">Vos</em>
+                                                </strong>
+                                                <small t-esc="user.email || user.login"/>
+                                            </div>
+                                        </div>
                                     </td>
-                                    <td t-esc="user.login"/>
+                                    <td class="o_lqa_users_login" t-esc="user.login"/>
                                     <td>
                                         <span
                                             t-att-class="'o_lqa_users_badge ' + roleClass(user.role)"
@@ -158,6 +187,7 @@
                                             class="btn btn-secondary"
                                             t-on-click="() => this.editUser(user)"
                                         >
+                                            <i class="fa fa-pencil"/>
                                             Editar
                                         </button>
                                     </td>

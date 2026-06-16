@@ -111,8 +111,25 @@ export class LqaUserManagement extends Component {
         );
     }
 
+    get userSummary() {
+        return {
+            total: this.state.users.length,
+            active: this.state.users.filter((user) => user.active).length,
+            admins: this.state.users.filter((user) => user.role === "admin").length,
+            commercial: this.state.users.filter((user) => user.role === "commercial").length,
+        };
+    }
+
     get isEditing() {
         return Boolean(this.state.form.id);
+    }
+
+    initials(name) {
+        const parts = String(name || "")
+            .trim()
+            .split(/\s+/)
+            .slice(0, 2);
+        return parts.map((part) => part[0]).join("").toUpperCase() || "U";
     }
 
     roleClass(role) {
