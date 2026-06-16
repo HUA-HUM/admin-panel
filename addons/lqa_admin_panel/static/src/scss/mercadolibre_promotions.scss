@@ -124,6 +124,16 @@
         font-size: 34px;
         line-height: 1;
     }
+
+    small {
+        margin-top: 8px;
+        color: #607086;
+    }
+}
+
+.o_lqa_promotions_total.is-loading strong {
+    color: #607086;
+    font-size: 22px;
 }
 
 .o_lqa_promotions_type {
@@ -222,6 +232,44 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
+}
+
+.o_lqa_promotions_long_loading {
+    display: flex;
+    max-width: 1600px;
+    align-items: center;
+    gap: 12px;
+    margin: 0 auto 16px;
+    padding: 12px 14px;
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    background: #eff6ff;
+    color: #1e3a8a;
+
+    > span {
+        width: 18px;
+        height: 18px;
+        flex: 0 0 auto;
+        border: 3px solid #bfdbfe;
+        border-top-color: #2563eb;
+        border-radius: 999px;
+        animation: o-lqa-spin 0.9s linear infinite;
+    }
+
+    strong {
+        white-space: nowrap;
+    }
+
+    p {
+        margin: 0;
+        color: #405f95;
+    }
+}
+
+@keyframes o-lqa-spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .o_lqa_promotions_toolbar {

@@ -42,6 +42,7 @@
                             <field name="lqa_mercadolibre_promotions_catalogs_url"/>
                             <field name="lqa_mercadolibre_aporte_orders_url"/>
                             <field name="lqa_mercadolibre_aporte_analytics_url"/>
+                            <field name="lqa_mercadolibre_promotions_timeout_seconds"/>
                         </setting>
                         <setting string="Automeli">
                             <field name="lqa_automeli_api_path"/>

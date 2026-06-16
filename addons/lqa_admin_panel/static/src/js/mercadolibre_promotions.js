@@ -1,6 +1,6 @@
 /** @odoo-module **/
 
-import { Component, onWillStart, useState } from "@odoo/owl";
+import { Component, onMounted, useState } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 
@@ -58,8 +58,9 @@ export class LqaMercadolibrePromotions extends Component {
             orderFilters: defaultOrderFilters(),
         });
 
-        onWillStart(async () => {
-            await Promise.all([this.loadStats(), this.loadPromotions()]);
+        onMounted(() => {
+            this.loadStats();
+            this.loadPromotions();
         });
     }
 

@@ -61,7 +61,7 @@ class LqaApiClient(models.AbstractModel):
 
     @api.model
     def request_absolute_json(
-        self, method, url, payload=None, params=None, headers=None
+        self, method, url, payload=None, params=None, headers=None, timeout=None
     ):
         config = self._get_config()
         return self._request_json_url(
@@ -70,7 +70,7 @@ class LqaApiClient(models.AbstractModel):
             payload=payload,
             params=params,
             token=False,
-            timeout=config["timeout"],
+            timeout=timeout or config["timeout"],
             extra_headers=headers,
         )
 

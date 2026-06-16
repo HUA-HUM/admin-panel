@@ -78,6 +78,11 @@ class ResConfigSettings(models.TransientModel):
         ),
         config_parameter="lqa_admin_panel.mercadolibre_aporte_analytics_url",
     )
+    lqa_mercadolibre_promotions_timeout_seconds = fields.Integer(
+        string="Timeout promociones",
+        default=120,
+        config_parameter="lqa_admin_panel.mercadolibre_promotions_timeout_seconds",
+    )
     lqa_automeli_api_path = fields.Char(
         string="Ruta Automeli",
         default="/automeli",

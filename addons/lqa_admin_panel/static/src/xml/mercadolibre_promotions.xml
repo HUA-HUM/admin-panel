@@ -12,7 +12,7 @@
                     <button
                         type="button"
                         class="btn btn-secondary"
-                        t-att-disabled="state.loadingStats || state.loadingPromotions || state.loadingCatalogs || state.loadingOrders"
+                        t-att-disabled="state.loadingStats || state.loadingPromotions || state.loadingCatalogs || state.loadingOrders || state.loadingAnalytics"
                         t-on-click="refreshCurrent"
                     >
                         <i class="fa fa-refresh"/>
@@ -50,9 +50,11 @@
             </nav>
 
             <section class="o_lqa_promotions_stats">
-                <article class="o_lqa_promotions_total">
+                <article t-att-class="'o_lqa_promotions_total ' + (state.loadingStats ? 'is-loading' : '')">
                     <span>Total promociones</span>
-                    <strong t-esc="formatNumber(state.stats.total)"/>
+                    <strong t-if="!state.loadingStats" t-esc="formatNumber(state.stats.total)"/>
+                    <strong t-else="">Cargando...</strong>
+                    <small t-if="state.loadingStats">La API de CPE puede tardar hasta 2 minutos.</small>
                 </article>
                 <article
                     class="o_lqa_promotions_type"
@@ -80,6 +82,12 @@
                     </div>
                 </article>
             </section>
+
+            <div class="o_lqa_promotions_long_loading" t-if="state.loadingStats || state.loadingPromotions || state.loadingCatalogs || state.loadingOrders || state.loadingAnalytics">
+                <span/>
+                <strong>Consultando APIs internas</strong>
+                <p>Algunos endpoints de CPE son pesados; dejamos la espera extendida para evitar timeouts prematuros.</p>
+            </div>
 
             <section t-if="state.activeTab === 'central'" class="o_lqa_promotions_panel">
                 <div class="o_lqa_promotions_toolbar">
@@ -125,7 +133,9 @@
                             <button type="button" class="btn btn-secondary" t-att-disabled="!state.promotions.pagination.has_next" t-on-click="nextPromotionsPage">Siguiente</button>
                         </div>
                     </div>
-                    <div t-if="state.loadingPromotions" class="o_lqa_promotions_empty">Cargando promociones...</div>
+                    <div t-if="state.loadingPromotions" class="o_lqa_promotions_empty">
+                        Cargando promociones desde CPE. Esta consulta puede demorar.
+                    </div>
                     <div t-elif="!filteredPromotions.length" class="o_lqa_promotions_empty">No hay promociones para los filtros seleccionados.</div>
                     <div t-else="" class="o_lqa_promotions_table_wrap">
                         <table class="o_lqa_promotions_table">
@@ -222,7 +232,9 @@
                             <button type="button" class="btn btn-secondary" t-att-disabled="!state.catalogs.pagination.has_next" t-on-click="nextCatalogsPage">Siguiente</button>
                         </div>
                     </div>
-                    <div t-if="state.loadingCatalogs" class="o_lqa_promotions_empty">Cargando catalogo...</div>
+                    <div t-if="state.loadingCatalogs" class="o_lqa_promotions_empty">
+                        Cargando catalogo desde CPE. Esta consulta puede demorar.
+                    </div>
                     <div t-elif="!filteredCatalogs.length" class="o_lqa_promotions_empty">No hay campanas para los filtros seleccionados.</div>
                     <div t-else="" class="o_lqa_promotions_table_wrap">
                         <table class="o_lqa_promotions_table">
@@ -318,7 +330,9 @@
                             <t t-esc="formatCurrency(state.analytics.summary.peak_aporte || 0)"/>
                         </strong>
                     </div>
-                    <div t-if="state.loadingAnalytics" class="o_lqa_promotions_empty">Cargando analytics...</div>
+                    <div t-if="state.loadingAnalytics" class="o_lqa_promotions_empty">
+                        Cargando analytics de aporte ML. Esta consulta puede demorar.
+                    </div>
                     <div t-elif="!analyticsBars.length" class="o_lqa_promotions_empty">No hay datos para el rango seleccionado.</div>
                     <div t-else="" class="o_lqa_promotions_chart__bars">
                         <div class="o_lqa_promotions_chart__bar" t-foreach="analyticsBars" t-as="bar" t-key="bar.date">
@@ -345,7 +359,9 @@
                             <button type="button" class="btn btn-secondary" t-att-disabled="!state.orders.pagination.has_next" t-on-click="nextOrdersPage">Siguiente</button>
                         </div>
                     </div>
-                    <div t-if="state.loadingOrders" class="o_lqa_promotions_empty">Cargando ordenes...</div>
+                    <div t-if="state.loadingOrders" class="o_lqa_promotions_empty">
+                        Cargando ordenes con aporte ML. Esta consulta puede demorar.
+                    </div>
                     <div t-elif="!state.orders.items.length" class="o_lqa_promotions_empty">No hay ordenes para los filtros seleccionados.</div>
                     <div t-else="" class="o_lqa_promotions_table_wrap">
                         <table class="o_lqa_promotions_table">

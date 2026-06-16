@@ -19,6 +19,7 @@ class LqaMercadolibrePromotionsService(models.AbstractModel):
         "https://api.madre.loquieroaca.com/"
         "api/mercadolibre/orders/analytics/aporte-ml/timeseries"
     )
+    DEFAULT_TIMEOUT_SECONDS = 120
     PROMOTION_TYPES = [
         ("smart", "SMART"),
         ("deal", "DEAL"),
@@ -56,6 +57,7 @@ class LqaMercadolibrePromotionsService(models.AbstractModel):
                 "lqa_admin_panel.mercadolibre_promotions_stats_url",
                 self.DEFAULT_STATS_ENDPOINT,
             ),
+            timeout=self._timeout(),
         )
         return self._normalize_stats(response or {})
 
@@ -77,6 +79,7 @@ class LqaMercadolibrePromotionsService(models.AbstractModel):
                 self.DEFAULT_PROMOTIONS_ENDPOINT,
             ),
             params=params,
+            timeout=self._timeout(),
         )
         items = response.get("items") or response.get("promotions") or []
         return {
@@ -99,6 +102,7 @@ class LqaMercadolibrePromotionsService(models.AbstractModel):
                 self.DEFAULT_CATALOGS_ENDPOINT,
             ),
             params=params,
+            timeout=self._timeout(),
         )
         items = response.get("items") or response.get("catalogs") or []
         normalized = [self._normalize_catalog(item) for item in items]
@@ -123,6 +127,7 @@ class LqaMercadolibrePromotionsService(models.AbstractModel):
                 self.DEFAULT_ORDERS_ENDPOINT,
             ),
             params=params,
+            timeout=self._timeout(),
         )
         items = response.get("items") or response.get("orders") or []
         normalized = [self._normalize_order(item) for item in items]
@@ -154,6 +159,7 @@ class LqaMercadolibrePromotionsService(models.AbstractModel):
                 self.DEFAULT_ANALYTICS_ENDPOINT,
             ),
             params=params,
+            timeout=self._timeout(),
         )
         items = response.get("items") if isinstance(response, dict) else response
         series = [self._normalize_series_point(item) for item in (items or [])]
@@ -176,6 +182,17 @@ class LqaMercadolibrePromotionsService(models.AbstractModel):
         if not endpoint:
             raise UserError(_("Configura el endpoint de la Central de Promociones."))
         return endpoint
+
+    def _timeout(self):
+        timeout = (
+            self.env["ir.config_parameter"]
+            .sudo()
+            .get_param(
+                "lqa_admin_panel.mercadolibre_promotions_timeout_seconds",
+                self.DEFAULT_TIMEOUT_SECONDS,
+            )
+        )
+        return min(max(self._as_int(timeout, self.DEFAULT_TIMEOUT_SECONDS), 30), 300)
 
     def _pagination_params(self, filters, default_limit=100, max_limit=100):
         page = max(self._as_int(filters.get("page"), 1), 1)

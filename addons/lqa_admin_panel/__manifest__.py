@@ -17,6 +17,7 @@
     ],
     "assets": {
         "web.assets_backend": [
+            "lqa_admin_panel/static/src/js/branding.js",
             "lqa_admin_panel/static/src/js/navigation.js",
             "lqa_admin_panel/static/src/js/dashboard.js",
             "lqa_admin_panel/static/src/js/mercadolibre_catalog.js",
@@ -35,6 +36,9 @@
             "lqa_admin_panel/static/src/xml/mercadolibre_promotions.xml",
             "lqa_admin_panel/static/src/xml/automeli_catalog.xml",
             "lqa_admin_panel/static/src/xml/navbar.xml",
+        ],
+        "web.assets_frontend": [
+            "lqa_admin_panel/static/src/js/branding.js",
         ],
     },
     "application": True,

@@ -126,6 +126,7 @@ Ir a `Ajustes > Panel Comercial` y completar:
 - URL y clave interna del Eliminador MercadoLibre.
 - URLs de Central de Promociones MercadoLibre.
 - URLs de ordenes y analytics de aporte ML.
+- Timeout extendido de Central de Promociones.
 - URL de Catalogo Automeli.
 - Timeout.
 
