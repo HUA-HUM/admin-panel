@@ -108,7 +108,11 @@
                                             ? 'fa fa-th'
                                             : child.name === 'Eliminador'
                                                 ? 'fa fa-trash-o'
-                                                : 'fa fa-circle-o'"
+                                                : child.name === 'Usuarios'
+                                                    ? 'fa fa-users'
+                                                    : child.name === 'Central de Promociones'
+                                                        ? 'fa fa-bullhorn'
+                                                        : 'fa fa-circle-o'"
                                 />
                                 <span t-esc="child.name"/>
                             </button>

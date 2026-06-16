@@ -45,6 +45,11 @@
         <field name="context">{'module': 'lqa_admin_panel'}</field>
     </record>
 
+    <record id="action_lqa_user_management" model="ir.actions.client">
+        <field name="name">Usuarios y permisos</field>
+        <field name="tag">lqa_admin_panel.user_management</field>
+    </record>
+
     <menuitem
         id="menu_lqa_root"
         name="Panel Comercial"
@@ -123,6 +128,15 @@
         parent="menu_lqa_root"
         action="action_lqa_settings"
         sequence="90"
+        groups="lqa_admin_panel.group_lqa_admin"
+    />
+
+    <menuitem
+        id="menu_lqa_config_users"
+        name="Usuarios"
+        parent="menu_lqa_config"
+        action="action_lqa_user_management"
+        sequence="30"
         groups="lqa_admin_panel.group_lqa_admin"
     />
 </odoo>

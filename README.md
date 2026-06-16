@@ -30,6 +30,10 @@ Base de panel comercial construida sobre Odoo + Docker.
   - Filtros basicos y avanzados.
   - Cards con costos, stock, peso y estados Amazon/MercadoLibre.
 - Grupos de seguridad para usuarios comerciales y administradores del panel.
+- Seccion `Configuracion / Usuarios`:
+  - Alta manual de usuarios internos con email/login y contrasena.
+  - Asignacion de permisos comercial o administrador del panel.
+  - Activacion, desactivacion y cambio manual de contrasena.
 - Configuracion preparada para APIs internas: entorno, URL base, token, rutas por modulo y timeout.
 
 ## Levantar el proyecto
@@ -112,6 +116,9 @@ En `Ajustes > Usuarios`, asignar uno de estos permisos:
 - `Panel Comercial / Administrador del panel`
 
 El administrador del panel hereda el acceso comercial y puede editar la configuracion funcional.
+
+Tambien se pueden crear y editar accesos desde `Panel Comercial > Configuracion > Usuarios`.
+Esta pantalla no requiere SMTP porque permite definir la contrasena manualmente.
 
 ## Configurar APIs internas
 

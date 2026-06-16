@@ -7,3 +7,4 @@ from . import mercadolibre_deletion
 from . import mercadolibre_promotions_service
 from . import panel_module
 from . import res_config_settings
+from . import user_management_service
