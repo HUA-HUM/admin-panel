@@ -79,7 +79,9 @@
                                         ? 'fa fa-shopping-bag'
                                         : section.name === 'Automeli'
                                             ? 'fa fa-cubes'
-                                            : 'fa fa-folder-o'"
+                                            : section.name === 'Retailers'
+                                                ? 'fa fa-building-o'
+                                                : 'fa fa-folder-o'"
                                 />
                                 <t t-esc="section.name"/>
                             </span>
@@ -112,7 +114,9 @@
                                                     ? 'fa fa-users'
                                                     : child.name === 'Central de Promociones'
                                                         ? 'fa fa-bullhorn'
-                                                        : 'fa fa-circle-o'"
+                                                        : ['Google Merchant', 'Fravega', 'OnCity', 'Megatone'].includes(child.name)
+                                                            ? 'fa fa-shopping-cart'
+                                                            : 'fa fa-circle-o'"
                                 />
                                 <span t-esc="child.name"/>
                             </button>

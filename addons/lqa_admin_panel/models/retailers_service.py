@@ -133,6 +133,7 @@ class LqaRetailersService(models.AbstractModel):
             ),
             timeout=self._timeout(),
         )
+        response = response if isinstance(response, dict) else {}
         return {
             "status": self._clean(response.get("status")) or self._clean(response.get("state")) or "QUEUED",
             "message": self._clean(response.get("message") or response.get("detail")),
@@ -195,6 +196,7 @@ class LqaRetailersService(models.AbstractModel):
         return min(max(self._as_int(timeout, self.DEFAULT_TIMEOUT_SECONDS), 20), 180)
 
     def _normalize_product(self, item):
+        item = item if isinstance(item, dict) else {}
         image = (
             item.get("image")
             or item.get("imageUrl")
@@ -249,6 +251,7 @@ class LqaRetailersService(models.AbstractModel):
         }
 
     def _normalize_import_run(self, item):
+        item = item if isinstance(item, dict) else {}
         status = item.get("status") or item.get("state") or ""
         processed = self._as_int(
             item.get("processed") or item.get("processedItems") or item.get("itemsProcessed"),

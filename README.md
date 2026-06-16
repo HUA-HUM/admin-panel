@@ -11,6 +11,7 @@ Base de panel comercial construida sobre Odoo + Docker.
 - Dashboard inicial con modulos:
   - `MercadoLibre`
   - `Automeli`
+  - `Retailers`
 - Seccion `MercadoLibre / Catalogo` conectada a la API de rendimiento:
   - Primera pagina de hasta 100 productos.
   - Tarjetas con precio, stock, facturacion, ordenes, unidades, visitas y conversion.
@@ -32,6 +33,12 @@ Base de panel comercial construida sobre Odoo + Docker.
 - Seccion `Automeli / Catalogo` conectada a la API de snapshots:
   - Filtros basicos y avanzados.
   - Cards con costos, stock, peso y estados Amazon/MercadoLibre.
+- Modulo `Retailers`:
+  - Dashboard local de marketplaces: Google Merchant, Fravega, OnCity y Megatone.
+  - Pantalla por marketplace con tabs `Products`, `Imports` y `Status`.
+  - Products consulta productos paginados por marketplace, SKU y estado.
+  - Imports permite disparar importaciones asincronicas con confirmacion e historial.
+  - Status muestra la distribucion visual de estados de publicaciones.
 - Grupos de seguridad para usuarios comerciales y administradores del panel.
 - Seccion `Configuracion / Usuarios`:
   - Alta manual de usuarios internos con email/login y contrasena.
@@ -140,6 +147,7 @@ Ir a `Ajustes > Panel Comercial` y completar:
 - URLs de acciones de Central de Promociones.
 - URL base y servicio de Datadog Live Tail.
 - URL de Catalogo Automeli.
+- URLs base Madre y Products para Retailers.
 - Timeout.
 
 El dashboard lee esta configuracion sin mostrar secretos. Las llamadas quedan
@@ -169,6 +177,18 @@ Las acciones de Central de Promociones se encolan en Odoo y se ejecutan en un
 thread de backend para no bloquear la pantalla mientras CPE procesa. Solo el
 grupo `Panel Comercial / Administrador del panel` puede dispararlas.
 
+Retailers usa por defecto:
+
+```text
+https://api.madre.loquieroaca.com/api/internal/marketplace/products/items/all
+https://api.madre.loquieroaca.com/api/internal/product-sync/runs
+https://api.madre.loquieroaca.com/api/internal/marketplace/products/{marketplace}/status
+https://api.madre.loquieroaca.com/api/internal/import/{marketplace}/run
+```
+
+Si el servicio de imports vive en otro host, configurar `URL Products Retailers`
+en `Ajustes > Panel Comercial`.
+
 ## Estructura
 
 ```text
@@ -182,6 +202,7 @@ addons/lqa_admin_panel/
     mercadolibre_promotions_service.py
     panel_module.py
     res_config_settings.py
+    retailers_service.py
     user_management_service.py
   views/
     automeli_catalog_views.xml
@@ -198,17 +219,20 @@ addons/lqa_admin_panel/
     js/mercadolibre_deleter.js
     js/mercadolibre_promotions.js
     js/automeli_catalog.js
+    js/retailers.js
     js/navigation.js
     scss/dashboard.scss
     scss/mercadolibre_catalog.scss
     scss/mercadolibre_deleter.scss
     scss/mercadolibre_promotions.scss
     scss/automeli_catalog.scss
+    scss/retailers.scss
     xml/dashboard.xml
     xml/mercadolibre_catalog.xml
     xml/mercadolibre_deleter.xml
     xml/mercadolibre_promotions.xml
     xml/automeli_catalog.xml
+    xml/retailers.xml
 ```
 
 ## Proximo paso recomendado
