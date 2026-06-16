@@ -21,6 +21,11 @@ Base de panel comercial construida sobre Odoo + Docker.
   - Carga de MLAs por texto o archivo CSV.
   - Confirmacion obligatoria antes de ejecutar.
   - Historial persistente por lote y por publicacion.
+- Seccion `MercadoLibre / Central de Promociones`:
+  - Resumen por tipo de promocion: SMART, DEAL y PRE_NEGOTIATED.
+  - Listado paginado de promociones con estado, precios, economia y fechas.
+  - Catalogo de campanas disponibles con candidatos por promocion.
+  - Ordenes con aporte ML y analytics por fecha.
 - Seccion `Automeli / Catalogo` conectada a la API de snapshots:
   - Filtros basicos y avanzados.
   - Cards con costos, stock, peso y estados Amazon/MercadoLibre.
@@ -77,7 +82,7 @@ Completar contrasenas y credenciales en `.env.production`. Para inicializar
 una base nueva e instalar el addon:
 
 ```bash
-chmod +x deploy/bootstrap-database.sh deploy/backup.sh
+chmod +x deploy/*.sh
 ./deploy/bootstrap-database.sh
 ```
 
@@ -96,7 +101,7 @@ Backup manual:
 ./deploy/backup.sh
 ```
 
-El DNS de `admin.loquieroaca.com.ar` debe apuntar a la IP publica del
+El DNS de `admin.loquieroaca.com` debe apuntar a la IP publica del
 servidor. Caddy obtiene y renueva automaticamente el certificado TLS.
 
 ## Configurar usuarios comerciales
@@ -119,6 +124,8 @@ Ir a `Ajustes > Panel Comercial` y completar:
 - Ruta Automeli.
 - URL de Catalogo MercadoLibre.
 - URL y clave interna del Eliminador MercadoLibre.
+- URLs de Central de Promociones MercadoLibre.
+- URLs de ordenes y analytics de aporte ML.
 - URL de Catalogo Automeli.
 - Timeout.
 
@@ -127,6 +134,16 @@ centralizadas en `lqa.api.client`. El catalogo de MercadoLibre usa por defecto:
 
 ```text
 https://catalog-meli.loquieroaca.com/analytics/products/performance
+```
+
+La Central de Promociones usa por defecto:
+
+```text
+http://cpe.loquieroaca.com/promotions/stats
+http://cpe.loquieroaca.com/promotions
+http://cpe.loquieroaca.com/promotions/catalogs
+https://api.madre.loquieroaca.com/api/mercadolibre/orders/aporte-ml
+https://api.madre.loquieroaca.com/api/mercadolibre/orders/analytics/aporte-ml/timeseries
 ```
 
 ## Estructura
@@ -139,6 +156,7 @@ addons/lqa_admin_panel/
     dashboard_service.py
     mercadolibre_deletion.py
     mercadolibre_catalog_service.py
+    mercadolibre_promotions_service.py
     panel_module.py
     res_config_settings.py
   views/
@@ -154,15 +172,18 @@ addons/lqa_admin_panel/
     js/dashboard.js
     js/mercadolibre_catalog.js
     js/mercadolibre_deleter.js
+    js/mercadolibre_promotions.js
     js/automeli_catalog.js
     js/navigation.js
     scss/dashboard.scss
     scss/mercadolibre_catalog.scss
     scss/mercadolibre_deleter.scss
+    scss/mercadolibre_promotions.scss
     scss/automeli_catalog.scss
     xml/dashboard.xml
     xml/mercadolibre_catalog.xml
     xml/mercadolibre_deleter.xml
+    xml/mercadolibre_promotions.xml
     xml/automeli_catalog.xml
 ```
 

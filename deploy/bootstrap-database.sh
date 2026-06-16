@@ -15,6 +15,8 @@ set +a
 
 COMPOSE="docker compose --env-file .env.production -f docker-compose.prod.yml"
 
+./deploy/render-odoo-config.sh
+
 $COMPOSE up -d db
 $COMPOSE run --rm odoo \
     odoo \
@@ -22,19 +24,9 @@ $COMPOSE run --rm odoo \
     --database="$ODOO_DB_NAME" \
     --init=lqa_admin_panel \
     --stop-after-init \
-    --no-http \
-    --admin-passwd="$ODOO_MASTER_PASSWORD" \
-    --db_password="$POSTGRES_PASSWORD"
+    --no-http
 
-$COMPOSE run --rm -T \
-    -e ODOO_INITIAL_ADMIN_PASSWORD="$ODOO_INITIAL_ADMIN_PASSWORD" \
-    odoo \
-    odoo shell \
-    --config=/etc/odoo/odoo.conf \
-    --database="$ODOO_DB_NAME" \
-    --no-http \
-    --admin-passwd="$ODOO_MASTER_PASSWORD" \
-    --db_password="$POSTGRES_PASSWORD" <<'PY'
+cat > /tmp/lqa-set-admin-password.py <<'PY'
 import os
 
 admin = env.ref("base.user_admin")
@@ -46,6 +38,13 @@ admin.write(
 )
 env.cr.commit()
 PY
+
+$COMPOSE run --rm -T \
+    -e ODOO_INITIAL_ADMIN_PASSWORD="$ODOO_INITIAL_ADMIN_PASSWORD" \
+    -v /tmp/lqa-set-admin-password.py:/tmp/lqa-set-admin-password.py:ro \
+    --entrypoint /bin/sh \
+    odoo \
+    -c "odoo shell -c /etc/odoo/odoo.conf -d $ODOO_DB_NAME --no-http < /tmp/lqa-set-admin-password.py"
 
 $COMPOSE up -d
 echo "Production database initialized."

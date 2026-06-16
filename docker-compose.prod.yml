@@ -44,13 +44,11 @@ services:
       - "8072"
     volumes:
       - odoo-web-data:/var/lib/odoo
-      - ./config/odoo.prod.conf:/etc/odoo/odoo.conf:ro
+      - ./config/odoo.runtime.conf:/etc/odoo/odoo.conf:ro
       - ./addons:/mnt/extra-addons:ro
     command:
       - odoo
       - --config=/etc/odoo/odoo.conf
-      - --admin-passwd=${ODOO_MASTER_PASSWORD}
-      - --db_password=${POSTGRES_PASSWORD}
     logging:
       driver: local
       options:

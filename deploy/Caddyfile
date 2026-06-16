@@ -1,4 +1,4 @@
-admin.loquieroaca.com.ar {
+admin.loquieroaca.com {
 	encode zstd gzip
 
 	@websocket path /websocket*

@@ -1,0 +1,390 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="lqa_admin_panel.MercadolibrePromotions">
+        <div class="o_lqa_promotions">
+            <header class="o_lqa_promotions__header">
+                <div>
+                    <p>Central de promociones Meli</p>
+                    <h1>Central de Promociones</h1>
+                    <span>Promociones, catalogos y ventas con aporte ML.</span>
+                </div>
+                <div class="o_lqa_promotions__header_actions">
+                    <button
+                        type="button"
+                        class="btn btn-secondary"
+                        t-att-disabled="state.loadingStats || state.loadingPromotions || state.loadingCatalogs || state.loadingOrders"
+                        t-on-click="refreshCurrent"
+                    >
+                        <i class="fa fa-refresh"/>
+                        Actualizar
+                    </button>
+                    <img
+                        src="/lqa_admin_panel/static/src/img/mercadolibre-logo.png?v=2"
+                        alt="Mercado Libre"
+                    />
+                </div>
+            </header>
+
+            <nav class="o_lqa_promotions__tabs">
+                <button
+                    type="button"
+                    t-att-class="state.activeTab === 'central' ? 'is-active' : ''"
+                    t-on-click="() => this.setTab('central')"
+                >
+                    Central
+                </button>
+                <button
+                    type="button"
+                    t-att-class="state.activeTab === 'catalogs' ? 'is-active' : ''"
+                    t-on-click="() => this.setTab('catalogs')"
+                >
+                    Catalogo
+                </button>
+                <button
+                    type="button"
+                    t-att-class="state.activeTab === 'orders' ? 'is-active' : ''"
+                    t-on-click="() => this.setTab('orders')"
+                >
+                    Ordenes y aporte ML
+                </button>
+            </nav>
+
+            <section class="o_lqa_promotions_stats">
+                <article class="o_lqa_promotions_total">
+                    <span>Total promociones</span>
+                    <strong t-esc="formatNumber(state.stats.total)"/>
+                </article>
+                <article
+                    class="o_lqa_promotions_type"
+                    t-foreach="state.stats.cards"
+                    t-as="card"
+                    t-key="card.key"
+                >
+                    <div class="o_lqa_promotions_type__head">
+                        <div>
+                            <span t-esc="card.label"/>
+                            <strong t-esc="formatNumber(card.total)"/>
+                        </div>
+                        <small>Total del tipo</small>
+                    </div>
+                    <div class="o_lqa_promotions_type__grid">
+                        <div
+                            t-att-class="'o_lqa_promotions_status ' + status.key"
+                            t-foreach="card.statuses"
+                            t-as="status"
+                            t-key="card.key + '-' + status.key"
+                        >
+                            <span t-esc="status.label"/>
+                            <strong t-esc="formatNumber(status.value)"/>
+                        </div>
+                    </div>
+                </article>
+            </section>
+
+            <section t-if="state.activeTab === 'central'" class="o_lqa_promotions_panel">
+                <div class="o_lqa_promotions_toolbar">
+                    <label class="o_lqa_promotions_search">
+                        <i class="fa fa-search"/>
+                        <input
+                            type="search"
+                            placeholder="Buscar SKU, item, promocion o nombre"
+                            t-model="state.promotionFilters.search"
+                        />
+                    </label>
+                    <select
+                        class="form-select"
+                        t-model="state.promotionFilters.type"
+                        t-on-change="applyPromotionFilters"
+                    >
+                        <option value="">Todos los tipos</option>
+                        <option value="SMART">SMART</option>
+                        <option value="DEAL">DEAL</option>
+                        <option value="PRE_NEGOTIATED">PRE_NEGOTIATED</option>
+                    </select>
+                    <div class="o_lqa_promotions_segments">
+                        <button type="button" t-att-class="!state.promotionFilters.status ? 'is-active' : ''" t-on-click="() => this.setPromotionStatus('')">Todas</button>
+                        <button type="button" t-att-class="state.promotionFilters.status === 'ACTIVE' ? 'is-active' : ''" t-on-click="() => this.setPromotionStatus('ACTIVE')">Activas</button>
+                        <button type="button" t-att-class="state.promotionFilters.status === 'SYNCED' ? 'is-active' : ''" t-on-click="() => this.setPromotionStatus('SYNCED')">Sync</button>
+                        <button type="button" t-att-class="state.promotionFilters.status === 'DELETED' ? 'is-active' : ''" t-on-click="() => this.setPromotionStatus('DELETED')">Eliminadas</button>
+                    </div>
+                </div>
+
+                <div class="o_lqa_promotions_table_card">
+                    <div class="o_lqa_promotions_table_card__head">
+                        <div>
+                            <h2>Promociones en Mongo</h2>
+                            <span>
+                                <t t-esc="formatNumber(filteredPromotions.length)"/>
+                                visibles de
+                                <t t-esc="formatNumber(state.promotions.pagination.total || 0)"/>
+                            </span>
+                        </div>
+                        <div class="o_lqa_promotions_pager">
+                            <button type="button" class="btn btn-secondary" t-att-disabled="!state.promotions.pagination.has_previous" t-on-click="previousPromotionsPage">Anterior</button>
+                            <span>Pagina <t t-esc="state.promotions.pagination.page || 1"/></span>
+                            <button type="button" class="btn btn-secondary" t-att-disabled="!state.promotions.pagination.has_next" t-on-click="nextPromotionsPage">Siguiente</button>
+                        </div>
+                    </div>
+                    <div t-if="state.loadingPromotions" class="o_lqa_promotions_empty">Cargando promociones...</div>
+                    <div t-elif="!filteredPromotions.length" class="o_lqa_promotions_empty">No hay promociones para los filtros seleccionados.</div>
+                    <div t-else="" class="o_lqa_promotions_table_wrap">
+                        <table class="o_lqa_promotions_table">
+                            <thead>
+                                <tr>
+                                    <th>Promocion</th>
+                                    <th>Estado</th>
+                                    <th>Item</th>
+                                    <th>SKU</th>
+                                    <th>Categoria</th>
+                                    <th>Listing</th>
+                                    <th>Tipo</th>
+                                    <th>Inicio</th>
+                                    <th>Fin</th>
+                                    <th>Precio original</th>
+                                    <th>Precio sugerido</th>
+                                    <th>Profit</th>
+                                    <th>Margen</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="filteredPromotions" t-as="promotion" t-key="promotion.id || promotion.item_id">
+                                    <td>
+                                        <strong t-esc="promotion.name"/>
+                                        <small t-esc="promotion.promotion_id"/>
+                                    </td>
+                                    <td>
+                                        <span t-att-class="'o_lqa_badge ' + statusClass(promotion.status)" t-esc="statusLabel(promotion.status)"/>
+                                    </td>
+                                    <td><strong t-esc="promotion.item_id"/></td>
+                                    <td t-esc="promotion.sku"/>
+                                    <td t-esc="promotion.category_id"/>
+                                    <td t-esc="promotion.listing_type"/>
+                                    <td t-esc="typeLabel(promotion.type)"/>
+                                    <td t-esc="formatDateTime(promotion.start_date)"/>
+                                    <td t-esc="formatDateTime(promotion.finish_date)"/>
+                                    <td t-esc="formatCurrency(promotion.original_price)"/>
+                                    <td><strong t-esc="formatCurrency(promotion.suggested_price)"/></td>
+                                    <td t-esc="formatCurrency(promotion.profit)"/>
+                                    <td t-esc="formatPercent(promotion.margin)"/>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section t-if="state.activeTab === 'catalogs'" class="o_lqa_promotions_panel">
+                <div class="o_lqa_promotions_cards">
+                    <article t-foreach="state.catalogs.summary.types || []" t-as="summary" t-key="summary.type">
+                        <span t-esc="summary.type"/>
+                        <strong>
+                            <t t-esc="formatNumber(summary.promotions)"/>
+                            promociones
+                        </strong>
+                        <small>
+                            <t t-esc="formatNumber(summary.candidates)"/>
+                            candidatos visibles
+                        </small>
+                        <p t-esc="summary.names.join(', ')"/>
+                    </article>
+                </div>
+
+                <div class="o_lqa_promotions_toolbar">
+                    <label class="o_lqa_promotions_search">
+                        <i class="fa fa-search"/>
+                        <input
+                            type="search"
+                            placeholder="Buscar campana, ID o estado"
+                            t-model="state.catalogFilters.search"
+                        />
+                    </label>
+                    <div class="o_lqa_promotions_segments">
+                        <button type="button" t-att-class="!state.catalogFilters.type ? 'is-active' : ''" t-on-click="() => this.setCatalogType('')">Todos</button>
+                        <button type="button" t-att-class="state.catalogFilters.type === 'SMART' ? 'is-active' : ''" t-on-click="() => this.setCatalogType('SMART')">SMART</button>
+                        <button type="button" t-att-class="state.catalogFilters.type === 'DEAL' ? 'is-active' : ''" t-on-click="() => this.setCatalogType('DEAL')">DEAL</button>
+                        <button type="button" t-att-class="state.catalogFilters.type === 'PRE_NEGOTIATED' ? 'is-active' : ''" t-on-click="() => this.setCatalogType('PRE_NEGOTIATED')">PRE_NEGOTIATED</button>
+                    </div>
+                </div>
+
+                <div class="o_lqa_promotions_table_card">
+                    <div class="o_lqa_promotions_table_card__head">
+                        <div>
+                            <h2>Catalogo de promociones</h2>
+                            <span>
+                                <t t-esc="formatNumber(filteredCatalogs.length)"/>
+                                visibles de
+                                <t t-esc="formatNumber(state.catalogs.pagination.total || 0)"/>
+                            </span>
+                        </div>
+                        <div class="o_lqa_promotions_pager">
+                            <button type="button" class="btn btn-secondary" t-att-disabled="!state.catalogs.pagination.has_previous" t-on-click="previousCatalogsPage">Anterior</button>
+                            <span>Pagina <t t-esc="state.catalogs.pagination.page || 1"/></span>
+                            <button type="button" class="btn btn-secondary" t-att-disabled="!state.catalogs.pagination.has_next" t-on-click="nextCatalogsPage">Siguiente</button>
+                        </div>
+                    </div>
+                    <div t-if="state.loadingCatalogs" class="o_lqa_promotions_empty">Cargando catalogo...</div>
+                    <div t-elif="!filteredCatalogs.length" class="o_lqa_promotions_empty">No hay campanas para los filtros seleccionados.</div>
+                    <div t-else="" class="o_lqa_promotions_table_wrap">
+                        <table class="o_lqa_promotions_table">
+                            <thead>
+                                <tr>
+                                    <th>Campana</th>
+                                    <th>ID</th>
+                                    <th>Tipo</th>
+                                    <th>Estado</th>
+                                    <th>Candidatos</th>
+                                    <th>Inicio</th>
+                                    <th>Fin</th>
+                                    <th>Deadline</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="filteredCatalogs" t-as="catalog" t-key="catalog.id || catalog.promotion_id">
+                                    <td>
+                                        <strong t-esc="catalog.name"/>
+                                        <small t-esc="catalog.id"/>
+                                    </td>
+                                    <td t-esc="catalog.promotion_id"/>
+                                    <td t-esc="typeLabel(catalog.type)"/>
+                                    <td>
+                                        <span t-att-class="'o_lqa_badge ' + statusClass(catalog.status)" t-esc="statusLabel(catalog.status)"/>
+                                    </td>
+                                    <td><strong t-esc="formatNumber(catalog.total_candidates)"/></td>
+                                    <td t-esc="formatDateTime(catalog.start_date)"/>
+                                    <td t-esc="formatDateTime(catalog.finish_date)"/>
+                                    <td t-esc="formatDateTime(catalog.deadline_date)"/>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section t-if="state.activeTab === 'orders'" class="o_lqa_promotions_panel">
+                <div class="o_lqa_promotions_cards">
+                    <article>
+                        <span>Ordenes</span>
+                        <strong t-esc="formatNumber(state.orders.summary.orders || 0)"/>
+                        <small>con aporte ML</small>
+                    </article>
+                    <article>
+                        <span>Aporte ML</span>
+                        <strong t-esc="formatCurrency(state.analytics.summary.aporte_ml || state.orders.summary.aporte_ml || 0)"/>
+                        <small>
+                            Promedio
+                            <t t-esc="formatCurrency(state.analytics.summary.average_aporte || 0)"/>
+                        </small>
+                    </article>
+                    <article>
+                        <span>Revenue</span>
+                        <strong t-esc="formatCurrency(state.analytics.summary.revenue || state.orders.summary.revenue || 0)"/>
+                        <small>
+                            Pico
+                            <t t-esc="state.analytics.summary.peak_date || '-'"/>
+                        </small>
+                    </article>
+                </div>
+
+                <form class="o_lqa_promotions_toolbar" t-on-submit.prevent="applyOrderFilters">
+                    <label>
+                        <span>Desde</span>
+                        <input type="date" class="form-control" t-model="state.orderFilters.fromDate"/>
+                    </label>
+                    <label>
+                        <span>Hasta</span>
+                        <input type="date" class="form-control" t-model="state.orderFilters.toDate"/>
+                    </label>
+                    <select class="form-select" t-model="state.orderFilters.status">
+                        <option value="paid">Pagadas</option>
+                        <option value="cancelled">Canceladas</option>
+                        <option value="all">Todas</option>
+                    </select>
+                    <button type="submit" class="btn btn-primary">Aplicar</button>
+                </form>
+
+                <div class="o_lqa_promotions_chart">
+                    <div class="o_lqa_promotions_table_card__head">
+                        <div>
+                            <h2>Aporte ML por fecha</h2>
+                            <span>
+                                <t t-esc="formatNumber(state.analytics.summary.orders || 0)"/>
+                                ordenes graficadas
+                            </span>
+                        </div>
+                        <strong>
+                            Pico:
+                            <t t-esc="state.analytics.summary.peak_date || '-'"/>
+                            -
+                            <t t-esc="formatCurrency(state.analytics.summary.peak_aporte || 0)"/>
+                        </strong>
+                    </div>
+                    <div t-if="state.loadingAnalytics" class="o_lqa_promotions_empty">Cargando analytics...</div>
+                    <div t-elif="!analyticsBars.length" class="o_lqa_promotions_empty">No hay datos para el rango seleccionado.</div>
+                    <div t-else="" class="o_lqa_promotions_chart__bars">
+                        <div class="o_lqa_promotions_chart__bar" t-foreach="analyticsBars" t-as="bar" t-key="bar.date">
+                            <span t-att-style="'height: ' + bar.height + '%;'"/>
+                            <small t-esc="formatDate(bar.date)"/>
+                            <strong t-esc="formatCurrency(bar.aporte_ml)"/>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="o_lqa_promotions_table_card">
+                    <div class="o_lqa_promotions_table_card__head">
+                        <div>
+                            <h2>Ordenes con aporte ML</h2>
+                            <span>
+                                <t t-esc="formatNumber(state.orders.pagination.count || 0)"/>
+                                visibles de
+                                <t t-esc="formatNumber(state.orders.pagination.total || 0)"/>
+                            </span>
+                        </div>
+                        <div class="o_lqa_promotions_pager">
+                            <button type="button" class="btn btn-secondary" t-att-disabled="!state.orders.pagination.has_previous" t-on-click="previousOrdersPage">Anterior</button>
+                            <span>Pagina <t t-esc="state.orders.pagination.page || 1"/></span>
+                            <button type="button" class="btn btn-secondary" t-att-disabled="!state.orders.pagination.has_next" t-on-click="nextOrdersPage">Siguiente</button>
+                        </div>
+                    </div>
+                    <div t-if="state.loadingOrders" class="o_lqa_promotions_empty">Cargando ordenes...</div>
+                    <div t-elif="!state.orders.items.length" class="o_lqa_promotions_empty">No hay ordenes para los filtros seleccionados.</div>
+                    <div t-else="" class="o_lqa_promotions_table_wrap">
+                        <table class="o_lqa_promotions_table">
+                            <thead>
+                                <tr>
+                                    <th>Venta</th>
+                                    <th>Estado</th>
+                                    <th>SKU</th>
+                                    <th>Producto</th>
+                                    <th>Fecha</th>
+                                    <th>Precio venta</th>
+                                    <th>Aporte ML</th>
+                                    <th>Revenue</th>
+                                    <th>Provincia</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="state.orders.items" t-as="order" t-key="order.id || order.sale_number">
+                                    <td>
+                                        <a t-if="order.link_ml" t-att-href="order.link_ml" target="_blank" rel="noreferrer" t-esc="order.sale_number"/>
+                                        <strong t-else="" t-esc="order.sale_number"/>
+                                        <small t-esc="order.payment_id"/>
+                                    </td>
+                                    <td>
+                                        <span t-att-class="'o_lqa_badge ' + statusClass(order.status)" t-esc="statusLabel(order.status)"/>
+                                    </td>
+                                    <td t-esc="order.sku"/>
+                                    <td t-esc="order.product_name"/>
+                                    <td t-esc="formatDateTime(order.sale_date)"/>
+                                    <td t-esc="formatCurrency(order.sale_price)"/>
+                                    <td><strong t-esc="formatCurrency(order.aporte_ml)"/></td>
+                                    <td t-esc="formatCurrency(order.revenue)"/>
+                                    <td t-esc="order.province"/>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </t>
+</templates>

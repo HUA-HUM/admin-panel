@@ -49,6 +49,17 @@
         <field name="action_xmlid">lqa_admin_panel.action_lqa_mercadolibre_deleter</field>
     </record>
 
+    <record id="panel_section_mercadolibre_promotions" model="lqa.panel.section">
+        <field name="module_id" ref="panel_module_mercadolibre"/>
+        <field name="name">Central de Promociones</field>
+        <field name="code">promotions</field>
+        <field name="description">Promociones, catalogos y ordenes con aporte ML desde la central CPE.</field>
+        <field name="badge">Nuevo</field>
+        <field name="status">available</field>
+        <field name="sequence">30</field>
+        <field name="action_xmlid">lqa_admin_panel.action_lqa_mercadolibre_promotions</field>
+    </record>
+
     <function model="lqa.panel.section" name="write">
         <value eval="[ref('panel_section_mercadolibre_placeholder')]"/>
         <value
@@ -71,6 +82,18 @@
                 'badge': 'Activo',
                 'status': 'available',
                 'action_xmlid': 'lqa_admin_panel.action_lqa_automeli_catalog_api',
+            }"
+        />
+    </function>
+
+    <function model="lqa.panel.section" name="write">
+        <value eval="[ref('panel_section_mercadolibre_promotions')]"/>
+        <value
+            eval="{
+                'description': 'Promociones, catalogos y ordenes con aporte ML desde la central CPE.',
+                'badge': 'Nuevo',
+                'status': 'available',
+                'action_xmlid': 'lqa_admin_panel.action_lqa_mercadolibre_promotions',
             }"
         />
     </function>

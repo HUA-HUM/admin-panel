@@ -47,6 +47,37 @@ class ResConfigSettings(models.TransientModel):
         string="Clave interna eliminador",
         config_parameter="lqa_admin_panel.mercadolibre_delete_api_key",
     )
+    lqa_mercadolibre_promotions_stats_url = fields.Char(
+        string="URL stats promociones",
+        default="http://cpe.loquieroaca.com/promotions/stats",
+        config_parameter="lqa_admin_panel.mercadolibre_promotions_stats_url",
+    )
+    lqa_mercadolibre_promotions_url = fields.Char(
+        string="URL promociones",
+        default="http://cpe.loquieroaca.com/promotions",
+        config_parameter="lqa_admin_panel.mercadolibre_promotions_url",
+    )
+    lqa_mercadolibre_promotions_catalogs_url = fields.Char(
+        string="URL catalogo promociones",
+        default="http://cpe.loquieroaca.com/promotions/catalogs",
+        config_parameter="lqa_admin_panel.mercadolibre_promotions_catalogs_url",
+    )
+    lqa_mercadolibre_aporte_orders_url = fields.Char(
+        string="URL ordenes aporte ML",
+        default=(
+            "https://api.madre.loquieroaca.com/"
+            "api/mercadolibre/orders/aporte-ml"
+        ),
+        config_parameter="lqa_admin_panel.mercadolibre_aporte_orders_url",
+    )
+    lqa_mercadolibre_aporte_analytics_url = fields.Char(
+        string="URL analytics aporte ML",
+        default=(
+            "https://api.madre.loquieroaca.com/"
+            "api/mercadolibre/orders/analytics/aporte-ml/timeseries"
+        ),
+        config_parameter="lqa_admin_panel.mercadolibre_aporte_analytics_url",
+    )
     lqa_automeli_api_path = fields.Char(
         string="Ruta Automeli",
         default="/automeli",
