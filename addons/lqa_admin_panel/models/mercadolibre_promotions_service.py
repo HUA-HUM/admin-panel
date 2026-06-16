@@ -1,7 +1,44 @@
 from math import ceil
+import json
+import threading
 
-from odoo import _, api, fields, models
+import requests
+
+from odoo import _, api, fields, models, SUPERUSER_ID
 from odoo.exceptions import AccessError, UserError
+from odoo.modules.registry import Registry
+
+
+class LqaMercadolibrePromotionActionLog(models.Model):
+    _name = "lqa.mercadolibre.promotion.action.log"
+    _description = "Log de acciones Central de Promociones"
+    _order = "create_date desc, id desc"
+
+    action_key = fields.Char(string="Accion", required=True, readonly=True)
+    action_label = fields.Char(string="Etiqueta", required=True, readonly=True)
+    promotion_id = fields.Char(string="Promotion ID", readonly=True)
+    updated_by = fields.Char(string="Updated by", readonly=True)
+    requested_by_id = fields.Many2one(
+        comodel_name="res.users",
+        string="Solicitado por",
+        readonly=True,
+    )
+    status = fields.Selection(
+        selection=[
+            ("queued", "En cola"),
+            ("running", "Ejecutando"),
+            ("completed", "Completado"),
+            ("failed", "Fallido"),
+        ],
+        default="queued",
+        required=True,
+        readonly=True,
+    )
+    started_at = fields.Datetime(string="Inicio", readonly=True)
+    finished_at = fields.Datetime(string="Fin", readonly=True)
+    request_payload = fields.Text(string="Payload", readonly=True)
+    response_payload = fields.Text(string="Respuesta", readonly=True)
+    error_message = fields.Text(string="Error", readonly=True)
 
 
 class LqaMercadolibrePromotionsService(models.AbstractModel):
@@ -20,6 +57,47 @@ class LqaMercadolibrePromotionsService(models.AbstractModel):
         "api/mercadolibre/orders/analytics/aporte-ml/timeseries"
     )
     DEFAULT_TIMEOUT_SECONDS = 120
+    DEFAULT_ACTION_TIMEOUT_SECONDS = 300
+    DEFAULT_DATADOG_SERVICE = "central-promos-enginee"
+    DEFAULT_DATADOG_BASE_URL = "https://us5.datadoghq.com/logs/livetail"
+    ACTIONS = {
+        "sync": {
+            "label": "Sincronizar campanas",
+            "description": "Actualiza estado y datos de promociones desde MELI hacia la central.",
+            "endpoint_param": "lqa_admin_panel.mercadolibre_promotions_sync_url",
+            "default_endpoint": "http://cpe.loquieroaca.com/promotions/sync",
+            "danger": "medium",
+        },
+        "activate": {
+            "label": "Scheduler de activacion",
+            "description": "Evalua promociones aptas y activa las que cumplen reglas economicas.",
+            "endpoint_param": "lqa_admin_panel.mercadolibre_promotions_activate_url",
+            "default_endpoint": "http://cpe.loquieroaca.com/promotions/activate",
+            "danger": "high",
+        },
+        "deactivate": {
+            "label": "Scheduler de desactivacion",
+            "description": "Revisa promociones activas y desparticipa las que ya no cumplen criterios.",
+            "endpoint_param": "lqa_admin_panel.mercadolibre_promotions_deactivate_url",
+            "default_endpoint": "http://cpe.loquieroaca.com/promotions/deactivate",
+            "danger": "high",
+        },
+        "deactivate_failed": {
+            "label": "Reintentar desactivaciones fallidas",
+            "description": "Reintenta promociones que quedaron en estado FAILED_DEACTIVATION.",
+            "endpoint_param": "lqa_admin_panel.mercadolibre_promotions_deactivate_failed_url",
+            "default_endpoint": "http://cpe.loquieroaca.com/promotions/deactivate-failed",
+            "danger": "high",
+        },
+        "sync_one": {
+            "label": "Sincronizar una campana puntual",
+            "description": "Actualiza una promocion especifica por promotionId.",
+            "endpoint_param": "lqa_admin_panel.mercadolibre_promotions_sync_one_url",
+            "default_endpoint": "http://cpe.loquieroaca.com/promotions/sync-one",
+            "danger": "medium",
+            "requires_promotion_id": True,
+        },
+    }
     PROMOTION_TYPES = [
         ("smart", "SMART"),
         ("deal", "DEAL"),
@@ -168,6 +246,81 @@ class LqaMercadolibrePromotionsService(models.AbstractModel):
             "summary": self._analytics_summary(series),
         }
 
+    @api.model
+    def get_actions_context(self):
+        self._check_access()
+        params = self.env["ir.config_parameter"].sudo()
+        can_execute = self.env.user.has_group("lqa_admin_panel.group_lqa_admin")
+        return {
+            "can_execute": can_execute,
+            "updated_by": self.env.user.login or self.env.user.name,
+            "actions": [
+                {
+                    "key": key,
+                    "label": config["label"],
+                    "description": config["description"],
+                    "danger": config["danger"],
+                    "requires_promotion_id": bool(config.get("requires_promotion_id")),
+                }
+                for key, config in self.ACTIONS.items()
+            ],
+            "history": self._action_history(),
+            "datadog": {
+                "base_url": params.get_param(
+                    "lqa_admin_panel.mercadolibre_promotions_datadog_base_url",
+                    self.DEFAULT_DATADOG_BASE_URL,
+                ),
+                "service": params.get_param(
+                    "lqa_admin_panel.mercadolibre_promotions_datadog_service",
+                    self.DEFAULT_DATADOG_SERVICE,
+                ),
+            },
+        }
+
+    @api.model
+    def run_action(self, action_key, values=None):
+        if not self.env.user.has_group("lqa_admin_panel.group_lqa_admin"):
+            raise AccessError(_("Solo administradores del panel pueden ejecutar acciones."))
+
+        action_key = self._clean({"value": action_key}, "value")
+        config = self.ACTIONS.get(action_key)
+        if not config:
+            raise UserError(_("Accion no valida."))
+
+        values = values or {}
+        updated_by = self._clean(values, "updatedBy") or self.env.user.login or self.env.user.name
+        promotion_id = self._clean(values, "promotionId")
+        if config.get("requires_promotion_id") and not promotion_id:
+            raise UserError(_("Ingresa el promotionId que queres sincronizar."))
+
+        payload = {"updatedBy": updated_by}
+        if promotion_id:
+            payload["promotionId"] = promotion_id
+
+        endpoint = self._endpoint(config["endpoint_param"], config["default_endpoint"])
+        log = (
+            self.env["lqa.mercadolibre.promotion.action.log"]
+            .sudo()
+            .create(
+                {
+                    "action_key": action_key,
+                    "action_label": config["label"],
+                    "promotion_id": promotion_id,
+                    "updated_by": updated_by,
+                    "requested_by_id": self.env.user.id,
+                    "status": "queued",
+                    "request_payload": json.dumps(payload, ensure_ascii=False),
+                }
+            )
+        )
+        thread = threading.Thread(
+            target=self._execute_action_thread,
+            args=(self.env.cr.dbname, log.id, endpoint, payload, self._action_timeout()),
+            daemon=True,
+        )
+        thread.start()
+        return self._serialize_action_log(log)
+
     def _check_access(self):
         if not self.env.user.has_group(
             "lqa_admin_panel.group_lqa_commercial_user"
@@ -193,6 +346,91 @@ class LqaMercadolibrePromotionsService(models.AbstractModel):
             )
         )
         return min(max(self._as_int(timeout, self.DEFAULT_TIMEOUT_SECONDS), 30), 300)
+
+    def _action_timeout(self):
+        timeout = (
+            self.env["ir.config_parameter"]
+            .sudo()
+            .get_param(
+                "lqa_admin_panel.mercadolibre_promotions_action_timeout_seconds",
+                self.DEFAULT_ACTION_TIMEOUT_SECONDS,
+            )
+        )
+        return min(max(self._as_int(timeout, self.DEFAULT_ACTION_TIMEOUT_SECONDS), 60), 900)
+
+    def _action_history(self, limit=30):
+        logs = (
+            self.env["lqa.mercadolibre.promotion.action.log"]
+            .sudo()
+            .search([], limit=limit)
+        )
+        return [self._serialize_action_log(log) for log in logs]
+
+    def _serialize_action_log(self, log):
+        return {
+            "id": log.id,
+            "action_key": log.action_key,
+            "action_label": log.action_label,
+            "promotion_id": log.promotion_id or "",
+            "updated_by": log.updated_by or "",
+            "requested_by": log.requested_by_id.name or "",
+            "status": log.status,
+            "started_at": fields.Datetime.to_string(log.started_at) if log.started_at else "",
+            "finished_at": fields.Datetime.to_string(log.finished_at) if log.finished_at else "",
+            "created_at": fields.Datetime.to_string(log.create_date) if log.create_date else "",
+            "response_payload": log.response_payload or "",
+            "error_message": log.error_message or "",
+        }
+
+    @staticmethod
+    def _execute_action_thread(dbname, log_id, endpoint, payload, timeout):
+        with Registry(dbname).cursor() as cr:
+            env = api.Environment(cr, SUPERUSER_ID, {})
+            log = env["lqa.mercadolibre.promotion.action.log"].browse(log_id)
+            if not log.exists():
+                return
+            log.write({"status": "running", "started_at": fields.Datetime.now()})
+            cr.commit()
+            try:
+                response = requests.post(
+                    endpoint,
+                    json=payload,
+                    headers={"Accept": "application/json"},
+                    timeout=timeout,
+                )
+                response.raise_for_status()
+                try:
+                    response_payload = response.json()
+                except ValueError:
+                    response_payload = {"text": response.text}
+                log.write(
+                    {
+                        "status": "completed",
+                        "finished_at": fields.Datetime.now(),
+                        "response_payload": json.dumps(
+                            response_payload,
+                            ensure_ascii=False,
+                            default=str,
+                        ),
+                    }
+                )
+            except requests.RequestException as error:
+                log.write(
+                    {
+                        "status": "failed",
+                        "finished_at": fields.Datetime.now(),
+                        "error_message": str(error),
+                    }
+                )
+            except Exception as error:
+                log.write(
+                    {
+                        "status": "failed",
+                        "finished_at": fields.Datetime.now(),
+                        "error_message": str(error),
+                    }
+                )
+            cr.commit()
 
     def _pagination_params(self, filters, default_limit=100, max_limit=100):
         page = max(self._as_int(filters.get("page"), 1), 1)

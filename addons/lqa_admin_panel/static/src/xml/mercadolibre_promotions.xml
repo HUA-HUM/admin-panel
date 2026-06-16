@@ -47,6 +47,20 @@
                 >
                     Ordenes y aporte ML
                 </button>
+                <button
+                    type="button"
+                    t-att-class="state.activeTab === 'actions' ? 'is-active' : ''"
+                    t-on-click="() => this.setTab('actions')"
+                >
+                    Acciones
+                </button>
+                <button
+                    type="button"
+                    t-att-class="state.activeTab === 'datadog' ? 'is-active' : ''"
+                    t-on-click="() => this.setTab('datadog')"
+                >
+                    Datadog
+                </button>
             </nav>
 
             <section class="o_lqa_promotions_stats">
@@ -401,6 +415,204 @@
                     </div>
                 </div>
             </section>
+
+            <section t-if="state.activeTab === 'actions'" class="o_lqa_promotions_panel">
+                <div class="o_lqa_promotions_action_intro">
+                    <div>
+                        <h2>Acciones operativas</h2>
+                        <p>
+                            Dispara procesos de CPE en segundo plano. Cada accion queda registrada con estado,
+                            usuario y respuesta.
+                        </p>
+                    </div>
+                    <span t-if="!state.actionContext.can_execute">
+                        Solo administradores del panel pueden ejecutar acciones.
+                    </span>
+                </div>
+
+                <div class="o_lqa_promotions_toolbar">
+                    <label>
+                        <span>Updated by</span>
+                        <input
+                            type="text"
+                            class="form-control"
+                            placeholder="arturo"
+                            t-model="state.actionForm.updatedBy"
+                        />
+                    </label>
+                    <label class="o_lqa_promotions_action_promotion">
+                        <span>Promotion ID puntual</span>
+                        <input
+                            type="text"
+                            class="form-control"
+                            placeholder="P-MLA17373038"
+                            t-model="state.actionForm.promotionId"
+                        />
+                    </label>
+                    <button
+                        type="button"
+                        class="btn btn-secondary"
+                        t-att-disabled="state.loadingActions"
+                        t-on-click="loadActionsContext"
+                    >
+                        <i class="fa fa-refresh"/>
+                        Refrescar historial
+                    </button>
+                </div>
+
+                <div t-if="state.loadingActions" class="o_lqa_promotions_empty">
+                    Cargando acciones...
+                </div>
+                <div t-else="" class="o_lqa_promotions_action_grid">
+                    <article
+                        t-foreach="state.actionContext.actions"
+                        t-as="action"
+                        t-key="action.key"
+                        t-att-class="'o_lqa_promotions_action_card ' + (action.danger === 'high' ? 'is-danger' : '')"
+                    >
+                        <div>
+                            <span t-esc="action.requires_promotion_id ? 'Puntual' : 'General'"/>
+                            <h3 t-esc="action.label"/>
+                            <p t-esc="action.description"/>
+                        </div>
+                        <button
+                            type="button"
+                            class="btn btn-primary"
+                            t-att-disabled="!state.actionContext.can_execute"
+                            t-on-click="() => this.openActionConfirmation(action)"
+                        >
+                            Ejecutar
+                        </button>
+                    </article>
+                </div>
+
+                <div class="o_lqa_promotions_table_card">
+                    <div class="o_lqa_promotions_table_card__head">
+                        <div>
+                            <h2>Historial de acciones</h2>
+                            <span>Ultimos procesos disparados desde el panel.</span>
+                        </div>
+                    </div>
+                    <div t-if="!state.actionContext.history.length" class="o_lqa_promotions_empty">
+                        Todavia no hay acciones ejecutadas.
+                    </div>
+                    <div t-else="" class="o_lqa_promotions_table_wrap">
+                        <table class="o_lqa_promotions_table">
+                            <thead>
+                                <tr>
+                                    <th>Accion</th>
+                                    <th>Estado</th>
+                                    <th>Promotion ID</th>
+                                    <th>Updated by</th>
+                                    <th>Solicitado por</th>
+                                    <th>Creado</th>
+                                    <th>Fin</th>
+                                    <th>Detalle</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="state.actionContext.history" t-as="log" t-key="log.id">
+                                    <td><strong t-esc="log.action_label"/></td>
+                                    <td>
+                                        <span
+                                            t-att-class="'o_lqa_badge ' + actionStatusClass(log.status)"
+                                            t-esc="actionStatusLabel(log.status)"
+                                        />
+                                    </td>
+                                    <td t-esc="log.promotion_id || '-'"/>
+                                    <td t-esc="log.updated_by"/>
+                                    <td t-esc="log.requested_by"/>
+                                    <td t-esc="formatDateTime(log.created_at)"/>
+                                    <td t-esc="formatDateTime(log.finished_at)"/>
+                                    <td>
+                                        <small t-if="log.error_message" t-esc="log.error_message"/>
+                                        <small t-elif="log.response_payload">Respuesta recibida</small>
+                                        <small t-else="">-</small>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section t-if="state.activeTab === 'datadog'" class="o_lqa_promotions_panel">
+                <div class="o_lqa_promotions_action_intro">
+                    <div>
+                        <h2>Datadog Live Tail</h2>
+                        <p>Logs en vivo filtrados por el servicio de Central de Promociones.</p>
+                    </div>
+                    <button type="button" class="btn btn-primary" t-on-click="openDatadog">
+                        Abrir en Datadog
+                    </button>
+                </div>
+
+                <div class="o_lqa_promotions_toolbar">
+                    <label class="o_lqa_promotions_search">
+                        <i class="fa fa-search"/>
+                        <input
+                            type="search"
+                            placeholder="Filtrar por promotionId, MLA, SKU o texto"
+                            t-model="state.datadogFilter"
+                        />
+                    </label>
+                    <button type="button" class="btn btn-secondary" t-on-click="openDatadog">
+                        <i class="fa fa-external-link"/>
+                        Abrir con filtro
+                    </button>
+                </div>
+
+                <div class="o_lqa_promotions_datadog">
+                    <iframe
+                        t-att-src="datadogUrl"
+                        title="Datadog Live Tail"
+                        loading="lazy"
+                    />
+                    <div class="o_lqa_promotions_datadog__fallback">
+                        <strong>Si Datadog bloquea el iframe por seguridad, usa el boton Abrir en Datadog.</strong>
+                        <span t-esc="datadogUrl"/>
+                    </div>
+                </div>
+            </section>
+
+            <div class="o_lqa_modal_backdrop" t-if="state.pendingAction">
+                <div class="o_lqa_promotions_modal">
+                    <h2>Confirmar ejecucion</h2>
+                    <p>
+                        Vas a ejecutar:
+                        <strong t-esc="state.pendingAction.label"/>
+                    </p>
+                    <p t-esc="state.pendingAction.description"/>
+                    <div class="o_lqa_promotions_modal__payload">
+                        <span>
+                            updatedBy:
+                            <strong t-esc="state.actionForm.updatedBy || '-'"/>
+                        </span>
+                        <span t-if="state.pendingAction.requires_promotion_id">
+                            promotionId:
+                            <strong t-esc="state.actionForm.promotionId || '-'"/>
+                        </span>
+                    </div>
+                    <div class="o_lqa_promotions_modal__actions">
+                        <button
+                            type="button"
+                            class="btn btn-secondary"
+                            t-att-disabled="state.runningAction"
+                            t-on-click="closeActionConfirmation"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="button"
+                            class="btn btn-danger"
+                            t-att-disabled="state.runningAction"
+                            t-on-click="confirmAction"
+                        >
+                            Confirmar y ejecutar
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </t>
 </templates>

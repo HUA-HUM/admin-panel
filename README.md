@@ -26,6 +26,9 @@ Base de panel comercial construida sobre Odoo + Docker.
   - Listado paginado de promociones con estado, precios, economia y fechas.
   - Catalogo de campanas disponibles con candidatos por promocion.
   - Ordenes con aporte ML y analytics por fecha.
+  - Acciones operativas en segundo plano: sync, activacion, desactivacion,
+    reintento de desactivaciones fallidas y sync de una promocion puntual.
+  - Historial persistente de ejecuciones y visor Datadog Live Tail.
 - Seccion `Automeli / Catalogo` conectada a la API de snapshots:
   - Filtros basicos y avanzados.
   - Cards con costos, stock, peso y estados Amazon/MercadoLibre.
@@ -134,6 +137,8 @@ Ir a `Ajustes > Panel Comercial` y completar:
 - URLs de Central de Promociones MercadoLibre.
 - URLs de ordenes y analytics de aporte ML.
 - Timeout extendido de Central de Promociones.
+- URLs de acciones de Central de Promociones.
+- URL base y servicio de Datadog Live Tail.
 - URL de Catalogo Automeli.
 - Timeout.
 
@@ -152,7 +157,17 @@ http://cpe.loquieroaca.com/promotions
 http://cpe.loquieroaca.com/promotions/catalogs
 https://api.madre.loquieroaca.com/api/mercadolibre/orders/aporte-ml
 https://api.madre.loquieroaca.com/api/mercadolibre/orders/analytics/aporte-ml/timeseries
+http://cpe.loquieroaca.com/promotions/sync
+http://cpe.loquieroaca.com/promotions/activate
+http://cpe.loquieroaca.com/promotions/deactivate
+http://cpe.loquieroaca.com/promotions/deactivate-failed
+http://cpe.loquieroaca.com/promotions/sync-one
+https://us5.datadoghq.com/logs/livetail
 ```
+
+Las acciones de Central de Promociones se encolan en Odoo y se ejecutan en un
+thread de backend para no bloquear la pantalla mientras CPE procesa. Solo el
+grupo `Panel Comercial / Administrador del panel` puede dispararlas.
 
 ## Estructura
 
@@ -167,6 +182,7 @@ addons/lqa_admin_panel/
     mercadolibre_promotions_service.py
     panel_module.py
     res_config_settings.py
+    user_management_service.py
   views/
     automeli_catalog_views.xml
     panel_data.xml

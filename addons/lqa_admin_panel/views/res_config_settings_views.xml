@@ -43,6 +43,14 @@
                             <field name="lqa_mercadolibre_aporte_orders_url"/>
                             <field name="lqa_mercadolibre_aporte_analytics_url"/>
                             <field name="lqa_mercadolibre_promotions_timeout_seconds"/>
+                            <field name="lqa_mercadolibre_promotions_action_timeout_seconds"/>
+                            <field name="lqa_mercadolibre_promotions_sync_url"/>
+                            <field name="lqa_mercadolibre_promotions_activate_url"/>
+                            <field name="lqa_mercadolibre_promotions_deactivate_url"/>
+                            <field name="lqa_mercadolibre_promotions_deactivate_failed_url"/>
+                            <field name="lqa_mercadolibre_promotions_sync_one_url"/>
+                            <field name="lqa_mercadolibre_promotions_datadog_base_url"/>
+                            <field name="lqa_mercadolibre_promotions_datadog_service"/>
                         </setting>
                         <setting string="Automeli">
                             <field name="lqa_automeli_api_path"/>

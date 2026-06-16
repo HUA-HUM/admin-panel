@@ -83,6 +83,46 @@ class ResConfigSettings(models.TransientModel):
         default=120,
         config_parameter="lqa_admin_panel.mercadolibre_promotions_timeout_seconds",
     )
+    lqa_mercadolibre_promotions_action_timeout_seconds = fields.Integer(
+        string="Timeout acciones promociones",
+        default=300,
+        config_parameter="lqa_admin_panel.mercadolibre_promotions_action_timeout_seconds",
+    )
+    lqa_mercadolibre_promotions_sync_url = fields.Char(
+        string="URL sync promociones",
+        default="http://cpe.loquieroaca.com/promotions/sync",
+        config_parameter="lqa_admin_panel.mercadolibre_promotions_sync_url",
+    )
+    lqa_mercadolibre_promotions_activate_url = fields.Char(
+        string="URL activar promociones",
+        default="http://cpe.loquieroaca.com/promotions/activate",
+        config_parameter="lqa_admin_panel.mercadolibre_promotions_activate_url",
+    )
+    lqa_mercadolibre_promotions_deactivate_url = fields.Char(
+        string="URL desactivar promociones",
+        default="http://cpe.loquieroaca.com/promotions/deactivate",
+        config_parameter="lqa_admin_panel.mercadolibre_promotions_deactivate_url",
+    )
+    lqa_mercadolibre_promotions_deactivate_failed_url = fields.Char(
+        string="URL reintentar desactivaciones",
+        default="http://cpe.loquieroaca.com/promotions/deactivate-failed",
+        config_parameter="lqa_admin_panel.mercadolibre_promotions_deactivate_failed_url",
+    )
+    lqa_mercadolibre_promotions_sync_one_url = fields.Char(
+        string="URL sync una promocion",
+        default="http://cpe.loquieroaca.com/promotions/sync-one",
+        config_parameter="lqa_admin_panel.mercadolibre_promotions_sync_one_url",
+    )
+    lqa_mercadolibre_promotions_datadog_base_url = fields.Char(
+        string="URL base Datadog",
+        default="https://us5.datadoghq.com/logs/livetail",
+        config_parameter="lqa_admin_panel.mercadolibre_promotions_datadog_base_url",
+    )
+    lqa_mercadolibre_promotions_datadog_service = fields.Char(
+        string="Servicio Datadog",
+        default="central-promos-enginee",
+        config_parameter="lqa_admin_panel.mercadolibre_promotions_datadog_service",
+    )
     lqa_automeli_api_path = fields.Char(
         string="Ruta Automeli",
         default="/automeli",
