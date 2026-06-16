@@ -63,7 +63,7 @@ class LqaRetailersService(models.AbstractModel):
         if sku:
             params["sku"] = sku
         if status:
-            params["status"] = status.upper()
+            params["status"] = status
 
         response = self.env["lqa.api.client"].request_absolute_json(
             "GET",
@@ -73,6 +73,9 @@ class LqaRetailersService(models.AbstractModel):
         )
         items = self._response_items(response)
         total = self._as_int(response.get("total"), len(items)) if isinstance(response, dict) else len(items)
+        count = self._as_int(response.get("count"), len(items)) if isinstance(response, dict) else len(items)
+        has_next = bool(response.get("hasNext")) if isinstance(response, dict) else offset + limit < total
+        next_offset = response.get("nextOffset") if isinstance(response, dict) else offset + limit
         return {
             "items": [self._normalize_product(item) for item in items],
             "summary": self._normalize_product_summary(response),
@@ -80,10 +83,10 @@ class LqaRetailersService(models.AbstractModel):
                 "total": total,
                 "offset": offset,
                 "limit": limit,
-                "count": len(items),
+                "count": count,
                 "has_previous": offset > 0,
-                "has_next": offset + limit < total,
-                "next_offset": offset + limit,
+                "has_next": has_next,
+                "next_offset": next_offset if next_offset is not None else offset + limit,
                 "page": (offset // limit) + 1 if limit else 1,
             },
         }
@@ -205,6 +208,8 @@ class LqaRetailersService(models.AbstractModel):
 
     def _normalize_product(self, item):
         item = item if isinstance(item, dict) else {}
+        raw_payload = item.get("raw_payload") if isinstance(item.get("raw_payload"), dict) else {}
+        raw_images = raw_payload.get("images") if isinstance(raw_payload.get("images"), list) else []
         image = (
             item.get("image")
             or item.get("imageUrl")
@@ -212,6 +217,9 @@ class LqaRetailersService(models.AbstractModel):
             or item.get("picture")
             or item.get("pictureUrl")
             or item.get("mainImage")
+            or raw_payload.get("image")
+            or raw_payload.get("imageUrl")
+            or (raw_images[0] if raw_images else "")
             or ""
         )
         price = (
@@ -220,22 +228,46 @@ class LqaRetailersService(models.AbstractModel):
             or item.get("meliSalePrice")
             or item.get("listPrice")
             or item.get("amount")
+            or raw_payload.get("price")
         )
-        stock = item.get("stock") if item.get("stock") is not None else item.get("stockQuantity")
+        stock = (
+            item.get("stock")
+            if item.get("stock") is not None
+            else item.get("stockQuantity")
+            if item.get("stockQuantity") is not None
+            else raw_payload.get("stock")
+        )
         return {
-            "id": item.get("_id") or item.get("id") or item.get("sku") or item.get("externalId") or "",
-            "sku": item.get("sku") or item.get("sellerSku") or "",
-            "title": item.get("title") or item.get("name") or item.get("productName") or "Sin titulo",
+            "id": item.get("_id") or item.get("id") or item.get("sku") or item.get("external_id") or item.get("externalId") or "",
+            "sku": item.get("sku") or item.get("seller_sku") or item.get("sellerSku") or raw_payload.get("sellerSku") or "",
+            "market_sku": item.get("market_sku") or item.get("marketSku") or raw_payload.get("marketSku") or "",
+            "title": item.get("title") or item.get("name") or item.get("productName") or raw_payload.get("title") or "Sin titulo",
             "image": image,
             "price": self._as_float(price, None),
             "stock": self._as_int(stock, 0),
             "status": item.get("status") or item.get("publicationStatus") or "",
             "marketplace": item.get("marketplace") or "",
-            "external_id": item.get("externalId") or item.get("marketplaceId") or item.get("itemId") or "",
+            "external_id": (
+                item.get("external_id")
+                or item.get("externalId")
+                or item.get("marketplaceId")
+                or item.get("itemId")
+                or raw_payload.get("publicationId")
+                or ""
+            ),
+            "publication_url": (
+                item.get("publication_url")
+                or item.get("publicationUrl")
+                or item.get("link")
+                or raw_payload.get("LinkPublicacion")
+                or raw_payload.get("linkPublicacion")
+                or ""
+            ),
             "last_detected_at": (
                 item.get("lastDetectedAt")
                 or item.get("last_detection_at")
                 or item.get("lastSeenAt")
+                or item.get("last_seen_at")
                 or item.get("updatedAt")
                 or item.get("updated_at")
                 or ""
@@ -253,9 +285,29 @@ class LqaRetailersService(models.AbstractModel):
             or response.get("status_map")
             or {}
         )
+        statuses = summary.get("statuses") or []
+        if not statuses and status_map:
+            percentage_map = summary.get("statusPercentageMap") or {}
+            statuses = [
+                {
+                    "status": status,
+                    "total": self._as_int(total, 0),
+                    "percentage": self._as_float(percentage_map.get(status), 0),
+                }
+                for status, total in status_map.items()
+            ]
         return {
             "total": self._as_int(summary.get("total") or response.get("total"), 0),
             "status_map": status_map,
+            "statuses": [
+                {
+                    "status": self._clean(item.get("status")),
+                    "total": self._as_int(item.get("total"), 0),
+                    "percentage": self._as_float(item.get("percentage"), 0),
+                }
+                for item in statuses
+                if isinstance(item, dict) and self._clean(item.get("status"))
+            ],
         }
 
     def _normalize_import_run(self, item):

@@ -96,6 +96,29 @@ export class LqaRetailers extends Component {
         return !this.state.marketplaceId;
     }
 
+    get statusOptions() {
+        const summary = this.state.products.summary || {};
+        const statuses = Array.isArray(summary.statuses) ? summary.statuses : [];
+        const options = statuses
+            .map((item) => ({
+                status: item.status,
+                total: Number(item.total || 0),
+                percentage: Number(item.percentage || 0),
+            }))
+            .filter((item) => item.status);
+        if (
+            this.state.productFilters.status &&
+            !options.some((item) => item.status === this.state.productFilters.status)
+        ) {
+            options.unshift({
+                status: this.state.productFilters.status,
+                total: 0,
+                percentage: 0,
+            });
+        }
+        return options;
+    }
+
     openMarketplace(marketplace) {
         this.state.marketplaceId = marketplace.id;
         this.state.activeTab = "products";
@@ -207,6 +230,11 @@ export class LqaRetailers extends Component {
         await this.loadProducts();
     }
 
+    async setProductStatus(status) {
+        this.state.productFilters.status = status;
+        await this.applyProductFilters();
+    }
+
     async previousProductsPage() {
         const limit = Number(this.state.products.pagination.limit || 10);
         this.state.productFilters.offset = Math.max(
@@ -276,6 +304,7 @@ export class LqaRetailers extends Component {
             {
                 ACTIVE: "Activo",
                 ERROR: "Error",
+                EN_REVISION: "En revision",
                 PAUSED: "Pausado",
                 PENDING: "Pendiente",
                 DELETED: "Eliminado",
@@ -283,7 +312,7 @@ export class LqaRetailers extends Component {
                 STARTED: "Iniciado",
                 SUCCESS: "Correcto",
                 FAILED: "Fallido",
-            }[String(value || "").toUpperCase()] || value || "Sin estado"
+            }[String(value || "").toUpperCase()] || this.humanizeStatus(value)
         );
     }
 
@@ -295,7 +324,7 @@ export class LqaRetailers extends Component {
         if (["ERROR", "FAILED"].includes(normalized)) {
             return "is-red";
         }
-        if (["QUEUED", "STARTED", "PENDING"].includes(normalized)) {
+        if (["QUEUED", "STARTED", "PENDING", "EN_REVISION"].includes(normalized)) {
             return "is-blue";
         }
         return "is-gray";
@@ -303,6 +332,17 @@ export class LqaRetailers extends Component {
 
     importStatusLabel(value) {
         return this.statusLabel(value);
+    }
+
+    humanizeStatus(value) {
+        const cleanValue = String(value || "").trim();
+        if (!cleanValue) {
+            return "Sin estado";
+        }
+        return cleanValue
+            .toLowerCase()
+            .replace(/[_-]+/g, " ")
+            .replace(/\b\w/g, (letter) => letter.toUpperCase());
     }
 
     formatNumber(value) {

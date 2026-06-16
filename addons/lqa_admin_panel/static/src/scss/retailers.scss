@@ -331,9 +331,44 @@
     color: #607086;
 }
 
+.o_lqa_retailers_status_summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+
+    button {
+        display: flex;
+        min-height: 42px;
+        align-items: center;
+        gap: 10px;
+        padding: 0 12px;
+        border: 1px solid #d9e1ec;
+        border-radius: 8px;
+        background: #fff;
+        color: #405064;
+        font-weight: 800;
+    }
+
+    button.is-active {
+        border-color: #ff4f5a;
+        background: #fff1f2;
+        color: #be123c;
+    }
+
+    span {
+        font-size: 12px;
+        text-transform: uppercase;
+    }
+
+    strong {
+        color: #1f2937;
+        font-size: 16px;
+    }
+}
+
 .o_lqa_products_grid {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
     gap: 12px;
 }
 
@@ -409,6 +444,26 @@
         font-weight: 700;
         overflow-wrap: anywhere;
         text-align: right;
+    }
+}
+
+.o_lqa_product_card__link {
+    display: flex;
+    min-height: 36px;
+    align-items: center;
+    justify-content: center;
+    margin-top: 12px;
+    border: 1px solid #d9e1ec;
+    border-radius: 7px;
+    background: #f8fafc;
+    color: #314158;
+    font-weight: 800;
+    text-decoration: none;
+
+    &:hover {
+        border-color: #ff9ca3;
+        color: #be123c;
+        text-decoration: none;
     }
 }
 
@@ -585,8 +640,7 @@
 }
 
 @media (max-width: 1380px) {
-    .o_lqa_retailers_grid,
-    .o_lqa_products_grid {
+    .o_lqa_retailers_grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 

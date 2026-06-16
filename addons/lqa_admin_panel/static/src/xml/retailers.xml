@@ -102,8 +102,15 @@
                         </label>
                         <select class="form-select" t-model="state.productFilters.status">
                             <option value="">Todos los estados</option>
-                            <option value="ACTIVE">ACTIVE</option>
-                            <option value="ERROR">ERROR</option>
+                            <option
+                                t-foreach="statusOptions"
+                                t-as="option"
+                                t-key="option.status"
+                                t-att-value="option.status"
+                            >
+                                <t t-esc="statusLabel(option.status)"/>
+                                (<t t-esc="formatNumber(option.total)"/>)
+                            </option>
                         </select>
                         <select class="form-select" t-model="state.productFilters.limit">
                             <option value="10">10 por pagina</option>
@@ -114,6 +121,28 @@
                             Aplicar
                         </button>
                     </form>
+
+                    <div class="o_lqa_retailers_status_summary" t-if="statusOptions.length">
+                        <button
+                            type="button"
+                            t-att-class="!state.productFilters.status ? 'is-active' : ''"
+                            t-on-click="() => this.setProductStatus('')"
+                        >
+                            <span>Todos</span>
+                            <strong t-esc="formatNumber(state.products.summary.total || state.products.pagination.total || 0)"/>
+                        </button>
+                        <button
+                            type="button"
+                            t-foreach="statusOptions"
+                            t-as="option"
+                            t-key="option.status"
+                            t-att-class="state.productFilters.status === option.status ? 'is-active' : ''"
+                            t-on-click="() => this.setProductStatus(option.status)"
+                        >
+                            <span t-esc="statusLabel(option.status)"/>
+                            <strong t-esc="formatNumber(option.total)"/>
+                        </button>
+                    </div>
 
                     <div class="o_lqa_retailers_table_head">
                         <div>
@@ -159,8 +188,16 @@
                                 <h3 t-esc="product.title"/>
                                 <dl>
                                     <div>
-                                        <dt>SKU</dt>
+                                        <dt>Seller SKU</dt>
                                         <dd t-esc="product.sku || '-'"/>
+                                    </div>
+                                    <div>
+                                        <dt>Market SKU</dt>
+                                        <dd t-esc="product.market_sku || '-'"/>
+                                    </div>
+                                    <div>
+                                        <dt>ID externo</dt>
+                                        <dd t-esc="product.external_id || '-'"/>
                                     </div>
                                     <div>
                                         <dt>Precio</dt>
@@ -175,6 +212,15 @@
                                         <dd t-esc="formatDateTime(product.last_detected_at)"/>
                                     </div>
                                 </dl>
+                                <a
+                                    t-if="product.publication_url"
+                                    class="o_lqa_product_card__link"
+                                    t-att-href="product.publication_url"
+                                    target="_blank"
+                                    rel="noreferrer"
+                                >
+                                    Abrir publicacion
+                                </a>
                             </div>
                         </article>
                     </div>
