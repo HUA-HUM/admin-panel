@@ -36,6 +36,15 @@
                                 placeholder="Clave interna"
                             />
                         </setting>
+                        <setting string="Pricing MercadoLibre">
+                            <field name="lqa_mercadolibre_pricing_url"/>
+                            <field
+                                name="lqa_mercadolibre_pricing_api_key"
+                                password="True"
+                                placeholder="API key Pricing"
+                            />
+                            <field name="lqa_mercadolibre_pricing_timeout_seconds"/>
+                        </setting>
                         <setting string="Central de Promociones">
                             <field name="lqa_mercadolibre_promotions_stats_url"/>
                             <field name="lqa_mercadolibre_promotions_url"/>

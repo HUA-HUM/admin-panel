@@ -47,6 +47,23 @@ class ResConfigSettings(models.TransientModel):
         string="Clave interna eliminador",
         config_parameter="lqa_admin_panel.mercadolibre_delete_api_key",
     )
+    lqa_mercadolibre_pricing_url = fields.Char(
+        string="URL Pricing MercadoLibre",
+        default=(
+            "https://api.price.loquieroaca.com/"
+            "internal/getProfit/details/bulk"
+        ),
+        config_parameter="lqa_admin_panel.mercadolibre_pricing_url",
+    )
+    lqa_mercadolibre_pricing_api_key = fields.Char(
+        string="API key Pricing MercadoLibre",
+        config_parameter="lqa_admin_panel.mercadolibre_pricing_api_key",
+    )
+    lqa_mercadolibre_pricing_timeout_seconds = fields.Integer(
+        string="Timeout Pricing MercadoLibre",
+        default=300,
+        config_parameter="lqa_admin_panel.mercadolibre_pricing_timeout_seconds",
+    )
     lqa_mercadolibre_promotions_stats_url = fields.Char(
         string="URL stats promociones",
         default="http://cpe.loquieroaca.com/promotions/stats",

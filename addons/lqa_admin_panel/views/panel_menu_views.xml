@@ -71,6 +71,11 @@
         <field name="tag">lqa_admin_panel.mercadolibre_deleter</field>
     </record>
 
+    <record id="action_lqa_mercadolibre_pricing" model="ir.actions.client">
+        <field name="name">Pricing MercadoLibre</field>
+        <field name="tag">lqa_admin_panel.mercadolibre_pricing</field>
+    </record>
+
     <record id="action_lqa_mercadolibre_promotions" model="ir.actions.client">
         <field name="name">Central de Promociones</field>
         <field name="tag">lqa_admin_panel.mercadolibre_promotions</field>
@@ -149,6 +154,15 @@
         parent="menu_lqa_mercadolibre"
         action="action_lqa_mercadolibre_deleter"
         sequence="30"
+        groups="lqa_admin_panel.group_lqa_commercial_user"
+    />
+
+    <menuitem
+        id="menu_lqa_mercadolibre_pricing"
+        name="Pricing"
+        parent="menu_lqa_mercadolibre"
+        action="action_lqa_mercadolibre_pricing"
+        sequence="35"
         groups="lqa_admin_panel.group_lqa_commercial_user"
     />
 

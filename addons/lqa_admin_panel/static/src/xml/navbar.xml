@@ -155,17 +155,19 @@
                                             ? 'fa fa-line-chart'
                                             : child.name === 'Catalogo'
                                                 ? 'fa fa-th'
-                                                : child.name === 'Eliminador'
-                                                    ? 'fa fa-trash-o'
-                                                    : child.name === 'Usuarios'
-                                                        ? 'fa fa-users'
-                                                        : child.name === 'Central de Promociones'
-                                                            ? 'fa fa-bullhorn'
-                                                            : child.name === 'Marketplaces'
-                                                                ? 'fa fa-shopping-cart'
-                                                                : child.name === 'Orders'
-                                                                    ? 'fa fa-list-alt'
-                                                                    : 'fa fa-circle-o'"
+                                                    : child.name === 'Eliminador'
+                                                        ? 'fa fa-trash-o'
+                                                        : child.name === 'Usuarios'
+                                                            ? 'fa fa-users'
+                                                            : child.name === 'Pricing'
+                                                                ? 'fa fa-usd'
+                                                                : child.name === 'Central de Promociones'
+                                                                    ? 'fa fa-bullhorn'
+                                                                    : child.name === 'Marketplaces'
+                                                                        ? 'fa fa-shopping-cart'
+                                                                        : child.name === 'Orders'
+                                                                            ? 'fa fa-list-alt'
+                                                                            : 'fa fa-circle-o'"
                                     />
                                     <span t-esc="child.name"/>
                                 </button>

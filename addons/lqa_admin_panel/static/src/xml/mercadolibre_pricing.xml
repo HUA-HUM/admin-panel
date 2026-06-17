@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="lqa_admin_panel.MercadolibrePricing">
+        <div class="o_lqa_meli_pricing">
+            <header class="o_lqa_meli_pricing__header">
+                <div>
+                    <p>MercadoLibre</p>
+                    <h1>Pricing</h1>
+                    <span>Composicion masiva de precio, rentabilidad y precio sugerido.</span>
+                </div>
+                <img
+                    src="/lqa_admin_panel/static/src/img/mercadolibre-logo.png?v=2"
+                    alt="Mercado Libre"
+                />
+            </header>
+
+            <section class="o_lqa_meli_pricing_workspace">
+                <article class="o_lqa_meli_pricing_input">
+                    <div class="o_lqa_meli_pricing_section_head">
+                        <div>
+                            <h2>Cargar CSV</h2>
+                            <span>Columnas: mla, sku, tipo_publicacion, precio, categoria.</span>
+                        </div>
+                        <span t-if="state.csvName" class="o_lqa_meli_pricing_file">
+                            <i class="fa fa-file-text-o"/>
+                            <t t-esc="state.csvName"/>
+                        </span>
+                    </div>
+
+                    <div class="o_lqa_meli_pricing_upload">
+                        <label class="btn btn-secondary">
+                            <i class="fa fa-upload"/>
+                            Seleccionar CSV
+                            <input
+                                type="file"
+                                accept=".csv,text/csv,text/plain"
+                                t-on-change="onCsvSelected"
+                            />
+                        </label>
+                        <button
+                            type="button"
+                            class="btn btn-secondary"
+                            t-att-disabled="!state.csvContent"
+                            t-on-click="clearCsv"
+                        >
+                            Limpiar
+                        </button>
+                        <button
+                            type="button"
+                            class="btn btn-primary"
+                            t-att-disabled="!state.csvContent || state.creatingCsv"
+                            t-on-click="submitCsv"
+                        >
+                            <t t-if="state.creatingCsv">Creando...</t>
+                            <t t-else="">Procesar CSV</t>
+                        </button>
+                    </div>
+                </article>
+
+                <article class="o_lqa_meli_pricing_input">
+                    <div class="o_lqa_meli_pricing_section_head">
+                        <div>
+                            <h2>Carga manual</h2>
+                            <span>CSV con encabezados o JSON array.</span>
+                        </div>
+                    </div>
+                    <textarea
+                        class="form-control"
+                        rows="8"
+                        t-model="state.manualText"
+                    />
+                    <div class="o_lqa_meli_pricing_input_actions">
+                        <button
+                            type="button"
+                            class="btn btn-primary"
+                            t-att-disabled="state.creatingManual"
+                            t-on-click="submitManual"
+                        >
+                            <t t-if="state.creatingManual">Creando...</t>
+                            <t t-else="">Procesar manual</t>
+                        </button>
+                    </div>
+                </article>
+            </section>
+
+            <section class="o_lqa_meli_pricing_jobs">
+                <aside class="o_lqa_meli_pricing_jobs__list">
+                    <div class="o_lqa_meli_pricing_section_head">
+                        <div>
+                            <h2>Jobs</h2>
+                            <span>
+                                <t t-esc="formatNumber(state.jobs.length)"/>
+                                recientes
+                            </span>
+                        </div>
+                        <button
+                            type="button"
+                            class="btn btn-secondary"
+                            t-on-click="() => this.loadJobs()"
+                        >
+                            <i class="fa fa-refresh"/>
+                        </button>
+                    </div>
+
+                    <div t-if="state.loadingJobs" class="o_lqa_meli_pricing_empty">
+                        Cargando jobs...
+                    </div>
+                    <div t-elif="!state.jobs.length" class="o_lqa_meli_pricing_empty">
+                        Todavia no hay jobs de pricing.
+                    </div>
+                    <div t-else="" class="o_lqa_meli_pricing_job_list">
+                        <button
+                            type="button"
+                            t-foreach="state.jobs"
+                            t-as="job"
+                            t-key="job.id"
+                            t-att-class="isSelectedJob(job) ? 'is-active' : ''"
+                            t-on-click="() => this.loadJob(job.id)"
+                        >
+                            <div>
+                                <strong t-esc="job.name"/>
+                                <span
+                                    t-att-class="'o_lqa_meli_pricing_status is-' + job.state"
+                                    t-esc="stateLabel(job.state)"
+                                />
+                            </div>
+                            <small>
+                                <t t-esc="formatNumber(job.inputCount)"/>
+                                filas -
+                                <t t-esc="formatDateTime(job.createdAt)"/>
+                            </small>
+                        </button>
+                    </div>
+                </aside>
+
+                <article class="o_lqa_meli_pricing_detail">
+                    <div t-if="!state.selectedJob" class="o_lqa_meli_pricing_empty is-large">
+                        Selecciona un job para ver el resultado.
+                    </div>
+                    <t t-else="">
+                        <div class="o_lqa_meli_pricing_detail__head">
+                            <div>
+                                <p>Job #<t t-esc="state.selectedJob.id"/></p>
+                                <h2 t-esc="state.selectedJob.name"/>
+                                <span>
+                                    Creado por
+                                    <strong t-esc="state.selectedJob.userName"/>
+                                    -
+                                    <strong t-esc="formatDateTime(state.selectedJob.createdAt)"/>
+                                </span>
+                            </div>
+                            <button
+                                type="button"
+                                class="btn btn-primary"
+                                t-att-disabled="!canDownload(state.selectedJob) || isDownloading(state.selectedJob)"
+                                t-on-click="() => this.downloadJobCsv(state.selectedJob)"
+                            >
+                                <i class="fa fa-download"/>
+                                <t t-if="isDownloading(state.selectedJob)">Descargando...</t>
+                                <t t-else="">Descargar CSV</t>
+                            </button>
+                        </div>
+
+                        <div class="o_lqa_meli_pricing_stats">
+                            <article>
+                                <small>Estado</small>
+                                <strong t-esc="stateLabel(state.selectedJob.state)"/>
+                            </article>
+                            <article>
+                                <small>Filas</small>
+                                <strong t-esc="formatNumber(state.selectedJob.inputCount)"/>
+                            </article>
+                            <article>
+                                <small>Listas</small>
+                                <strong t-esc="formatNumber(state.selectedJob.successCount)"/>
+                            </article>
+                            <article>
+                                <small>Errores</small>
+                                <strong t-esc="formatNumber(state.selectedJob.failedCount)"/>
+                            </article>
+                        </div>
+
+                        <div
+                            t-if="state.selectedJob.errorMessage"
+                            class="o_lqa_meli_pricing_error"
+                            t-esc="state.selectedJob.errorMessage"
+                        />
+
+                        <div t-if="state.loadingJob" class="o_lqa_meli_pricing_empty">
+                            Cargando detalle...
+                        </div>
+                        <div t-elif="!state.selectedJob.lines || !state.selectedJob.lines.length" class="o_lqa_meli_pricing_empty">
+                            Todavia no hay detalle disponible.
+                        </div>
+                        <div t-else="" class="o_lqa_meli_pricing_table_wrap">
+                            <table class="o_lqa_meli_pricing_table">
+                                <thead>
+                                    <tr>
+                                        <th>MLA</th>
+                                        <th>SKU</th>
+                                        <th>Tipo</th>
+                                        <th>Precio venta</th>
+                                        <th>Precio sugerido</th>
+                                        <th>Profit</th>
+                                        <th>Margen</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr
+                                        t-foreach="state.selectedJob.lines"
+                                        t-as="line"
+                                        t-key="line.id"
+                                    >
+                                        <td>
+                                            <strong t-esc="line.mla"/>
+                                        </td>
+                                        <td t-esc="line.sku"/>
+                                        <td t-esc="line.publicationType"/>
+                                        <td t-esc="formatCurrency(line.salePrice)"/>
+                                        <td t-esc="formatCurrency(line.suggestedPrice)"/>
+                                        <td t-esc="formatCurrency(line.operatingProfit)"/>
+                                        <td t-esc="line.operatingProfitPercent || '-'"/>
+                                        <td>
+                                            <span
+                                                t-att-class="'o_lqa_meli_pricing_status is-' + line.state"
+                                                t-esc="stateLabel(line.state)"
+                                            />
+                                            <small t-if="line.errorMessage" t-esc="line.errorMessage"/>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </t>
+                </article>
+            </section>
+        </div>
+    </t>
+</templates>

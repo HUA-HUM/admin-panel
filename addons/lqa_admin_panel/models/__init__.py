@@ -5,6 +5,7 @@ from . import automeli_selection
 from . import dashboard_service
 from . import mercadolibre_catalog_service
 from . import mercadolibre_deletion
+from . import mercadolibre_pricing
 from . import mercadolibre_selection
 from . import mercadolibre_promotions_service
 from . import panel_module

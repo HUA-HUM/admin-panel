@@ -57,6 +57,17 @@
         <field name="action_xmlid">lqa_admin_panel.action_lqa_mercadolibre_deleter</field>
     </record>
 
+    <record id="panel_section_mercadolibre_pricing" model="lqa.panel.section">
+        <field name="module_id" ref="panel_module_mercadolibre"/>
+        <field name="name">Pricing</field>
+        <field name="code">pricing</field>
+        <field name="description">Composicion masiva de precios desde CSV o carga manual con resultado descargable.</field>
+        <field name="badge">Nuevo</field>
+        <field name="status">available</field>
+        <field name="sequence">25</field>
+        <field name="action_xmlid">lqa_admin_panel.action_lqa_mercadolibre_pricing</field>
+    </record>
+
     <record id="panel_section_mercadolibre_promotions" model="lqa.panel.section">
         <field name="module_id" ref="panel_module_mercadolibre"/>
         <field name="name">Central de Promociones</field>
