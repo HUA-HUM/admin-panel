@@ -3,20 +3,20 @@ $lqa-navbar-height: 48px;
 
 .o_main_navbar {
     min-height: $lqa-navbar-height;
-    border-bottom: 1px solid #ff4f5a;
-    background: #ff4f5a !important;
-    box-shadow: 0 1px 4px rgba(255, 79, 90, 0.18);
-    color: #fff;
+    border-bottom: 1px solid #e2e8f0;
+    background: #fff !important;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
+    color: #1f2937;
 
     .o_menu_systray {
-        color: #fff;
+        color: #1f2937;
     }
 
     .o_menu_systray button,
     .o_menu_systray .dropdown-toggle,
     .o_menu_systray a,
     .o_menu_systray i {
-        color: #fff !important;
+        color: #1f2937 !important;
     }
 
     .o_menu_brand,
@@ -33,6 +33,7 @@ $lqa-navbar-height: 48px;
     flex: 0 0 auto;
     padding: 5px 16px;
     background: #fff;
+    border-right: 1px solid #eef2f7;
 
     img {
         display: block;
