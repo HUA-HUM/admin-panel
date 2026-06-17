@@ -201,6 +201,165 @@
                 </div>
             </form>
 
+            <details class="o_lqa_meli_selections">
+                <summary class="o_lqa_meli_selections__head">
+                    <div>
+                        <h2>Selecciones de productos</h2>
+                        <span>
+                            Guarda publicaciones del catalogo en carpetas para analizarlas despues.
+                        </span>
+                    </div>
+                    <div class="o_lqa_meli_selections__summary">
+                        <strong>
+                            <t t-esc="formatNumber(selectedCount)"/>
+                            seleccionados
+                        </strong>
+                        <i class="fa fa-chevron-down"/>
+                    </div>
+                </summary>
+
+                <div class="o_lqa_meli_selections__tools">
+                    <form t-on-submit.prevent="createFolder">
+                        <label>
+                            <span>Nueva carpeta</span>
+                            <input
+                                type="text"
+                                class="form-control"
+                                placeholder="Ej: publicaciones a revisar"
+                                t-model="state.newFolderName"
+                            />
+                        </label>
+                        <button type="submit" class="btn btn-secondary">
+                            Crear
+                        </button>
+                    </form>
+
+                    <div class="o_lqa_meli_save_box">
+                        <label>
+                            <span>Guardar en carpeta</span>
+                            <select
+                                class="form-select"
+                                t-model="state.selectedFolderId"
+                                t-on-change="() => this.selectFolder(state.selectedFolderId)"
+                            >
+                                <option value="">Elegir carpeta</option>
+                                <option
+                                    t-foreach="state.folders"
+                                    t-as="folder"
+                                    t-key="folder.id"
+                                    t-att-value="folder.id"
+                                >
+                                    <t t-esc="folder.name"/>
+                                    (<t t-esc="formatNumber(folder.productCount)"/>)
+                                </option>
+                            </select>
+                        </label>
+                        <button
+                            type="button"
+                            class="btn btn-primary"
+                            t-att-disabled="!selectedCount || !state.selectedFolderId || state.savingSelection"
+                            t-on-click="saveSelectionToFolder"
+                        >
+                            <t t-if="state.savingSelection">Guardando...</t>
+                            <t t-else="">Guardar seleccion</t>
+                        </button>
+                        <button
+                            type="button"
+                            class="btn btn-secondary"
+                            t-att-disabled="!selectedCount"
+                            t-on-click="clearSelection"
+                        >
+                            Limpiar seleccion
+                        </button>
+                    </div>
+                </div>
+
+                <div class="o_lqa_meli_folder_chips" t-if="state.folders.length">
+                    <button
+                        type="button"
+                        t-foreach="state.folders"
+                        t-as="folder"
+                        t-key="folder.id"
+                        t-att-class="isFolderSelected(folder) ? 'is-active' : ''"
+                        t-on-click="() => this.selectFolder(folder.id)"
+                    >
+                        <span t-esc="folder.name"/>
+                        <strong t-esc="formatNumber(folder.productCount)"/>
+                    </button>
+                </div>
+                <div class="o_lqa_meli_empty_inline" t-elif="!state.foldersLoading">
+                    Todavia no hay carpetas creadas.
+                </div>
+
+                <div class="o_lqa_meli_saved" t-if="state.selectedFolderId">
+                    <div class="o_lqa_meli_saved__head">
+                        <div>
+                            <h3 t-esc="selectedFolder ? selectedFolder.name : 'Carpeta'"/>
+                            <span>
+                                <t t-esc="formatNumber(state.folderPagination.total || 0)"/>
+                                productos guardados
+                            </span>
+                        </div>
+                        <button
+                            type="button"
+                            class="btn btn-secondary"
+                            t-att-disabled="state.folderProductsLoading"
+                            t-on-click="loadFolderProducts"
+                        >
+                            <i class="fa fa-refresh"/>
+                            Actualizar
+                        </button>
+                    </div>
+                    <div class="o_lqa_meli_empty_inline" t-if="state.folderProductsLoading">
+                        Cargando productos guardados...
+                    </div>
+                    <div class="o_lqa_meli_empty_inline" t-elif="!state.folderProducts.length">
+                        Esta carpeta todavia no tiene productos.
+                    </div>
+                    <div class="o_lqa_meli_saved_grid" t-else="">
+                        <article
+                            t-foreach="state.folderProducts"
+                            t-as="saved"
+                            t-key="saved.id"
+                        >
+                            <div>
+                                <span
+                                    t-att-class="'o_lqa_meli_saved_status is-' + saved.status"
+                                    t-esc="statusLabel(saved.status)"
+                                />
+                                <button
+                                    type="button"
+                                    title="Quitar"
+                                    t-on-click="() => this.removeSavedProduct(saved)"
+                                >
+                                    <i class="fa fa-trash-o"/>
+                                </button>
+                            </div>
+                            <strong t-esc="saved.item_id || 'Sin MLA'"/>
+                            <small t-esc="saved.sku || 'Sin SKU'"/>
+                            <dl>
+                                <div>
+                                    <dt>Precio</dt>
+                                    <dd t-esc="formatCurrency(saved.price, saved.currency_id)"/>
+                                </div>
+                                <div>
+                                    <dt>Facturacion</dt>
+                                    <dd t-esc="formatCurrency(saved.revenue, saved.currency_id)"/>
+                                </div>
+                                <div>
+                                    <dt>Ordenes</dt>
+                                    <dd t-esc="formatNumber(saved.orders_count)"/>
+                                </div>
+                                <div>
+                                    <dt>Actualizado</dt>
+                                    <dd t-esc="formatDateTime(saved.last_updated)"/>
+                                </div>
+                            </dl>
+                        </article>
+                    </div>
+                </div>
+            </details>
+
             <section class="o_lqa_meli_results">
                 <div class="o_lqa_meli_results__bar">
                     <div>
@@ -263,7 +422,7 @@
                     <article
                         t-att-class="{
                             'o_lqa_meli_product': true,
-                            'is-selected': isSelected(product.item_id),
+                            'is-selected': isSelected(productKey(product)),
                         }"
                         t-foreach="state.products"
                         t-as="product"
@@ -273,8 +432,8 @@
                             <label class="o_lqa_meli_product__select">
                                 <input
                                     type="checkbox"
-                                    t-att-checked="isSelected(product.item_id)"
-                                    t-on-change="(event) => this.toggleProductSelection(event, product.item_id)"
+                                    t-att-checked="isSelected(productKey(product))"
+                                    t-on-change="(event) => this.toggleProductSelection(event, product)"
                                 />
                                 <span>
                                     <i class="fa fa-check"/>

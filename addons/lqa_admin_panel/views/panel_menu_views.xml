@@ -56,6 +56,11 @@
         <field name="tag">lqa_admin_panel.mercadolibre_catalog</field>
     </record>
 
+    <record id="action_lqa_mercadolibre_selections" model="ir.actions.client">
+        <field name="name">Selecciones MercadoLibre</field>
+        <field name="tag">lqa_admin_panel.mercadolibre_selections</field>
+    </record>
+
     <record id="action_lqa_automeli_catalog_api" model="ir.actions.client">
         <field name="name">Catalogo Automeli</field>
         <field name="tag">lqa_admin_panel.automeli_catalog</field>
@@ -116,6 +121,24 @@
         name="Catalogo"
         parent="menu_lqa_mercadolibre"
         action="action_lqa_mercadolibre_catalog"
+        sequence="20"
+        groups="lqa_admin_panel.group_lqa_commercial_user"
+    />
+
+    <menuitem
+        id="menu_lqa_mercadolibre_catalog_products"
+        name="Productos"
+        parent="menu_lqa_mercadolibre_catalog"
+        action="action_lqa_mercadolibre_catalog"
+        sequence="10"
+        groups="lqa_admin_panel.group_lqa_commercial_user"
+    />
+
+    <menuitem
+        id="menu_lqa_mercadolibre_catalog_selections"
+        name="Selecciones"
+        parent="menu_lqa_mercadolibre_catalog"
+        action="action_lqa_mercadolibre_selections"
         sequence="20"
         groups="lqa_admin_panel.group_lqa_commercial_user"
     />
