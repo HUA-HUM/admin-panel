@@ -136,6 +136,14 @@ class ResConfigSettings(models.TransientModel):
         ),
         config_parameter="lqa_admin_panel.automeli_catalog_url",
     )
+    lqa_automeli_catalog_status_url = fields.Char(
+        string="URL estado catalogo Automeli",
+        default=(
+            "https://api.madre.loquieroaca.com/"
+            "api/automeli/product-snapshots/last-updated"
+        ),
+        config_parameter="lqa_admin_panel.automeli_catalog_status_url",
+    )
     lqa_retailers_madre_api_url = fields.Char(
         string="URL Madre Retailers",
         default="https://api.madre.loquieroaca.com",
@@ -148,7 +156,7 @@ class ResConfigSettings(models.TransientModel):
     )
     lqa_retailers_orders_proxy_url = fields.Char(
         string="URL Orders Retailers",
-        default="https://market.loquieroaca.com/api/orders",
+        default="https://order.api.loquieroaca.com/orders",
         config_parameter="lqa_admin_panel.retailers_orders_proxy_url",
     )
     lqa_retailers_orders_api_token = fields.Char(

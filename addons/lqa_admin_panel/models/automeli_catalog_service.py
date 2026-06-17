@@ -1,6 +1,7 @@
+import json
 from math import ceil
 
-from odoo import _, api, models
+from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError
 
 
@@ -11,6 +12,10 @@ class LqaAutomeliCatalogService(models.AbstractModel):
     DEFAULT_ENDPOINT = (
         "https://api.madre.loquieroaca.com/"
         "api/automeli/product-snapshots/all"
+    )
+    DEFAULT_STATUS_ENDPOINT = (
+        "https://api.madre.loquieroaca.com/"
+        "api/automeli/product-snapshots/last-updated"
     )
     ALLOWED_FILTERS = {
         "limit",
@@ -117,6 +122,180 @@ class LqaAutomeliCatalogService(models.AbstractModel):
             },
         }
 
+    @api.model
+    def get_catalog_status(self):
+        self._check_access()
+        endpoint = (
+            self.env["ir.config_parameter"]
+            .sudo()
+            .get_param(
+                "lqa_admin_panel.automeli_catalog_status_url",
+                self.DEFAULT_STATUS_ENDPOINT,
+            )
+        )
+        if not endpoint:
+            raise UserError(_("Configura la URL de estado del catalogo Automeli."))
+
+        response = self.env["lqa.api.client"].request_absolute_json("GET", endpoint)
+        response = response if isinstance(response, dict) else {}
+        return {
+            "total": self._as_int(response.get("total"), 0),
+            "lastCreatedAt": response.get("lastCreatedAt") or "",
+            "lastUpdatedAt": response.get("lastUpdatedAt") or "",
+        }
+
+    @api.model
+    def get_selection_folders(self):
+        self._check_access()
+        folders = self.env["lqa.automeli.selection.folder"].search(
+            [("active", "=", True)],
+            order="write_date desc, id desc",
+        )
+        return [self._folder_to_dict(folder) for folder in folders]
+
+    @api.model
+    def create_selection_folder(self, name, description=False):
+        self._check_access()
+        name = str(name or "").strip()
+        if not name:
+            raise UserError(_("Indica un nombre para la carpeta."))
+        folder = self.env["lqa.automeli.selection.folder"].create(
+            {
+                "name": name,
+                "description": str(description or "").strip(),
+            }
+        )
+        return self._folder_to_dict(folder)
+
+    @api.model
+    def save_products_to_folder(self, folder_id, products):
+        self._check_access()
+        folder = self._get_folder(folder_id)
+        if not isinstance(products, list) or not products:
+            raise UserError(_("Selecciona al menos un producto."))
+
+        line_model = self.env["lqa.automeli.selection.item"]
+        added = 0
+        updated = 0
+        for product in products:
+            values = self._selection_values_from_product(folder, product)
+            existing = line_model.search(
+                [
+                    ("folder_id", "=", folder.id),
+                    ("product_key", "=", values["product_key"]),
+                ],
+                limit=1,
+            )
+            if existing:
+                existing.write(values)
+                updated += 1
+            else:
+                line_model.create(values)
+                added += 1
+
+        return {
+            "folder": self._folder_to_dict(folder),
+            "added": added,
+            "updated": updated,
+            "total": added + updated,
+        }
+
+    @api.model
+    def get_selection_products(self, folder_id, limit=200, offset=0):
+        self._check_access()
+        folder = self._get_folder(folder_id)
+        limit = min(max(self._as_int(limit, 200), 1), 500)
+        offset = max(self._as_int(offset, 0), 0)
+        domain = [("folder_id", "=", folder.id)]
+        lines = self.env["lqa.automeli.selection.item"].search(
+            domain,
+            limit=limit,
+            offset=offset,
+            order="write_date desc, id desc",
+        )
+        total = self.env["lqa.automeli.selection.item"].search_count(domain)
+        return {
+            "folder": self._folder_to_dict(folder),
+            "products": [line.to_panel_dict() for line in lines],
+            "pagination": {
+                "total": total,
+                "limit": limit,
+                "offset": offset,
+                "count": len(lines),
+                "has_next": offset + limit < total,
+                "has_previous": offset > 0,
+            },
+        }
+
+    @api.model
+    def remove_selection_product(self, line_id):
+        self._check_access()
+        line = self.env["lqa.automeli.selection.item"].browse(
+            self._as_int(line_id, 0)
+        ).exists()
+        if not line:
+            raise UserError(_("El producto guardado no existe."))
+        folder = line.folder_id
+        line.unlink()
+        return self._folder_to_dict(folder)
+
+    def _check_access(self):
+        if not self.env.user.has_group(
+            "lqa_admin_panel.group_lqa_commercial_user"
+        ):
+            raise AccessError(_("No tenes permisos para consultar este catalogo."))
+
+    def _get_folder(self, folder_id):
+        folder = self.env["lqa.automeli.selection.folder"].browse(
+            self._as_int(folder_id, 0)
+        ).exists()
+        if not folder:
+            raise UserError(_("La carpeta no existe."))
+        return folder
+
+    def _folder_to_dict(self, folder):
+        return {
+            "id": folder.id,
+            "name": folder.name,
+            "description": folder.description or "",
+            "productCount": folder.product_count,
+            "updatedAt": fields.Datetime.to_string(folder.write_date),
+        }
+
+    def _selection_values_from_product(self, folder, product):
+        product = product if isinstance(product, dict) else {}
+        product_key = self._product_key(product)
+        if not product_key:
+            raise UserError(_("Hay un producto seleccionado sin MLA ni SKU."))
+        return {
+            "folder_id": folder.id,
+            "product_key": product_key,
+            "mla": self._clean(product.get("mla")),
+            "sku": self._clean(product.get("sku")),
+            "listing_type_id": self._clean(product.get("listingTypeId")),
+            "meli_status": self._clean(product.get("meliStatus")),
+            "amz_status": self._clean(product.get("amzStatus")),
+            "total_price": self._as_float(product.get("totalPrice"), 0),
+            "scraped_price": self._as_float(product.get("scrapedPrice"), 0),
+            "meli_sale_price": self._as_float(product.get("meliSalePrice"), 0),
+            "stock_quantity": self._as_int(product.get("stockQuantity"), 0),
+            "max_weight": self._as_int(product.get("maxWeight"), 0),
+            "changed": self._clean(product.get("changed")),
+            "sub_status": self._clean(product.get("subStatus")),
+            "app_status": self._clean(product.get("appStatus")),
+            "snapshot_created_at": self._clean(product.get("createdAt")),
+            "snapshot_updated_at": self._clean(product.get("updatedAt")),
+            "payload_json": json.dumps(product, ensure_ascii=False),
+        }
+
+    def _product_key(self, product):
+        parts = [
+            self._clean(product.get("mla")),
+            self._clean(product.get("sku")),
+            self._clean(product.get("listingTypeId")),
+        ]
+        return "|".join(part for part in parts if part)
+
     def _prepare_params(self, filters):
         params = {}
         for key in self.ALLOWED_FILTERS:
@@ -156,3 +335,7 @@ class LqaAutomeliCatalogService(models.AbstractModel):
             return float(value)
         except (TypeError, ValueError):
             return default
+
+    @staticmethod
+    def _clean(value):
+        return str(value or "").strip()

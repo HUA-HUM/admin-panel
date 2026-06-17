@@ -16,6 +16,34 @@
                 />
             </header>
 
+            <section class="o_lqa_automeli_status_panel">
+                <article>
+                    <small>Total snapshots</small>
+                    <strong t-esc="formatNumber(state.catalogStatus.total || 0)"/>
+                    <span t-if="state.statusLoading">Actualizando estado...</span>
+                    <span t-else="">registros en tabla</span>
+                </article>
+                <article>
+                    <small>Ultima actualizacion</small>
+                    <strong t-esc="formatDateTime(state.catalogStatus.lastUpdatedAt)"/>
+                    <span>updated_at mas reciente</span>
+                </article>
+                <article>
+                    <small>Ultimo creado</small>
+                    <strong t-esc="formatDateTime(state.catalogStatus.lastCreatedAt)"/>
+                    <span>created_at mas reciente</span>
+                </article>
+                <button
+                    type="button"
+                    class="btn btn-secondary"
+                    t-att-disabled="state.statusLoading"
+                    t-on-click="loadCatalogStatus"
+                >
+                    <i class="fa fa-refresh"/>
+                    Actualizar estado
+                </button>
+            </section>
+
             <form
                 class="o_lqa_automeli_filters"
                 t-on-submit.prevent="applyFilters"
@@ -208,6 +236,161 @@
                 </details>
             </form>
 
+            <section class="o_lqa_automeli_selections">
+                <div class="o_lqa_automeli_selections__head">
+                    <div>
+                        <h2>Selecciones de productos</h2>
+                        <span>
+                            Guarda productos del catalogo en carpetas para revisarlos despues.
+                        </span>
+                    </div>
+                    <strong>
+                        <t t-esc="formatNumber(selectedCount)"/>
+                        seleccionados
+                    </strong>
+                </div>
+
+                <div class="o_lqa_automeli_selections__tools">
+                    <form t-on-submit.prevent="createFolder">
+                        <label>
+                            <span>Nueva carpeta</span>
+                            <input
+                                type="text"
+                                class="form-control"
+                                placeholder="Ej: revisar precios Junio"
+                                t-model="state.newFolderName"
+                            />
+                        </label>
+                        <button type="submit" class="btn btn-secondary">
+                            Crear
+                        </button>
+                    </form>
+
+                    <div class="o_lqa_automeli_save_box">
+                        <label>
+                            <span>Guardar en carpeta</span>
+                            <select
+                                class="form-select"
+                                t-model="state.selectedFolderId"
+                                t-on-change="() => this.selectFolder(state.selectedFolderId)"
+                            >
+                                <option value="">Elegir carpeta</option>
+                                <option
+                                    t-foreach="state.folders"
+                                    t-as="folder"
+                                    t-key="folder.id"
+                                    t-att-value="folder.id"
+                                >
+                                    <t t-esc="folder.name"/>
+                                    (<t t-esc="formatNumber(folder.productCount)"/>)
+                                </option>
+                            </select>
+                        </label>
+                        <button
+                            type="button"
+                            class="btn btn-primary"
+                            t-att-disabled="!selectedCount || !state.selectedFolderId || state.savingSelection"
+                            t-on-click="saveSelectionToFolder"
+                        >
+                            Guardar seleccion
+                        </button>
+                        <button
+                            type="button"
+                            class="btn btn-secondary"
+                            t-att-disabled="!selectedCount"
+                            t-on-click="clearSelection"
+                        >
+                            Limpiar seleccion
+                        </button>
+                    </div>
+                </div>
+
+                <div class="o_lqa_automeli_folder_chips" t-if="state.folders.length">
+                    <button
+                        type="button"
+                        t-foreach="state.folders"
+                        t-as="folder"
+                        t-key="folder.id"
+                        t-att-class="isFolderSelected(folder) ? 'is-active' : ''"
+                        t-on-click="() => this.selectFolder(folder.id)"
+                    >
+                        <span t-esc="folder.name"/>
+                        <strong t-esc="formatNumber(folder.productCount)"/>
+                    </button>
+                </div>
+                <div class="o_lqa_automeli_empty_inline" t-elif="!state.foldersLoading">
+                    Todavia no hay carpetas creadas.
+                </div>
+
+                <div class="o_lqa_automeli_saved" t-if="state.selectedFolderId">
+                    <div class="o_lqa_automeli_saved__head">
+                        <div>
+                            <h3 t-esc="selectedFolder ? selectedFolder.name : 'Carpeta'"/>
+                            <span>
+                                <t t-esc="formatNumber(state.folderPagination.total || 0)"/>
+                                productos guardados
+                            </span>
+                        </div>
+                        <button
+                            type="button"
+                            class="btn btn-secondary"
+                            t-att-disabled="state.folderProductsLoading"
+                            t-on-click="loadFolderProducts"
+                        >
+                            <i class="fa fa-refresh"/>
+                            Actualizar
+                        </button>
+                    </div>
+                    <div class="o_lqa_automeli_empty_inline" t-if="state.folderProductsLoading">
+                        Cargando productos guardados...
+                    </div>
+                    <div class="o_lqa_automeli_empty_inline" t-elif="!state.folderProducts.length">
+                        Esta carpeta todavia no tiene productos.
+                    </div>
+                    <div class="o_lqa_automeli_saved_grid" t-else="">
+                        <article
+                            t-foreach="state.folderProducts"
+                            t-as="saved"
+                            t-key="saved.id"
+                        >
+                            <div>
+                                <span
+                                    t-att-class="'o_lqa_automeli_status is-' + saved.meliStatus"
+                                    t-esc="meliStatusLabel(saved.meliStatus)"
+                                />
+                                <button
+                                    type="button"
+                                    title="Quitar"
+                                    t-on-click="() => this.removeSavedProduct(saved)"
+                                >
+                                    <i class="fa fa-trash-o"/>
+                                </button>
+                            </div>
+                            <strong t-esc="saved.mla || 'Sin MLA'"/>
+                            <small t-esc="saved.sku || 'Sin SKU'"/>
+                            <dl>
+                                <div>
+                                    <dt>Precio ML</dt>
+                                    <dd t-esc="formatCurrency(saved.meliSalePrice)"/>
+                                </div>
+                                <div>
+                                    <dt>Costo</dt>
+                                    <dd t-esc="formatCurrency(saved.totalPrice, 'USD', 2)"/>
+                                </div>
+                                <div>
+                                    <dt>Stock</dt>
+                                    <dd t-esc="formatNumber(saved.stockQuantity)"/>
+                                </div>
+                                <div>
+                                    <dt>Actualizado</dt>
+                                    <dd t-esc="formatDateTime(saved.updatedAt)"/>
+                                </div>
+                            </dl>
+                        </article>
+                    </div>
+                </div>
+            </section>
+
             <section class="o_lqa_automeli_results">
                 <div class="o_lqa_automeli_results__bar">
                     <div>
@@ -220,6 +403,24 @@
                         de
                         <strong t-esc="formatNumber(state.pagination.total_pages)"/>
                     </div>
+                    <div class="o_lqa_automeli_results__selection">
+                        <button
+                            type="button"
+                            class="btn btn-secondary"
+                            t-att-disabled="state.loading || !state.products.length"
+                            t-on-click="selectVisibleProducts"
+                        >
+                            Seleccionar pagina
+                        </button>
+                        <button
+                            type="button"
+                            class="btn btn-secondary"
+                            t-att-disabled="!selectedCount"
+                            t-on-click="clearSelection"
+                        >
+                            Limpiar
+                        </button>
+                    </div>
                 </div>
 
                 <div class="o_lqa_automeli_loading" t-if="state.loading">
@@ -230,15 +431,20 @@
                 </div>
                 <div class="o_lqa_automeli_products" t-else="">
                     <article
-                        class="o_lqa_automeli_product"
+                        t-att-class="isSelected(product) ? 'o_lqa_automeli_product is-selected' : 'o_lqa_automeli_product'"
                         t-foreach="state.products"
                         t-as="product"
                         t-key="product.mla + '-' + product.sku + '-' + product.listingTypeId"
                     >
                         <div class="o_lqa_automeli_product__top">
-                            <div class="o_lqa_automeli_product__icon">
-                                <i class="fa fa-cube"/>
-                            </div>
+                            <label class="o_lqa_automeli_select">
+                                <input
+                                    type="checkbox"
+                                    t-att-checked="isSelected(product)"
+                                    t-on-change="() => this.toggleProduct(product)"
+                                />
+                                <span>Seleccionar</span>
+                            </label>
                             <span
                                 t-att-class="'o_lqa_automeli_status is-' + product.meliStatus"
                                 t-esc="meliStatusLabel(product.meliStatus)"

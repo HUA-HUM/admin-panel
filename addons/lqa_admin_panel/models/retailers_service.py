@@ -1,5 +1,6 @@
 import json
 import os
+from urllib.parse import urlsplit, urlunsplit
 
 from odoo import _, api, models
 from odoo.exceptions import AccessError, UserError
@@ -11,7 +12,7 @@ class LqaRetailersService(models.AbstractModel):
 
     DEFAULT_MADRE_API_URL = "https://api.madre.loquieroaca.com"
     DEFAULT_PRODUCTS_API_URL = "https://api.products.loquieroaca.com"
-    DEFAULT_ORDERS_PROXY_URL = "https://market.loquieroaca.com/api/orders"
+    DEFAULT_ORDERS_PROXY_URL = "https://order.api.loquieroaca.com/orders"
     DEFAULT_TIMEOUT_SECONDS = 60
     DEFAULT_ORDERS_TIMEOUT_SECONDS = 90
     ORDER_MARKETPLACES = ("fravega", "megatone", "oncity")
@@ -479,8 +480,27 @@ class LqaRetailersService(models.AbstractModel):
         value = self._clean(value).rstrip("/")
         if not value:
             return self.DEFAULT_ORDERS_PROXY_URL
+        parsed = urlsplit(value)
+        if parsed.netloc == "order.api.loquieroaca.com":
+            path = parsed.path.rstrip("/")
+            for suffix in ("/api/orders", "/orders", "/api"):
+                if path.endswith(suffix):
+                    path = path[: -len(suffix)]
+                    break
+            normalized_path = "/".join(part for part in (path.strip("/"), "orders") if part)
+            return urlunsplit(
+                (
+                    parsed.scheme or "https",
+                    parsed.netloc,
+                    f"/{normalized_path}",
+                    "",
+                    "",
+                )
+            )
         if value.endswith("/api/orders") or value.endswith("/orders"):
             return value
+        if "market.loquieroaca.com" in value:
+            return self._join_url(value, "/orders" if value.endswith("/api") else "/api/orders")
         if proxy:
             return self._join_url(value, "/orders" if value.endswith("/api") else "/api/orders")
         return self._join_url(value, "/orders")

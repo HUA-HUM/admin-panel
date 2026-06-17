@@ -33,6 +33,8 @@ Base de panel comercial construida sobre Odoo + Docker.
 - Seccion `Automeli / Catalogo` conectada a la API de snapshots:
   - Filtros basicos y avanzados.
   - Cards con costos, stock, peso y estados Amazon/MercadoLibre.
+  - Estado de ultima actualizacion del catalogo con total, ultimo creado y ultimo actualizado.
+  - Seleccion masiva de productos y guardado en carpetas persistentes.
 - Modulo `Retailers`:
   - Dashboard local de marketplaces: Google Merchant, Fravega, OnCity y Megatone.
   - Pantalla por marketplace con tabs `Products`, `Imports` y `Status`.
@@ -151,13 +153,14 @@ Ir a `Ajustes > Panel Comercial` y completar:
 - URLs de acciones de Central de Promociones.
 - URL base y servicio de Datadog Live Tail.
 - URL de Catalogo Automeli.
+- URL de estado de Catalogo Automeli.
 - URLs base Madre y Products para Retailers.
 - URL/token de Orders para Retailers.
 - Timeout.
 - Variables de entorno Retailers:
   - `NEXT_PUBLIC_MADRE_API_URL=https://api.madre.loquieroaca.com`
   - `NEXT_PUBLIC_PRODUCTS_API_URL=https://api.products.loquieroaca.com`
-  - `NEXT_PUBLIC_ORDERS_API_URL=https://market.loquieroaca.com/api/orders`
+  - `NEXT_PUBLIC_ORDERS_API_URL=https://order.api.loquieroaca.com/orders`
   - `ORDERS_API_URL=`
   - `ORDERS_API_TOKEN=`
 
@@ -195,11 +198,11 @@ https://api.madre.loquieroaca.com/api/internal/marketplace/products/items/all
 https://api.madre.loquieroaca.com/api/internal/product-sync/runs
 https://api.madre.loquieroaca.com/api/internal/marketplace/products/{marketplace}/status
 https://api.products.loquieroaca.com/api/internal/import/{marketplace}/run
-https://market.loquieroaca.com/api/orders/overview/last-24-hours
-https://market.loquieroaca.com/api/orders/overview/recent/{hours}
-https://market.loquieroaca.com/api/orders/overview/historical
-https://market.loquieroaca.com/api/orders
-https://market.loquieroaca.com/api/orders/{marketplace}
+https://order.api.loquieroaca.com/orders/overview/last-24-hours
+https://order.api.loquieroaca.com/orders/overview/recent/{hours}
+https://order.api.loquieroaca.com/orders/overview/historical
+https://order.api.loquieroaca.com/orders
+https://order.api.loquieroaca.com/orders/{marketplace}
 ```
 
 Si el servicio de imports vive en otro host, configurar `URL Products Retailers`

@@ -57,6 +57,7 @@
                         </setting>
                         <setting string="Catalogo Automeli">
                             <field name="lqa_automeli_catalog_url"/>
+                            <field name="lqa_automeli_catalog_status_url"/>
                         </setting>
                         <setting string="Retailers">
                             <field name="lqa_retailers_madre_api_url"/>

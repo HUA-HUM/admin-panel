@@ -1,6 +1,7 @@
 from . import api_client
 from . import automeli_catalog_service
 from . import automeli_catalog_item
+from . import automeli_selection
 from . import dashboard_service
 from . import mercadolibre_catalog_service
 from . import mercadolibre_deletion
