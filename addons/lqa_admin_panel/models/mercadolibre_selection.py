@@ -55,6 +55,7 @@ class LqaMercadolibreSelectionItem(models.Model):
     brand = fields.Char()
     sku = fields.Char(index=True)
     condition = fields.Char()
+    listing_type_id = fields.Char()
     price = fields.Float()
     currency_id = fields.Char()
     available_quantity = fields.Integer()
@@ -102,6 +103,8 @@ class LqaMercadolibreSelectionItem(models.Model):
             "brand": self.brand or "",
             "sku": self.sku or "",
             "condition": self.condition or "",
+            "listing_type_id": self.listing_type_id or "",
+            "listingTypeId": self.listing_type_id or "",
             "price": self.price,
             "currency_id": self.currency_id or "",
             "available_quantity": self.available_quantity,

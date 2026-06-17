@@ -11,6 +11,7 @@ const defaultFilters = () => ({
     domainId: "",
     status: "",
     condition: "",
+    listingTypeId: "",
     skuPrefix: "",
     hasOrders: "",
     hasVisits: "",

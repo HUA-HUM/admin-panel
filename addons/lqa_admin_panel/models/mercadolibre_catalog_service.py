@@ -20,6 +20,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
         "domainId",
         "status",
         "condition",
+        "listingTypeId",
         "skuPrefix",
         "hasOrders",
         "hasVisits",
@@ -40,6 +41,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
         ("brand", "marca", "brand"),
         ("status", "estado", "status"),
         ("condition", "condicion", "condition"),
+        ("listing_type_id", "tipo_publicacion", "listing_type_id"),
         ("price", "precio", "price"),
         ("currency_id", "moneda", "currency_id"),
         ("available_quantity", "stock", "available_quantity"),
@@ -64,6 +66,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
         "title",
         "sku",
         "status",
+        "listing_type_id",
         "price",
         "available_quantity",
         "permalink",
@@ -231,7 +234,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
         for line in lines:
             writer.writerow(
                 [
-                    self._csv_value(getattr(line, column_map[key][2], ""))
+                    self._csv_line_value(line, column_map[key])
                     for key in requested_columns
                 ]
             )
@@ -287,6 +290,9 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
             "brand": self._clean(self._first(product, "brand")),
             "sku": self._clean(self._first(product, "sku")),
             "condition": self._clean(self._first(product, "condition")),
+            "listing_type_id": self._clean(
+                self._first(product, "listing_type_id", "listingTypeId")
+            ),
             "price": self._as_float(self._first(product, "price"), 0),
             "currency_id": self._clean(
                 self._first(product, "currency_id", "currencyId")
@@ -397,6 +403,20 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
         if value is None or value is False:
             return ""
         return value
+
+    def _csv_line_value(self, line, column):
+        value = getattr(line, column[2], "")
+        if value not in (None, False, ""):
+            return self._csv_value(value)
+        if column[0] == "listing_type_id" and line.payload_json:
+            try:
+                payload = json.loads(line.payload_json)
+            except ValueError:
+                payload = {}
+            return self._csv_value(
+                self._first(payload, "listing_type_id", "listingTypeId")
+            )
+        return self._csv_value(value)
 
     def _csv_safe_name(self, value):
         clean_value = self._clean(value).lower().replace(" ", "-")

@@ -95,6 +95,15 @@
                         </select>
                     </label>
                     <label>
+                        <span>Tipo publicacion</span>
+                        <input
+                            type="text"
+                            class="form-control"
+                            placeholder="gold_special,gold_pro"
+                            t-model="state.filters.listingTypeId"
+                        />
+                    </label>
+                    <label>
                         <span>Prefijo SKU</span>
                         <input
                             type="text"
