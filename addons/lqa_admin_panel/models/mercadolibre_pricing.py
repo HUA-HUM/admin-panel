@@ -1,7 +1,10 @@
+import base64
 import csv
 import io
 import json
 import os
+
+import xlsxwriter
 
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError
@@ -154,10 +157,18 @@ class LqaMercadolibrePricingService(models.AbstractModel):
         ("meli_contribution_percentage", "input.meliContributionPercentage"),
         ("state", "state"),
         ("error", "error"),
+        ("api_sale_price", "prices.salePrice"),
+        (
+            "api_meli_contribution_percentage",
+            "prices.meliContributionPercentage",
+        ),
         ("meli_contribution_amount", "prices.meliContributionAmount"),
         ("seller_net_price", "prices.sellerNetPrice"),
+        ("base_sku", "datosBase.sku"),
         ("weight_kg", "datosBase.weightKg"),
         ("volumetric_weight_kg", "datosBase.volumetricWeightKg"),
+        ("base_seller_net_price", "datosBase.sellerNetPrice"),
+        ("base_category_id", "datosBase.categoryId"),
         ("tc_amco", "tiposDeCambio.tcAmco"),
         ("tc_tlq", "tiposDeCambio.tcTlq"),
         ("commission_mp_percentage", "costosOperativos.commissionMpPercentage"),
@@ -166,6 +177,9 @@ class LqaMercadolibrePricingService(models.AbstractModel):
         ("deposito_usa_amount", "costosOperativos.depositoUsaAmount"),
         ("costos_amco_amount", "costosOperativos.costosAmcoAmount"),
         ("imptos_amco_amount", "costosOperativos.imptosAmcoAmount"),
+        ("iva_cat_aranc", "emo.ivaCatAranc"),
+        ("suma_tasas_y_der", "emo.sumaTasasYDer"),
+        ("utilidad_amount", "costosCalculados.utilidadAmount"),
         ("impuestos_meli_amount", "costosCalculados.impuestosMeliAmount"),
         ("comision_mp_amount", "costosCalculados.comisionMpAmount"),
         ("total_costs", "resultados.totalCosts"),
@@ -173,6 +187,83 @@ class LqaMercadolibrePricingService(models.AbstractModel):
         ("operating_profit_percent", "resultados.operatingProfitPercent"),
         ("suggested_price", "precio.suggestedPrice"),
         ("discount", "precio.discount"),
+    )
+    XLSX_OUTPUT_COLUMNS = (
+        ("MLA", "input.mla", "text", 18),
+        ("SKU", "input.sku", "text", 18),
+        ("Categoria", "input.categoryId", "text", 16),
+        ("Tipo publicacion", "input.publicationType", "text", 18),
+        ("Precio venta", "input.salePrice", "money", 16),
+        (
+            "Aporte ML %",
+            "input.meliContributionPercentage",
+            "percentage_points",
+            14,
+        ),
+        ("Estado", "state", "text", 12),
+        ("Error", "error", "text", 34),
+        ("Precio venta API", "prices.salePrice", "money", 17),
+        (
+            "Aporte ML % API",
+            "prices.meliContributionPercentage",
+            "percentage_points",
+            17,
+        ),
+        (
+            "Aporte ML monto",
+            "prices.meliContributionAmount",
+            "money",
+            18,
+        ),
+        ("Precio neto vendedor", "prices.sellerNetPrice", "money", 20),
+        ("SKU datos base", "datosBase.sku", "text", 18),
+        ("Peso kg", "datosBase.weightKg", "decimal", 12),
+        ("Peso volumetrico kg", "datosBase.volumetricWeightKg", "decimal", 20),
+        ("Precio neto base", "datosBase.sellerNetPrice", "money", 18),
+        ("Categoria datos base", "datosBase.categoryId", "text", 20),
+        ("TC AMCO", "tiposDeCambio.tcAmco", "decimal", 12),
+        ("TC TLQ", "tiposDeCambio.tcTlq", "decimal", 12),
+        (
+            "Comision MP %",
+            "costosOperativos.commissionMpPercentage",
+            "percentage_points",
+            16,
+        ),
+        ("Envio ML", "costosOperativos.envioMlAmount", "money", 15),
+        ("Precio Amazon", "costosOperativos.precioAmzAmount", "money", 17),
+        ("Deposito USA", "costosOperativos.depositoUsaAmount", "money", 17),
+        ("Costos AMCO", "costosOperativos.costosAmcoAmount", "money", 17),
+        ("Impuestos AMCO", "costosOperativos.imptosAmcoAmount", "money", 18),
+        ("IVA cat. arancelaria", "emo.ivaCatAranc", "percentage_decimal", 19),
+        (
+            "Tasas y derechos",
+            "emo.sumaTasasYDer",
+            "percentage_decimal",
+            18,
+        ),
+        ("Utilidad calculada", "costosCalculados.utilidadAmount", "money", 19),
+        (
+            "Impuestos MercadoLibre",
+            "costosCalculados.impuestosMeliAmount",
+            "money",
+            22,
+        ),
+        (
+            "Comision MercadoPago",
+            "costosCalculados.comisionMpAmount",
+            "money",
+            21,
+        ),
+        ("Costos totales", "resultados.totalCosts", "money", 18),
+        ("Ganancia operativa", "resultados.operatingProfit", "money", 20),
+        (
+            "Margen operativo",
+            "resultados.operatingProfitPercent",
+            "percentage_text",
+            18,
+        ),
+        ("Precio sugerido", "precio.suggestedPrice", "money", 18),
+        ("Descuento", "precio.discount", "percentage_text", 14),
     )
 
     @api.model
@@ -290,6 +381,21 @@ class LqaMercadolibrePricingService(models.AbstractModel):
             "count": job.input_count,
         }
 
+    @api.model
+    def download_job_xlsx(self, job_id):
+        self._check_access()
+        job = self._get_job(job_id)
+        content = self._build_result_xlsx(job)
+        return {
+            "filename": f"{self._csv_safe_name(job.name)}-pricing.xlsx",
+            "content": base64.b64encode(content).decode("ascii"),
+            "mimetype": (
+                "application/vnd.openxmlformats-officedocument."
+                "spreadsheetml.sheet"
+            ),
+            "count": job.input_count,
+        }
+
     def _process_job_lines(self, job):
         endpoint, api_key, timeout = self._pricing_config()
         client = self.env["lqa.api.client"]
@@ -346,14 +452,7 @@ class LqaMercadolibrePricingService(models.AbstractModel):
         writer = csv.writer(buffer)
         writer.writerow([column[0] for column in self.CSV_OUTPUT_COLUMNS])
         for line in job.line_ids.sorted("sequence"):
-            input_payload = self._json_loads(line.input_payload_json)
-            response = self._json_loads(line.response_json)
-            row_source = {
-                "input": input_payload,
-                "state": line.state,
-                "error": line.error_message or "",
-                **response,
-            }
+            row_source = self._result_row_source(line)
             writer.writerow(
                 [
                     self._nested_value(row_source, path)
@@ -361,6 +460,185 @@ class LqaMercadolibrePricingService(models.AbstractModel):
                 ]
             )
         return buffer.getvalue()
+
+    def _build_result_xlsx(self, job):
+        output = io.BytesIO()
+        workbook = xlsxwriter.Workbook(
+            output,
+            {
+                "in_memory": True,
+                "constant_memory": False,
+                "strings_to_formulas": False,
+                "strings_to_urls": False,
+            },
+        )
+        worksheet = workbook.add_worksheet("Pricing")
+        worksheet.hide_gridlines(2)
+        worksheet.freeze_panes(1, 0)
+
+        header_format = workbook.add_format(
+            {
+                "bold": True,
+                "font_color": "#FFFFFF",
+                "bg_color": "#2D3277",
+                "border": 1,
+                "border_color": "#D7DEE7",
+                "align": "center",
+                "valign": "vcenter",
+            }
+        )
+        text_format = workbook.add_format({"valign": "top"})
+        error_format = workbook.add_format(
+            {
+                "font_color": "#A22B2B",
+                "bg_color": "#FFF0F0",
+                "text_wrap": True,
+                "valign": "top",
+            }
+        )
+        money_format = workbook.add_format(
+            {
+                "num_format": '$ #,##0.00;[Red]-$ #,##0.00',
+                "valign": "top",
+            }
+        )
+        decimal_format = workbook.add_format(
+            {
+                "num_format": "#,##0.00",
+                "valign": "top",
+            }
+        )
+        percentage_format = workbook.add_format(
+            {
+                "num_format": "0.00%",
+                "valign": "top",
+            }
+        )
+
+        for column_index, (header, _, _, width) in enumerate(
+            self.XLSX_OUTPUT_COLUMNS
+        ):
+            worksheet.write(0, column_index, header, header_format)
+            worksheet.set_column(column_index, column_index, width)
+        worksheet.set_row(0, 26)
+
+        for row_index, line in enumerate(job.line_ids.sorted("sequence"), start=1):
+            row_source = self._result_row_source(line)
+            for column_index, (_, path, value_type, _) in enumerate(
+                self.XLSX_OUTPUT_COLUMNS
+            ):
+                value = self._nested_value(row_source, path)
+                self._write_xlsx_value(
+                    worksheet,
+                    row_index,
+                    column_index,
+                    value,
+                    value_type,
+                    {
+                        "text": text_format,
+                        "error": error_format,
+                        "money": money_format,
+                        "decimal": decimal_format,
+                        "percentage": percentage_format,
+                    },
+                    is_error_column=path == "error",
+                )
+
+        last_row = max(len(job.line_ids), 1)
+        worksheet.autofilter(
+            0,
+            0,
+            last_row,
+            len(self.XLSX_OUTPUT_COLUMNS) - 1,
+        )
+        worksheet.conditional_format(
+            1,
+            6,
+            last_row,
+            6,
+            {
+                "type": "text",
+                "criteria": "containing",
+                "value": "Error",
+                "format": error_format,
+            },
+        )
+        workbook.close()
+        return output.getvalue()
+
+    def _result_row_source(self, line):
+        input_payload = self._json_loads(line.input_payload_json)
+        response = self._json_loads(line.response_json)
+        return {
+            "input": input_payload,
+            "state": {
+                "pending": "En cola",
+                "done": "Listo",
+                "failed": "Error",
+            }.get(line.state, line.state),
+            "error": line.error_message or "",
+            **response,
+        }
+
+    def _write_xlsx_value(
+        self,
+        worksheet,
+        row,
+        column,
+        value,
+        value_type,
+        formats,
+        is_error_column=False,
+    ):
+        if value in (None, ""):
+            worksheet.write_blank(row, column, None, formats["text"])
+            return
+        if value_type in {"money", "decimal"}:
+            numeric_value = self._as_float(value, None)
+            if numeric_value is not None:
+                worksheet.write_number(
+                    row,
+                    column,
+                    numeric_value,
+                    formats[value_type],
+                )
+                return
+        if value_type == "percentage_points":
+            numeric_value = self._as_float(value, None)
+            if numeric_value is not None:
+                worksheet.write_number(
+                    row,
+                    column,
+                    numeric_value / 100,
+                    formats["percentage"],
+                )
+                return
+        if value_type == "percentage_decimal":
+            numeric_value = self._as_float(value, None)
+            if numeric_value is not None:
+                worksheet.write_number(
+                    row,
+                    column,
+                    numeric_value,
+                    formats["percentage"],
+                )
+                return
+        if value_type == "percentage_text":
+            numeric_value = self._percentage_decimal(value)
+            if numeric_value is not None:
+                worksheet.write_number(
+                    row,
+                    column,
+                    numeric_value,
+                    formats["percentage"],
+                )
+                return
+        worksheet.write(
+            row,
+            column,
+            str(value),
+            formats["error"] if is_error_column and value else formats["text"],
+        )
 
     def _parse_input(self, content):
         content = str(content or "").strip()
@@ -552,6 +830,20 @@ class LqaMercadolibrePricingService(models.AbstractModel):
             return float(str(value).replace(",", "."))
         except (TypeError, ValueError):
             return default
+
+    def _percentage_decimal(self, value):
+        clean_value = self._clean(value)
+        if not clean_value:
+            return None
+        has_percent_sign = clean_value.endswith("%")
+        numeric_value = self._as_float(clean_value.rstrip("%").strip(), None)
+        if numeric_value is None:
+            return None
+        return (
+            numeric_value / 100
+            if has_percent_sign or abs(numeric_value) > 1
+            else numeric_value
+        )
 
     @staticmethod
     def _clean(value):

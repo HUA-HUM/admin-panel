@@ -185,18 +185,22 @@ export class LqaMercadolibrePricing extends Component {
         }
     }
 
-    async downloadJobCsv(job) {
+    async downloadJobXlsx(job) {
         this.state.downloadingJobId = String(job.id);
         try {
             const result = await this.orm.call(
                 "lqa.mercadolibre.pricing.service",
-                "download_job_csv",
+                "download_job_xlsx",
                 [job.id]
             );
-            this.downloadTextFile(result.filename, result.content);
+            this.downloadBase64File(
+                result.filename,
+                result.content,
+                result.mimetype
+            );
         } catch (error) {
             this.notification.add(
-                error?.data?.message || "No se pudo descargar el CSV.",
+                error?.data?.message || "No se pudo descargar el Excel.",
                 { type: "danger" }
             );
         } finally {
@@ -204,14 +208,21 @@ export class LqaMercadolibrePricing extends Component {
         }
     }
 
-    downloadTextFile(filename, content) {
-        const blob = new Blob([content || ""], {
-            type: "text/csv;charset=utf-8",
+    downloadBase64File(filename, content, mimetype) {
+        const binary = window.atob(content || "");
+        const bytes = new Uint8Array(binary.length);
+        for (let index = 0; index < binary.length; index++) {
+            bytes[index] = binary.charCodeAt(index);
+        }
+        const blob = new Blob([bytes], {
+            type:
+                mimetype ||
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         });
         const url = URL.createObjectURL(blob);
         const anchor = document.createElement("a");
         anchor.href = url;
-        anchor.download = filename || "mercadolibre-pricing.csv";
+        anchor.download = filename || "mercadolibre-pricing.xlsx";
         document.body.appendChild(anchor);
         anchor.click();
         anchor.remove();

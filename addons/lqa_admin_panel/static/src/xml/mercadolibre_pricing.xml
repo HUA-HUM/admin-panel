@@ -153,11 +153,11 @@
                                 type="button"
                                 class="btn btn-primary"
                                 t-att-disabled="!canDownload(state.selectedJob) || isDownloading(state.selectedJob)"
-                                t-on-click="() => this.downloadJobCsv(state.selectedJob)"
+                                t-on-click="() => this.downloadJobXlsx(state.selectedJob)"
                             >
                                 <i class="fa fa-download"/>
                                 <t t-if="isDownloading(state.selectedJob)">Descargando...</t>
-                                <t t-else="">Descargar CSV</t>
+                                <t t-else="">Descargar Excel</t>
                             </button>
                         </div>
 
