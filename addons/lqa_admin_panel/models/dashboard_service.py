@@ -81,7 +81,7 @@ class LqaDashboardService(models.AbstractModel):
         if code == "retailers":
             return [
                 {"label": "Marketplaces", "value": 4},
-                {"label": "Tabs", "value": "3 por canal"},
+                {"label": "Orders", "value": "24/48/72h"},
                 {"label": "Imports", "value": "Manual"},
             ]
         return []

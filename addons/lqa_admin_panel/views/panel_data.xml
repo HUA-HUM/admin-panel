@@ -80,6 +80,18 @@
         <field name="active">True</field>
     </record>
 
+    <record id="panel_section_retailers_orders" model="lqa.panel.section">
+        <field name="module_id" ref="panel_module_retailers"/>
+        <field name="name">Orders</field>
+        <field name="code">orders</field>
+        <field name="description">Ordenes de Fravega, Megatone y OnCity por periodo o rango custom.</field>
+        <field name="badge">Nuevo</field>
+        <field name="status">available</field>
+        <field name="sequence">20</field>
+        <field name="action_xmlid">lqa_admin_panel.action_lqa_retailers_orders</field>
+        <field name="active">True</field>
+    </record>
+
     <record id="panel_section_retailers_google_merchant" model="lqa.panel.section">
         <field name="module_id" ref="panel_module_retailers"/>
         <field name="name">Google Merchant</field>
@@ -170,8 +182,21 @@
         <value eval="[ref('panel_module_retailers')]"/>
         <value
             eval="{
-                'description': 'Marketplaces retail con productos, imports y estado operativo por canal.',
+                'description': 'Marketplaces retail con productos, imports, status y ordenes por canal.',
                 'dashboard_action_xmlid': 'lqa_admin_panel.action_lqa_retailers_dashboard',
+            }"
+        />
+    </function>
+
+    <function model="lqa.panel.section" name="write">
+        <value eval="[ref('panel_section_retailers_orders')]"/>
+        <value
+            eval="{
+                'description': 'Ordenes de Fravega, Megatone y OnCity por periodo o rango custom.',
+                'badge': 'Nuevo',
+                'status': 'available',
+                'action_xmlid': 'lqa_admin_panel.action_lqa_retailers_orders',
+                'active': True,
             }"
         />
     </function>

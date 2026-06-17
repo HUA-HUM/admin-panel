@@ -146,10 +146,24 @@ class ResConfigSettings(models.TransientModel):
         default="https://api.products.loquieroaca.com",
         config_parameter="lqa_admin_panel.retailers_products_api_url",
     )
+    lqa_retailers_orders_proxy_url = fields.Char(
+        string="URL Orders Retailers",
+        default="https://market.loquieroaca.com/api/orders",
+        config_parameter="lqa_admin_panel.retailers_orders_proxy_url",
+    )
+    lqa_retailers_orders_api_token = fields.Char(
+        string="Token Orders Retailers",
+        config_parameter="lqa_admin_panel.retailers_orders_api_token",
+    )
     lqa_retailers_timeout_seconds = fields.Integer(
         string="Timeout Retailers",
         default=60,
         config_parameter="lqa_admin_panel.retailers_timeout_seconds",
+    )
+    lqa_retailers_orders_timeout_seconds = fields.Integer(
+        string="Timeout Orders Retailers",
+        default=90,
+        config_parameter="lqa_admin_panel.retailers_orders_timeout_seconds",
     )
     lqa_api_timeout_seconds = fields.Integer(
         string="Timeout API",

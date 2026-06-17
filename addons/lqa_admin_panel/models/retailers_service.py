@@ -1,3 +1,4 @@
+import json
 import os
 
 from odoo import _, api, models
@@ -10,7 +11,10 @@ class LqaRetailersService(models.AbstractModel):
 
     DEFAULT_MADRE_API_URL = "https://api.madre.loquieroaca.com"
     DEFAULT_PRODUCTS_API_URL = "https://api.products.loquieroaca.com"
+    DEFAULT_ORDERS_PROXY_URL = "https://market.loquieroaca.com/api/orders"
     DEFAULT_TIMEOUT_SECONDS = 60
+    DEFAULT_ORDERS_TIMEOUT_SECONDS = 90
+    ORDER_MARKETPLACES = ("fravega", "megatone", "oncity")
     MARKETPLACES = {
         "oncity": {
             "name": "OnCity",
@@ -163,6 +167,33 @@ class LqaRetailersService(models.AbstractModel):
         )
         return self._normalize_status(response or {})
 
+    @api.model
+    def get_orders_overview(self, mode="last24", filters=None):
+        self._check_access()
+        mode = self._clean(mode) or "last24"
+        filters = filters or {}
+        if mode == "custom":
+            return self._get_custom_orders(filters)
+
+        path_by_mode = {
+            "last24": "/overview/last-24-hours",
+            "recent24": "/overview/recent/24",
+            "recent48": "/overview/recent/48",
+            "recent72": "/overview/recent/72",
+            "historical": "/overview/historical",
+        }
+        path = path_by_mode.get(mode)
+        if not path:
+            raise UserError(_("Periodo de ordenes no valido."))
+
+        response = self.env["lqa.api.client"].request_absolute_json(
+            "GET",
+            self._join_url(self._orders_base_url(), path),
+            headers=self._orders_headers(),
+            timeout=self._orders_timeout(),
+        )
+        return self._normalize_orders_response(response, mode)
+
     def _check_access(self):
         if not self.env.user.has_group("lqa_admin_panel.group_lqa_commercial_user"):
             raise AccessError(_("No tenes permisos para consultar retailers."))
@@ -195,6 +226,30 @@ class LqaRetailersService(models.AbstractModel):
             or self.DEFAULT_PRODUCTS_API_URL
         ).strip()
 
+    def _orders_base_url(self):
+        params = self.env["ir.config_parameter"].sudo()
+        configured = (
+            params.get_param("lqa_admin_panel.retailers_orders_proxy_url", "")
+            or os.environ.get("NEXT_PUBLIC_ORDERS_API_URL", "")
+        ).strip()
+        if configured:
+            return self._normalize_orders_base(configured, proxy=True)
+
+        backend = os.environ.get("ORDERS_API_URL", "").strip()
+        if backend:
+            return self._normalize_orders_base(backend, proxy=False)
+
+        return self.DEFAULT_ORDERS_PROXY_URL
+
+    def _orders_headers(self):
+        params = self.env["ir.config_parameter"].sudo()
+        token = (
+            params.get_param("lqa_admin_panel.retailers_orders_api_token", "")
+            or os.environ.get("ORDERS_API_TOKEN", "")
+            or os.environ.get("LQA_ORDERS_API_TOKEN", "")
+        ).strip()
+        return {"Authorization": f"Bearer {token}"} if token else {}
+
     def _timeout(self):
         timeout = (
             self.env["ir.config_parameter"]
@@ -205,6 +260,230 @@ class LqaRetailersService(models.AbstractModel):
             )
         )
         return min(max(self._as_int(timeout, self.DEFAULT_TIMEOUT_SECONDS), 20), 180)
+
+    def _orders_timeout(self):
+        timeout = (
+            self.env["ir.config_parameter"]
+            .sudo()
+            .get_param(
+                "lqa_admin_panel.retailers_orders_timeout_seconds",
+                self.DEFAULT_ORDERS_TIMEOUT_SECONDS,
+            )
+        )
+        return min(max(self._as_int(timeout, self.DEFAULT_ORDERS_TIMEOUT_SECONDS), 30), 240)
+
+    def _get_custom_orders(self, filters):
+        marketplace = self._clean(filters.get("marketplace") or "all").lower()
+        if marketplace not in ("all", *self.ORDER_MARKETPLACES):
+            raise UserError(_("Marketplace de ordenes no valido."))
+
+        date_from = self._clean(filters.get("from") or filters.get("fechaDesde"))
+        date_to = self._clean(filters.get("to") or filters.get("fechaHasta"))
+        if not date_from or not date_to:
+            raise UserError(_("Indica fecha desde y hasta para consultar ordenes."))
+
+        params = {
+            "from": date_from,
+            "to": date_to,
+            "fechaDesde": date_from,
+            "fechaHasta": date_to,
+        }
+        response = self.env["lqa.api.client"].request_absolute_json(
+            "GET",
+            self._join_url(
+                self._orders_base_url(),
+                "" if marketplace == "all" else marketplace,
+            ),
+            params=params,
+            headers=self._orders_headers(),
+            timeout=self._orders_timeout(),
+        )
+        normalized = self._normalize_orders_response(response, "custom")
+        normalized["selected_marketplace"] = marketplace
+        return normalized
+
+    def _normalize_orders_response(self, response, mode):
+        payload = response if isinstance(response, dict) else {}
+        raw_items = self._response_order_items(response)
+        items = [
+            self._normalize_order_item(item, index)
+            for index, item in enumerate(raw_items)
+        ]
+        total = self._as_int(
+            payload.get("total") or payload.get("count") or payload.get("totalOrders"),
+            len(items),
+        )
+        range_data = payload.get("range") if isinstance(payload.get("range"), dict) else {}
+        errors = payload.get("errors") if isinstance(payload.get("errors"), list) else []
+        return {
+            "mode": mode,
+            "range": {
+                "from": self._clean(range_data.get("from") or payload.get("from")),
+                "to": self._clean(range_data.get("to") or payload.get("to")),
+            },
+            "total": total,
+            "marketplaces": self._normalize_order_marketplaces(payload, items),
+            "items": items,
+            "errors": [
+                {"key": f"error-{index}", "message": self._normalize_error(error)}
+                for index, error in enumerate(errors)
+            ],
+        }
+
+    def _normalize_order_item(self, item, index):
+        item = item if isinstance(item, dict) else {"value": item}
+        lines = self._extract_order_lines(item)
+        first_line = lines[0] if lines else {}
+        marketplace = self._clean(
+            item.get("marketplace")
+            or item.get("marketPlace")
+            or item.get("channel")
+            or item.get("source")
+            or first_line.get("marketplace")
+        ).lower()
+        order_id = self._clean(
+            item.get("orderId")
+            or item.get("order_id")
+            or item.get("id")
+            or item.get("_id")
+            or item.get("externalId")
+            or item.get("external_id")
+            or item.get("numeroOrden")
+            or item.get("orderNumber")
+        )
+        total = self._first_number(
+            item,
+            (
+                "total",
+                "totalAmount",
+                "total_amount",
+                "amount",
+                "grandTotal",
+                "totalPrice",
+                "price",
+                "revenue",
+            ),
+        )
+        quantity = self._as_int(
+            item.get("quantity")
+            or item.get("qty")
+            or item.get("units")
+            or sum(self._as_int(line.get("quantity") or line.get("qty"), 0) for line in lines),
+            0,
+        )
+        sku = self._clean(
+            item.get("sku")
+            or item.get("sellerSku")
+            or item.get("seller_sku")
+            or item.get("sellerSKU")
+            or first_line.get("sku")
+            or first_line.get("sellerSku")
+            or first_line.get("seller_sku")
+        )
+        title = self._clean(
+            item.get("title")
+            or item.get("productTitle")
+            or item.get("product_title")
+            or item.get("name")
+            or first_line.get("title")
+            or first_line.get("name")
+            or first_line.get("productTitle")
+        )
+        return {
+            "key": f"{order_id or 'order'}-{index}",
+            "id": order_id,
+            "marketplace": marketplace,
+            "status": self._clean(
+                item.get("status") or item.get("state") or item.get("orderStatus")
+            ),
+            "created_at": self._clean(
+                item.get("createdAt")
+                or item.get("created_at")
+                or item.get("dateCreated")
+                or item.get("date_created")
+                or item.get("fecha")
+                or item.get("fechaCreacion")
+            ),
+            "updated_at": self._clean(
+                item.get("updatedAt") or item.get("updated_at") or item.get("lastUpdated")
+            ),
+            "buyer": self._normalize_buyer(item.get("buyer") or item.get("customer") or item),
+            "sku": sku,
+            "title": title or "Orden de marketplace",
+            "quantity": quantity,
+            "total": total,
+            "currency": self._clean(item.get("currency") or item.get("currencyId") or "ARS"),
+            "external_id": self._clean(
+                item.get("externalId")
+                or item.get("external_id")
+                or item.get("marketplaceOrderId")
+                or item.get("marketplace_order_id")
+            ),
+            "raw_status": self._clean(item.get("rawStatus") or item.get("raw_status")),
+        }
+
+    def _normalize_order_marketplaces(self, payload, items):
+        raw_marketplaces = payload.get("marketplaces") if isinstance(payload, dict) else []
+        result = []
+        if isinstance(raw_marketplaces, dict):
+            raw_marketplaces = [
+                {"marketplace": marketplace, "total": total}
+                for marketplace, total in raw_marketplaces.items()
+            ]
+        if isinstance(raw_marketplaces, list):
+            for item in raw_marketplaces:
+                if not isinstance(item, dict):
+                    continue
+                marketplace = self._clean(
+                    item.get("marketplace") or item.get("name") or item.get("id")
+                ).lower()
+                if marketplace:
+                    result.append(
+                        {
+                            "marketplace": marketplace,
+                            "total": self._as_int(item.get("total") or item.get("count"), 0),
+                        }
+                    )
+        if result:
+            return result
+
+        counts = {}
+        for item in items:
+            marketplace = item.get("marketplace") or "sin-marketplace"
+            counts[marketplace] = counts.get(marketplace, 0) + 1
+        return [
+            {"marketplace": marketplace, "total": total}
+            for marketplace, total in counts.items()
+        ]
+
+    def _normalize_buyer(self, value):
+        if isinstance(value, dict):
+            return self._clean(
+                value.get("name")
+                or value.get("fullName")
+                or value.get("nickname")
+                or value.get("email")
+                or value.get("customerName")
+                or value.get("buyerName")
+                or value.get("id")
+            )
+        return self._clean(value)
+
+    def _first_number(self, source, keys):
+        for key in keys:
+            if source.get(key) is not None:
+                return self._as_float(source.get(key), None)
+        return None
+
+    def _normalize_orders_base(self, value, proxy):
+        value = self._clean(value).rstrip("/")
+        if not value:
+            return self.DEFAULT_ORDERS_PROXY_URL
+        if value.endswith("/api/orders") or value.endswith("/orders"):
+            return value
+        if proxy:
+            return self._join_url(value, "/orders" if value.endswith("/api") else "/api/orders")
+        return self._join_url(value, "/orders")
 
     def _normalize_product(self, item):
         item = item if isinstance(item, dict) else {}
@@ -382,6 +661,32 @@ class LqaRetailersService(models.AbstractModel):
         return []
 
     @staticmethod
+    def _response_order_items(response):
+        if isinstance(response, list):
+            return response
+        if not isinstance(response, dict):
+            return []
+        for key in ("items", "orders", "data", "results"):
+            value = response.get(key)
+            if isinstance(value, list):
+                return value
+        return []
+
+    @staticmethod
+    def _extract_order_lines(item):
+        for key in ("items", "orderItems", "order_items", "products", "lines"):
+            value = item.get(key)
+            if isinstance(value, list):
+                return [line for line in value if isinstance(line, dict)]
+        return []
+
+    @staticmethod
+    def _normalize_error(error):
+        if isinstance(error, (dict, list)):
+            return json.dumps(error, ensure_ascii=False)
+        return str(error or "")
+
+    @staticmethod
     def _clean(value):
         return str(value or "").strip()
 
@@ -401,4 +706,10 @@ class LqaRetailersService(models.AbstractModel):
 
     @staticmethod
     def _join_url(base, path):
-        return "/".join([str(base or "").rstrip("/"), str(path or "").lstrip("/")])
+        clean_base = str(base or "").rstrip("/")
+        clean_path = str(path or "").lstrip("/")
+        if not clean_path:
+            return clean_base
+        if not clean_base:
+            return clean_path
+        return "/".join([clean_base, clean_path])

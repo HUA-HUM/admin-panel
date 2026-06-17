@@ -61,7 +61,14 @@
                         <setting string="Retailers">
                             <field name="lqa_retailers_madre_api_url"/>
                             <field name="lqa_retailers_products_api_url"/>
+                            <field name="lqa_retailers_orders_proxy_url"/>
+                            <field
+                                name="lqa_retailers_orders_api_token"
+                                password="True"
+                                placeholder="Bearer token Orders"
+                            />
                             <field name="lqa_retailers_timeout_seconds"/>
+                            <field name="lqa_retailers_orders_timeout_seconds"/>
                         </setting>
                     </block>
                 </app>

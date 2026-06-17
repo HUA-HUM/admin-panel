@@ -46,6 +46,11 @@
         <field name="params" eval="{'marketplace_id': 'megatone'}"/>
     </record>
 
+    <record id="action_lqa_retailers_orders" model="ir.actions.client">
+        <field name="name">Orders</field>
+        <field name="tag">lqa_admin_panel.retailers_orders</field>
+    </record>
+
     <record id="action_lqa_mercadolibre_catalog" model="ir.actions.client">
         <field name="name">Catalogo MercadoLibre</field>
         <field name="tag">lqa_admin_panel.mercadolibre_catalog</field>
@@ -211,6 +216,15 @@
         parent="menu_lqa_retailers_marketplaces"
         action="action_lqa_retailers_megatone"
         sequence="40"
+        groups="lqa_admin_panel.group_lqa_commercial_user"
+    />
+
+    <menuitem
+        id="menu_lqa_retailers_orders"
+        name="Orders"
+        parent="menu_lqa_retailers"
+        action="action_lqa_retailers_orders"
+        sequence="30"
         groups="lqa_admin_panel.group_lqa_commercial_user"
     />
 

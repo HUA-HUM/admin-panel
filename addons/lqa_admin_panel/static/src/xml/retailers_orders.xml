@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="lqa_admin_panel.RetailersOrders">
+        <div class="o_lqa_orders">
+            <header class="o_lqa_orders__header">
+                <div>
+                    <p>Retailers</p>
+                    <h1>Orders</h1>
+                    <span>Ordenes de Fravega, Megatone y OnCity por periodo o rango custom.</span>
+                </div>
+                <div class="o_lqa_orders__actions">
+                    <button
+                        type="button"
+                        class="btn btn-secondary"
+                        t-att-disabled="state.loading"
+                        t-on-click="refresh"
+                    >
+                        <i class="fa fa-refresh"/>
+                        Actualizar
+                    </button>
+                </div>
+            </header>
+
+            <section class="o_lqa_orders_modes">
+                <button
+                    type="button"
+                    t-att-class="state.activeMode === 'last24' ? 'is-active' : ''"
+                    t-att-disabled="state.loading"
+                    t-on-click="() => this.loadMode('last24')"
+                >
+                    Last 24h
+                </button>
+                <button
+                    type="button"
+                    t-att-class="state.activeMode === 'recent48' ? 'is-active' : ''"
+                    t-att-disabled="state.loading"
+                    t-on-click="() => this.loadMode('recent48')"
+                >
+                    48h
+                </button>
+                <button
+                    type="button"
+                    t-att-class="state.activeMode === 'recent72' ? 'is-active' : ''"
+                    t-att-disabled="state.loading"
+                    t-on-click="() => this.loadMode('recent72')"
+                >
+                    72h
+                </button>
+                <button
+                    type="button"
+                    t-att-class="state.activeMode === 'historical' ? 'is-active' : ''"
+                    t-att-disabled="state.loading"
+                    t-on-click="() => this.loadMode('historical')"
+                >
+                    Historical
+                </button>
+            </section>
+
+            <form class="o_lqa_orders_filters" t-on-submit.prevent="applyCustomRange">
+                <label>
+                    <span>Marketplace</span>
+                    <select class="form-select" t-model="state.custom.marketplace">
+                        <option value="all">Todos los marketplaces</option>
+                        <option value="fravega">Fravega</option>
+                        <option value="megatone">Megatone</option>
+                        <option value="oncity">OnCity</option>
+                    </select>
+                </label>
+                <label>
+                    <span>Desde</span>
+                    <input type="date" class="form-control" t-model="state.custom.from"/>
+                </label>
+                <label>
+                    <span>Hasta</span>
+                    <input type="date" class="form-control" t-model="state.custom.to"/>
+                </label>
+                <button type="submit" class="btn btn-primary" t-att-disabled="state.loading">
+                    Aplicar rango
+                </button>
+            </form>
+
+            <div t-if="state.loading" class="o_lqa_orders_loading">
+                <span/>
+                Cargando ordenes de marketplaces...
+            </div>
+
+            <section class="o_lqa_orders_summary">
+                <article class="o_lqa_orders_summary__main">
+                    <small>Total ordenes</small>
+                    <strong t-esc="formatNumber(state.overview.total || 0)"/>
+                    <span t-esc="rangeLabel"/>
+                </article>
+                <article
+                    t-foreach="marketplaceBreakdown"
+                    t-as="marketplace"
+                    t-key="marketplace.id"
+                >
+                    <small t-esc="marketplace.name"/>
+                    <strong t-esc="formatNumber(marketplace.total)"/>
+                    <span>ordenes</span>
+                </article>
+                <article t-att-class="totalErrors ? 'has-errors' : ''">
+                    <small>Errores</small>
+                    <strong t-esc="formatNumber(totalErrors)"/>
+                    <span>respuestas del proxy</span>
+                </article>
+            </section>
+
+            <section t-if="totalErrors" class="o_lqa_orders_errors">
+                <div>
+                    <h2>Errores reportados</h2>
+                    <span>El backend devolvio errores parciales para el periodo.</span>
+                </div>
+                <ul>
+                    <li
+                        t-foreach="state.overview.errors"
+                        t-as="error"
+                        t-key="error.key"
+                        t-esc="error.message"
+                    />
+                </ul>
+            </section>
+
+            <section class="o_lqa_orders_list">
+                <div class="o_lqa_orders_list__head">
+                    <div>
+                        <h2>Ordenes</h2>
+                        <span>
+                            <t t-esc="formatNumber((state.overview.items || []).length)"/>
+                            visibles
+                        </span>
+                    </div>
+                    <strong t-esc="modeLabel(state.activeMode)"/>
+                </div>
+
+                <div t-if="!state.loading and !(state.overview.items || []).length" class="o_lqa_orders_empty">
+                    No hay ordenes para el periodo seleccionado.
+                </div>
+
+                <div t-if="(state.overview.items || []).length" class="o_lqa_orders_grid">
+                    <article
+                        class="o_lqa_order_card"
+                        t-foreach="state.overview.items"
+                        t-as="order"
+                        t-key="order.key"
+                    >
+                        <div class="o_lqa_order_card__top">
+                            <span
+                                t-att-class="'o_lqa_orders_badge ' + statusClass(order.status)"
+                                t-esc="statusLabel(order.status)"
+                            />
+                            <small t-esc="marketplaceLabel(order.marketplace)"/>
+                        </div>
+                        <h3 t-esc="order.title"/>
+                        <dl>
+                            <div>
+                                <dt>Orden</dt>
+                                <dd t-esc="order.id || order.external_id || '-'"/>
+                            </div>
+                            <div>
+                                <dt>Fecha</dt>
+                                <dd t-esc="formatDateTime(order.created_at)"/>
+                            </div>
+                            <div>
+                                <dt>Cliente</dt>
+                                <dd t-esc="order.buyer || '-'"/>
+                            </div>
+                            <div>
+                                <dt>SKU</dt>
+                                <dd t-esc="order.sku || '-'"/>
+                            </div>
+                            <div>
+                                <dt>Cantidad</dt>
+                                <dd t-esc="formatNumber(order.quantity || 0)"/>
+                            </div>
+                            <div>
+                                <dt>Total</dt>
+                                <dd t-esc="formatCurrency(order.total)"/>
+                            </div>
+                        </dl>
+                    </article>
+                </div>
+            </section>
+        </div>
+    </t>
+</templates>

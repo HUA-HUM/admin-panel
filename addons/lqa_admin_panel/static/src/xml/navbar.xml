@@ -151,7 +151,9 @@
                                                             ? 'fa fa-bullhorn'
                                                             : child.name === 'Marketplaces'
                                                                 ? 'fa fa-shopping-cart'
-                                                                : 'fa fa-circle-o'"
+                                                                : child.name === 'Orders'
+                                                                    ? 'fa fa-list-alt'
+                                                                    : 'fa fa-circle-o'"
                                     />
                                     <span t-esc="child.name"/>
                                 </button>

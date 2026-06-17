@@ -23,6 +23,9 @@ services:
     environment:
       NEXT_PUBLIC_MADRE_API_URL: ${NEXT_PUBLIC_MADRE_API_URL:-https://api.madre.loquieroaca.com}
       NEXT_PUBLIC_PRODUCTS_API_URL: ${NEXT_PUBLIC_PRODUCTS_API_URL:-https://api.products.loquieroaca.com}
+      NEXT_PUBLIC_ORDERS_API_URL: ${NEXT_PUBLIC_ORDERS_API_URL:-https://market.loquieroaca.com/api/orders}
+      ORDERS_API_URL: ${ORDERS_API_URL:-}
+      ORDERS_API_TOKEN: ${ORDERS_API_TOKEN:-}
     ports:
       - "${ODOO_PORT:-8069}:8069"
     volumes:

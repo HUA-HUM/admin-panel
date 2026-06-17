@@ -39,6 +39,10 @@ Base de panel comercial construida sobre Odoo + Docker.
   - Products consulta productos paginados por marketplace, SKU y estado.
   - Imports permite disparar importaciones asincronicas con confirmacion e historial.
   - Status muestra la distribucion visual de estados de publicaciones.
+  - Seccion `Orders` para ordenes de Fravega, Megatone y OnCity:
+    - Vistas rapidas Last 24h, 48h, 72h e historico.
+    - Rango custom para todos los marketplaces o por canal.
+    - Resumen por marketplace, errores parciales y cards de ordenes.
 - Grupos de seguridad para usuarios comerciales y administradores del panel.
 - Seccion `Configuracion / Usuarios`:
   - Alta manual de usuarios internos con email/login y contrasena.
@@ -148,10 +152,14 @@ Ir a `Ajustes > Panel Comercial` y completar:
 - URL base y servicio de Datadog Live Tail.
 - URL de Catalogo Automeli.
 - URLs base Madre y Products para Retailers.
+- URL/token de Orders para Retailers.
 - Timeout.
 - Variables de entorno Retailers:
   - `NEXT_PUBLIC_MADRE_API_URL=https://api.madre.loquieroaca.com`
   - `NEXT_PUBLIC_PRODUCTS_API_URL=https://api.products.loquieroaca.com`
+  - `NEXT_PUBLIC_ORDERS_API_URL=https://market.loquieroaca.com/api/orders`
+  - `ORDERS_API_URL=`
+  - `ORDERS_API_TOKEN=`
 
 El dashboard lee esta configuracion sin mostrar secretos. Las llamadas quedan
 centralizadas en `lqa.api.client`. El catalogo de MercadoLibre usa por defecto:
@@ -187,10 +195,18 @@ https://api.madre.loquieroaca.com/api/internal/marketplace/products/items/all
 https://api.madre.loquieroaca.com/api/internal/product-sync/runs
 https://api.madre.loquieroaca.com/api/internal/marketplace/products/{marketplace}/status
 https://api.products.loquieroaca.com/api/internal/import/{marketplace}/run
+https://market.loquieroaca.com/api/orders/overview/last-24-hours
+https://market.loquieroaca.com/api/orders/overview/recent/{hours}
+https://market.loquieroaca.com/api/orders/overview/historical
+https://market.loquieroaca.com/api/orders
+https://market.loquieroaca.com/api/orders/{marketplace}
 ```
 
 Si el servicio de imports vive en otro host, configurar `URL Products Retailers`
 en `Ajustes > Panel Comercial`.
+
+Para `Retailers / Orders`, configurar `Token Orders Retailers` o la variable
+`ORDERS_API_TOKEN` con el Bearer token que espera el proxy de ordenes.
 
 ## Estructura
 
@@ -223,6 +239,7 @@ addons/lqa_admin_panel/
     js/mercadolibre_promotions.js
     js/automeli_catalog.js
     js/retailers.js
+    js/retailers_orders.js
     js/navigation.js
     scss/dashboard.scss
     scss/mercadolibre_catalog.scss
@@ -230,12 +247,14 @@ addons/lqa_admin_panel/
     scss/mercadolibre_promotions.scss
     scss/automeli_catalog.scss
     scss/retailers.scss
+    scss/retailers_orders.scss
     xml/dashboard.xml
     xml/mercadolibre_catalog.xml
     xml/mercadolibre_deleter.xml
     xml/mercadolibre_promotions.xml
     xml/automeli_catalog.xml
     xml/retailers.xml
+    xml/retailers_orders.xml
 ```
 
 ## Proximo paso recomendado
