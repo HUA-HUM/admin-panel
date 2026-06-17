@@ -109,7 +109,13 @@
                                     t-on-click="() => this.lqaToggleSection(child)"
                                 >
                                     <span>
-                                        <i class="fa fa-shopping-cart"/>
+                                        <i
+                                            t-att-class="child.name === 'Catalogo'
+                                                ? 'fa fa-th'
+                                                : child.name === 'Marketplaces'
+                                                    ? 'fa fa-shopping-cart'
+                                                    : 'fa fa-folder-o'"
+                                        />
                                         <t t-esc="child.name"/>
                                     </span>
                                     <i
@@ -129,7 +135,13 @@
                                         t-key="grandchild.id"
                                         t-on-click="() => this.lqaSelectMenu(grandchild)"
                                     >
-                                        <i class="fa fa-shopping-cart"/>
+                                        <i
+                                            t-att-class="grandchild.name === 'Selecciones'
+                                                ? 'fa fa-folder-open-o'
+                                                : grandchild.name === 'Productos'
+                                                    ? 'fa fa-th'
+                                                    : 'fa fa-shopping-cart'"
+                                        />
                                         <span t-esc="grandchild.name"/>
                                     </button>
                                 </div>

@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="lqa_admin_panel.AutomeliSelections">
+        <div class="o_lqa_automeli_selections_page">
+            <header class="o_lqa_automeli_selections_page__header">
+                <div>
+                    <p>Automeli / Catalogo</p>
+                    <h1>Selecciones</h1>
+                    <span>Carpetas guardadas con productos seleccionados del catalogo.</span>
+                </div>
+                <button
+                    type="button"
+                    class="btn btn-secondary"
+                    t-att-disabled="state.loadingFolders"
+                    t-on-click="loadFolders"
+                >
+                    <i class="fa fa-refresh"/>
+                    Actualizar
+                </button>
+            </header>
+
+            <section class="o_lqa_automeli_selection_layout">
+                <aside class="o_lqa_automeli_selection_folders">
+                    <div class="o_lqa_automeli_selection_folders__head">
+                        <h2>Carpetas</h2>
+                        <span>
+                            <t t-esc="formatNumber(state.folders.length)"/>
+                            creadas
+                        </span>
+                    </div>
+
+                    <div t-if="state.loadingFolders" class="o_lqa_automeli_selection_empty">
+                        Cargando carpetas...
+                    </div>
+                    <div t-elif="!state.folders.length" class="o_lqa_automeli_selection_empty">
+                        Todavia no hay carpetas. Crealas desde Automeli / Catalogo / Productos.
+                    </div>
+                    <div t-else="" class="o_lqa_automeli_folder_list">
+                        <button
+                            type="button"
+                            t-foreach="state.folders"
+                            t-as="folder"
+                            t-key="folder.id"
+                            t-att-class="isSelectedFolder(folder) ? 'is-active' : ''"
+                            t-on-click="() => this.selectFolder(folder)"
+                        >
+                            <strong t-esc="folder.name"/>
+                            <span>
+                                <t t-esc="formatNumber(folder.productCount)"/>
+                                productos
+                            </span>
+                            <small>
+                                Creada por
+                                <t t-esc="folder.creatorName || folder.creatorLogin || '-'"/>
+                            </small>
+                        </button>
+                    </div>
+                </aside>
+
+                <section class="o_lqa_automeli_selection_detail">
+                    <div t-if="!selectedFolder" class="o_lqa_automeli_selection_empty is-large">
+                        Selecciona una carpeta para ver sus productos.
+                    </div>
+
+                    <t t-else="">
+                        <div class="o_lqa_automeli_selection_detail__head">
+                            <div>
+                                <p>Carpeta</p>
+                                <h2 t-esc="selectedFolder.name"/>
+                                <span>
+                                    Creada por
+                                    <strong t-esc="selectedFolder.creatorName || selectedFolder.creatorLogin || '-'"/>
+                                    el
+                                    <strong t-esc="formatDateTime(selectedFolder.createdAt)"/>
+                                </span>
+                            </div>
+                            <div class="o_lqa_automeli_selection_detail__actions">
+                                <button
+                                    type="button"
+                                    class="btn btn-secondary"
+                                    t-att-disabled="isExportingFolder(selectedFolder)"
+                                    t-on-click="() => this.downloadFolderCsv(selectedFolder)"
+                                >
+                                    <i class="fa fa-download"/>
+                                    Descargar CSV MLAs
+                                </button>
+                                <button
+                                    t-if="selectedFolder.canDelete"
+                                    type="button"
+                                    class="btn btn-danger"
+                                    t-on-click="() => this.openDeleteFolder(selectedFolder)"
+                                >
+                                    <i class="fa fa-trash-o"/>
+                                    Eliminar carpeta
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="o_lqa_automeli_selection_stats">
+                            <article>
+                                <small>Productos</small>
+                                <strong t-esc="formatNumber(selectedFolder.productCount)"/>
+                            </article>
+                            <article>
+                                <small>MLAs visibles</small>
+                                <strong t-esc="formatNumber(state.products.length)"/>
+                            </article>
+                            <article>
+                                <small>Ultima edicion</small>
+                                <strong t-esc="formatDateTime(selectedFolder.updatedAt)"/>
+                            </article>
+                        </div>
+
+                        <div t-if="state.loadingProducts" class="o_lqa_automeli_selection_empty">
+                            Cargando productos guardados...
+                        </div>
+                        <div t-elif="!state.products.length" class="o_lqa_automeli_selection_empty">
+                            Esta carpeta todavia no tiene productos.
+                        </div>
+                        <div t-else="" class="o_lqa_automeli_selection_products">
+                            <article
+                                t-foreach="state.products"
+                                t-as="product"
+                                t-key="product.id"
+                            >
+                                <div class="o_lqa_automeli_selection_product__top">
+                                    <span
+                                        t-att-class="'o_lqa_automeli_selection_status is-' + product.meliStatus"
+                                        t-esc="meliStatusLabel(product.meliStatus)"
+                                    />
+                                    <small t-esc="product.listingTypeId || 'Sin tipo'"/>
+                                </div>
+                                <h3 t-esc="product.mla || 'Sin MLA'"/>
+                                <span class="o_lqa_automeli_selection_product__sku" t-esc="product.sku || 'Sin SKU'"/>
+                                <dl>
+                                    <div>
+                                        <dt>Precio ML</dt>
+                                        <dd t-esc="formatCurrency(product.meliSalePrice)"/>
+                                    </div>
+                                    <div>
+                                        <dt>Costo</dt>
+                                        <dd t-esc="formatCurrency(product.totalPrice, 'USD', 2)"/>
+                                    </div>
+                                    <div>
+                                        <dt>Stock</dt>
+                                        <dd t-esc="formatNumber(product.stockQuantity)"/>
+                                    </div>
+                                    <div>
+                                        <dt>Actualizado</dt>
+                                        <dd t-esc="formatDateTime(product.updatedAt)"/>
+                                    </div>
+                                </dl>
+                                <a
+                                    t-if="productUrl(product)"
+                                    t-att-href="productUrl(product)"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
+                                    Ver publicacion
+                                </a>
+                            </article>
+                        </div>
+                    </t>
+                </section>
+            </section>
+
+            <div class="o_lqa_modal_backdrop" t-if="state.deletingFolder">
+                <div class="o_lqa_automeli_delete_modal">
+                    <h2>Eliminar carpeta</h2>
+                    <p>
+                        Vas a eliminar
+                        <strong t-esc="state.deletingFolder.name"/>.
+                        Tambien se van a eliminar sus productos guardados.
+                    </p>
+                    <div class="o_lqa_automeli_delete_modal__actions">
+                        <button type="button" class="btn btn-secondary" t-on-click="closeDeleteFolder">
+                            Cancelar
+                        </button>
+                        <button type="button" class="btn btn-danger" t-on-click="confirmDeleteFolder">
+                            Eliminar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

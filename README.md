@@ -35,6 +35,7 @@ Base de panel comercial construida sobre Odoo + Docker.
   - Cards con costos, stock, peso y estados Amazon/MercadoLibre.
   - Estado de ultima actualizacion del catalogo con total, ultimo creado y ultimo actualizado.
   - Seleccion masiva de productos y guardado en carpetas persistentes.
+  - Vista `Selecciones` con detalle de carpetas, creador, descarga CSV de MLAs y eliminacion de carpetas.
 - Modulo `Retailers`:
   - Dashboard local de marketplaces: Google Merchant, Fravega, OnCity y Megatone.
   - Pantalla por marketplace con tabs `Products`, `Imports` y `Status`.

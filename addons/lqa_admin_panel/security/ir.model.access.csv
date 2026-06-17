@@ -2,7 +2,7 @@ id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_lqa_panel_module_user,lqa.panel.module user,model_lqa_panel_module,lqa_admin_panel.group_lqa_commercial_user,1,0,0,0
 access_lqa_panel_section_user,lqa.panel.section user,model_lqa_panel_section,lqa_admin_panel.group_lqa_commercial_user,1,0,0,0
 access_lqa_automeli_catalog_item_user,lqa.automeli.catalog.item user,model_lqa_automeli_catalog_item,lqa_admin_panel.group_lqa_commercial_user,1,1,1,0
-access_lqa_automeli_selection_folder_user,lqa.automeli.selection.folder user,model_lqa_automeli_selection_folder,lqa_admin_panel.group_lqa_commercial_user,1,1,1,0
+access_lqa_automeli_selection_folder_user,lqa.automeli.selection.folder user,model_lqa_automeli_selection_folder,lqa_admin_panel.group_lqa_commercial_user,1,1,1,1
 access_lqa_automeli_selection_item_user,lqa.automeli.selection.item user,model_lqa_automeli_selection_item,lqa_admin_panel.group_lqa_commercial_user,1,1,1,1
 access_lqa_meli_deletion_batch_user,lqa.mercadolibre.deletion.batch user,model_lqa_mercadolibre_deletion_batch,lqa_admin_panel.group_lqa_commercial_user,1,0,0,0
 access_lqa_meli_deletion_line_user,lqa.mercadolibre.deletion.line user,model_lqa_mercadolibre_deletion_line,lqa_admin_panel.group_lqa_commercial_user,1,0,0,0

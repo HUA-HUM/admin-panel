@@ -84,11 +84,34 @@
         <field name="context">{'search_default_group_status': 1}</field>
     </record>
 
+    <record id="action_lqa_automeli_selections" model="ir.actions.client">
+        <field name="name">Selecciones Automeli</field>
+        <field name="tag">lqa_admin_panel.automeli_selections</field>
+    </record>
+
     <menuitem
         id="menu_lqa_automeli_catalog"
         name="Catalogo"
         parent="menu_lqa_automeli"
         action="action_lqa_automeli_catalog_api"
+        sequence="20"
+        groups="lqa_admin_panel.group_lqa_commercial_user"
+    />
+
+    <menuitem
+        id="menu_lqa_automeli_catalog_products"
+        name="Productos"
+        parent="menu_lqa_automeli_catalog"
+        action="action_lqa_automeli_catalog_api"
+        sequence="10"
+        groups="lqa_admin_panel.group_lqa_commercial_user"
+    />
+
+    <menuitem
+        id="menu_lqa_automeli_catalog_selections"
+        name="Selecciones"
+        parent="menu_lqa_automeli_catalog"
+        action="action_lqa_automeli_selections"
         sequence="20"
         groups="lqa_admin_panel.group_lqa_commercial_user"
     />

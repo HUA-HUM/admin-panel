@@ -1,4 +1,6 @@
 import json
+import csv
+import io
 from math import ceil
 
 from odoo import _, api, fields, models
@@ -239,6 +241,37 @@ class LqaAutomeliCatalogService(models.AbstractModel):
         line.unlink()
         return self._folder_to_dict(folder)
 
+    @api.model
+    def delete_selection_folder(self, folder_id):
+        self._check_access()
+        folder = self._get_folder(folder_id)
+        if not self.env.user.has_group("lqa_admin_panel.group_lqa_admin") and folder.create_uid != self.env.user:
+            raise AccessError(_("Solo podes eliminar carpetas creadas por tu usuario."))
+        folder.unlink()
+        return {"deleted": True}
+
+    @api.model
+    def export_selection_folder_mlas(self, folder_id):
+        self._check_access()
+        folder = self._get_folder(folder_id)
+        lines = self.env["lqa.automeli.selection.item"].search(
+            [("folder_id", "=", folder.id)],
+            order="id",
+        )
+        buffer = io.StringIO()
+        writer = csv.writer(buffer)
+        writer.writerow(["mla"])
+        exported = set()
+        for line in lines:
+            if line.mla and line.mla not in exported:
+                exported.add(line.mla)
+                writer.writerow([line.mla])
+        return {
+            "filename": f"{self._csv_safe_name(folder.name)}-mlas.csv",
+            "content": buffer.getvalue(),
+            "count": len(exported),
+        }
+
     def _check_access(self):
         if not self.env.user.has_group(
             "lqa_admin_panel.group_lqa_commercial_user"
@@ -259,7 +292,14 @@ class LqaAutomeliCatalogService(models.AbstractModel):
             "name": folder.name,
             "description": folder.description or "",
             "productCount": folder.product_count,
+            "creatorName": folder.create_uid.name or "",
+            "creatorLogin": folder.create_uid.login or "",
+            "createdAt": fields.Datetime.to_string(folder.create_date),
             "updatedAt": fields.Datetime.to_string(folder.write_date),
+            "canDelete": (
+                self.env.user.has_group("lqa_admin_panel.group_lqa_admin")
+                or folder.create_uid == self.env.user
+            ),
         }
 
     def _selection_values_from_product(self, folder, product):
@@ -339,3 +379,11 @@ class LqaAutomeliCatalogService(models.AbstractModel):
     @staticmethod
     def _clean(value):
         return str(value or "").strip()
+
+    def _csv_safe_name(self, value):
+        clean_value = self._clean(value).lower().replace(" ", "-")
+        return "".join(
+            character
+            for character in clean_value
+            if character.isalnum() or character in {"-", "_"}
+        ) or "automeli-seleccion"
