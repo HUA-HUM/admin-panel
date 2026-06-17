@@ -236,19 +236,22 @@
                 </details>
             </form>
 
-            <section class="o_lqa_automeli_selections">
-                <div class="o_lqa_automeli_selections__head">
+            <details class="o_lqa_automeli_selections">
+                <summary class="o_lqa_automeli_selections__head">
                     <div>
                         <h2>Selecciones de productos</h2>
                         <span>
                             Guarda productos del catalogo en carpetas para revisarlos despues.
                         </span>
                     </div>
-                    <strong>
-                        <t t-esc="formatNumber(selectedCount)"/>
-                        seleccionados
-                    </strong>
-                </div>
+                    <div class="o_lqa_automeli_selections__summary">
+                        <strong>
+                            <t t-esc="formatNumber(selectedCount)"/>
+                            seleccionados
+                        </strong>
+                        <i class="fa fa-chevron-down"/>
+                    </div>
+                </summary>
 
                 <div class="o_lqa_automeli_selections__tools">
                     <form t-on-submit.prevent="createFolder">
@@ -389,7 +392,7 @@
                         </article>
                     </div>
                 </div>
-            </section>
+            </details>
 
             <section class="o_lqa_automeli_results">
                 <div class="o_lqa_automeli_results__bar">

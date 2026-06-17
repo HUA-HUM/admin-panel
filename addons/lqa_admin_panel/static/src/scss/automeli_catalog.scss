@@ -192,6 +192,10 @@
     border: 1px solid #d7dee7;
     border-radius: 8px;
     background: #fff;
+
+    &[open] .o_lqa_automeli_selections__summary i {
+        transform: rotate(180deg);
+    }
 }
 
 .o_lqa_automeli_selections__head,
@@ -228,6 +232,27 @@
         color: #ff5862;
         font-size: 13px;
         font-weight: 800;
+    }
+}
+
+.o_lqa_automeli_selections__head {
+    cursor: pointer;
+    list-style: none;
+
+    &::-webkit-details-marker {
+        display: none;
+    }
+}
+
+.o_lqa_automeli_selections__summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+
+    i {
+        color: #7a8899;
+        font-size: 12px;
+        transition: transform 0.18s ease;
     }
 }
 
