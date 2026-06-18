@@ -39,6 +39,9 @@ Base de panel comercial construida sobre Odoo + Docker.
 - Modulo `Retailers`:
   - Dashboard con resumen de ordenes de las ultimas 24 horas por marketplace.
   - Seccion `Marketplaces` con tarjetas para Google Merchant, Fravega, OnCity y Megatone.
+  - Seccion `Marketplaces / Catalogo`:
+    - Busqueda del estado de un seller SKU en todos los marketplaces.
+    - Listado general paginado con precio, stock, estado e IDs por canal.
   - Pantalla por marketplace con tabs `Products`, `Imports` y `Status`.
   - Products consulta productos paginados por marketplace, SKU y estado.
   - Imports permite disparar importaciones asincronicas con confirmacion e historial.
@@ -222,6 +225,8 @@ Retailers usa por defecto:
 
 ```text
 https://api.madre.loquieroaca.com/api/internal/marketplace/products/items/all
+https://api.madre.loquieroaca.com/api/internal/marketplace/products/items/{sellerSku}/marketplaces
+https://api.madre.loquieroaca.com/api/internal/marketplace/products/items/marketplaces
 https://api.madre.loquieroaca.com/api/internal/product-sync/runs
 https://api.madre.loquieroaca.com/api/internal/marketplace/products/{marketplace}/status
 https://api.madre.loquieroaca.com/api/analytics/marketplace-favorites/marketplaces

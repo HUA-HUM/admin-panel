@@ -144,6 +144,8 @@
                                                     ? 'fa fa-th'
                                                     : grandchild.name === 'Todos los marketplaces'
                                                         ? 'fa fa-th-large'
+                                                        : grandchild.name === 'Catalogo'
+                                                            ? 'fa fa-th'
                                                         : grandchild.name === 'Carpetas'
                                                             ? 'fa fa-folder-open-o'
                                                             : grandchild.name === 'Publicar'

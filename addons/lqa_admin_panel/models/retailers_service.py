@@ -1,6 +1,6 @@
 import json
 import os
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import quote, urlsplit, urlunsplit
 
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError
@@ -53,6 +53,67 @@ class LqaRetailersService(models.AbstractModel):
             {"id": marketplace_id, **values}
             for marketplace_id, values in self.MARKETPLACES.items()
         ]
+
+    @api.model
+    def get_marketplace_catalog(self, filters=None):
+        self._check_access()
+        filters = filters or {}
+        limit = min(max(self._as_int(filters.get("limit"), 10), 1), 100)
+        offset = max(self._as_int(filters.get("offset"), 0), 0)
+        response = self.env["lqa.api.client"].request_absolute_json(
+            "GET",
+            self._join_url(
+                self._madre_base_url(),
+                "/api/internal/marketplace/products/items/marketplaces",
+            ),
+            params={"offset": offset, "limit": limit},
+            timeout=self._timeout(),
+        )
+        payload = response if isinstance(response, dict) else {}
+        items = self._response_items(response)
+        total = self._as_int(payload.get("total"), len(items))
+        count = self._as_int(payload.get("count"), len(items))
+        has_next = bool(payload.get("hasNext"))
+        next_offset = self._as_int(
+            payload.get("nextOffset"),
+            offset + limit,
+        )
+        return {
+            "items": [
+                self._normalize_marketplace_catalog_item(item)
+                for item in items
+            ],
+            "pagination": {
+                "total": total,
+                "offset": offset,
+                "limit": limit,
+                "count": count,
+                "has_previous": offset > 0,
+                "has_next": has_next,
+                "next_offset": next_offset,
+                "page": (offset // limit) + 1,
+                "total_pages": max((total + limit - 1) // limit, 1),
+            },
+        }
+
+    @api.model
+    def get_marketplace_catalog_sku(self, seller_sku):
+        self._check_access()
+        seller_sku = self._clean(seller_sku)
+        if not seller_sku:
+            raise UserError(_("Ingresa un seller SKU para buscar."))
+        response = self.env["lqa.api.client"].request_absolute_json(
+            "GET",
+            self._join_url(
+                self._madre_base_url(),
+                (
+                    "/api/internal/marketplace/products/items/"
+                    f"{quote(seller_sku, safe='')}/marketplaces"
+                ),
+            ),
+            timeout=self._timeout(),
+        )
+        return self._normalize_marketplace_catalog_item(response)
 
     @api.model
     def get_products(self, marketplace_id, filters=None):
@@ -610,6 +671,100 @@ class LqaRetailersService(models.AbstractModel):
                 or item.get("updatedAt")
                 or item.get("updated_at")
                 or ""
+            ),
+        }
+
+    def _normalize_marketplace_catalog_item(self, item):
+        item = item if isinstance(item, dict) else {}
+        raw_items = item.get("items") if isinstance(item.get("items"), list) else []
+        marketplaces = (
+            item.get("marketplaces")
+            if isinstance(item.get("marketplaces"), list)
+            else []
+        )
+        price_map = (
+            item.get("priceByMarketplace")
+            if isinstance(item.get("priceByMarketplace"), dict)
+            else {}
+        )
+        stock_map = (
+            item.get("stockByMarketplace")
+            if isinstance(item.get("stockByMarketplace"), dict)
+            else {}
+        )
+        status_map = (
+            item.get("statusByMarketplace")
+            if isinstance(item.get("statusByMarketplace"), dict)
+            else {}
+        )
+        normalized_items = [
+            self._normalize_marketplace_catalog_detail(detail)
+            for detail in raw_items
+            if isinstance(detail, dict)
+        ]
+        detail_marketplaces = {
+            detail["marketplace"]
+            for detail in normalized_items
+            if detail.get("marketplace")
+        }
+        for marketplace in marketplaces:
+            marketplace = self._clean(marketplace).lower()
+            if not marketplace or marketplace in detail_marketplaces:
+                continue
+            normalized_items.append(
+                {
+                    "marketplace": marketplace,
+                    "marketplace_sku": "",
+                    "external_id": "",
+                    "price": self._as_float(price_map.get(marketplace), None),
+                    "stock": self._as_int(stock_map.get(marketplace), 0),
+                    "status": self._clean(status_map.get(marketplace)),
+                    "is_active": False,
+                    "last_seen_at": "",
+                    "updated_at": "",
+                }
+            )
+        normalized_marketplaces = []
+        for marketplace in [
+            *marketplaces,
+            *(detail.get("marketplace") for detail in normalized_items),
+        ]:
+            marketplace = self._clean(marketplace).lower()
+            if marketplace and marketplace not in normalized_marketplaces:
+                normalized_marketplaces.append(marketplace)
+        return {
+            "seller_sku": self._clean(
+                item.get("sellerSku")
+                or item.get("seller_sku")
+                or item.get("sku")
+            ),
+            "marketplaces": normalized_marketplaces,
+            "items": normalized_items,
+        }
+
+    def _normalize_marketplace_catalog_detail(self, item):
+        marketplace = self._clean(
+            item.get("marketplace") or item.get("marketplaceId")
+        ).lower()
+        return {
+            "marketplace": marketplace,
+            "marketplace_sku": self._clean(
+                item.get("marketplaceSku")
+                or item.get("marketplace_sku")
+            ),
+            "external_id": self._clean(
+                item.get("externalId")
+                or item.get("external_id")
+            ),
+            "price": self._as_float(item.get("price"), None),
+            "stock": self._as_int(item.get("stock"), 0),
+            "status": self._clean(item.get("status")),
+            "is_active": bool(item.get("isActive")),
+            "last_seen_at": self._clean(
+                item.get("lastSeenAt") or item.get("last_seen_at")
+            ),
+            "updated_at": self._clean(
+                item.get("updatedAt") or item.get("updated_at")
             ),
         }
 

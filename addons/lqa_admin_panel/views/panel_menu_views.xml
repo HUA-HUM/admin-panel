@@ -29,6 +29,11 @@
         <field name="params" eval="{'view': 'marketplaces'}"/>
     </record>
 
+    <record id="action_lqa_retailers_catalog" model="ir.actions.client">
+        <field name="name">Catálogo Retailers</field>
+        <field name="tag">lqa_admin_panel.retailers_catalog</field>
+    </record>
+
     <record id="action_lqa_retailers_google_merchant" model="ir.actions.client">
         <field name="name">Google Merchant</field>
         <field name="tag">lqa_admin_panel.retailers</field>
@@ -263,11 +268,20 @@
     />
 
     <menuitem
+        id="menu_lqa_retailers_catalog"
+        name="Catalogo"
+        parent="menu_lqa_retailers_marketplaces"
+        action="action_lqa_retailers_catalog"
+        sequence="10"
+        groups="lqa_admin_panel.group_lqa_commercial_user"
+    />
+
+    <menuitem
         id="menu_lqa_retailers_google_merchant"
         name="Google Merchant"
         parent="menu_lqa_retailers_marketplaces"
         action="action_lqa_retailers_google_merchant"
-        sequence="30"
+        sequence="40"
         groups="lqa_admin_panel.group_lqa_commercial_user"
     />
 
@@ -276,7 +290,7 @@
         name="Fravega"
         parent="menu_lqa_retailers_marketplaces"
         action="action_lqa_retailers_fravega"
-        sequence="20"
+        sequence="30"
         groups="lqa_admin_panel.group_lqa_commercial_user"
     />
 
@@ -285,7 +299,7 @@
         name="OnCity"
         parent="menu_lqa_retailers_marketplaces"
         action="action_lqa_retailers_oncity"
-        sequence="10"
+        sequence="20"
         groups="lqa_admin_panel.group_lqa_commercial_user"
     />
 
@@ -294,7 +308,7 @@
         name="Megatone"
         parent="menu_lqa_retailers_marketplaces"
         action="action_lqa_retailers_megatone"
-        sequence="40"
+        sequence="50"
         groups="lqa_admin_panel.group_lqa_commercial_user"
     />
 
