@@ -1,4 +1,5 @@
-from odoo import api, models
+from odoo import _, api, models
+from odoo.exceptions import AccessError, UserError
 
 
 class LqaDashboardService(models.AbstractModel):
@@ -7,6 +8,7 @@ class LqaDashboardService(models.AbstractModel):
 
     @api.model
     def get_dashboard_state(self, selected_module_code=False):
+        self._check_access()
         params = self.env["ir.config_parameter"].sudo()
         domain = [("active", "=", True)]
         if selected_module_code:
@@ -28,7 +30,33 @@ class LqaDashboardService(models.AbstractModel):
                 self._serialize_module(module, include_sections=False)
                 for module in all_modules
             ],
+            "favorites": self._serialize_favorite_menus(),
         }
+
+    @api.model
+    def get_menu_favorites_state(self):
+        self._check_access()
+        return self._favorite_state()
+
+    @api.model
+    def toggle_menu_favorite(self, menu_id):
+        self._check_access()
+        menu = self.env["ir.ui.menu"].browse(self._as_int(menu_id)).exists()
+        visible_menu_ids = self.env["ir.ui.menu"]._visible_menu_ids()
+        if (
+            not menu
+            or menu.id not in visible_menu_ids
+            or not menu.action
+            or not self._is_panel_menu(menu)
+        ):
+            raise UserError(_("La seccion seleccionada no se puede agregar a favoritos."))
+
+        user = self.env.user.sudo()
+        if menu.id in user.lqa_favorite_menu_ids.ids:
+            user.write({"lqa_favorite_menu_ids": [(3, menu.id)]})
+        else:
+            user.write({"lqa_favorite_menu_ids": [(4, menu.id)]})
+        return self._favorite_state()
 
     def _serialize_module(self, module, include_sections=True):
         action_id = self._action_id_from_xmlid(module.dashboard_action_xmlid)
@@ -91,3 +119,85 @@ class LqaDashboardService(models.AbstractModel):
             return False
         action = self.env.ref(xmlid, raise_if_not_found=False)
         return action.id if action else False
+
+    def _favorite_state(self):
+        menus = self._favorite_menus()
+        root = self.env.ref("lqa_admin_panel.menu_lqa_root", raise_if_not_found=False)
+        return {
+            "panel_root_menu_id": root.id if root else False,
+            "favorite_menu_ids": menus.ids,
+            "favorites": [
+                self._serialize_favorite_menu(menu)
+                for menu in menus
+            ],
+        }
+
+    def _favorite_menus(self):
+        visible_menu_ids = self.env["ir.ui.menu"]._visible_menu_ids()
+        menus = self.env.user.sudo().lqa_favorite_menu_ids.filtered(
+            lambda menu: (
+                menu.id in visible_menu_ids
+                and menu.active
+                and menu.action
+                and self._is_panel_menu(menu)
+            )
+        )
+        return menus.sorted(
+            key=lambda menu: (
+                self._menu_path(menu).lower(),
+                menu.sequence,
+                menu.name.lower(),
+            )
+        )
+
+    def _serialize_favorite_menus(self):
+        return [
+            self._serialize_favorite_menu(menu)
+            for menu in self._favorite_menus()
+        ]
+
+    def _serialize_favorite_menu(self, menu):
+        path_parts = self._menu_path_parts(menu)
+        return {
+            "menu_id": menu.id,
+            "name": menu.name,
+            "path": " / ".join(path_parts[:-1]),
+            "full_path": " / ".join(path_parts),
+            "action_id": menu.action.id if menu.action else False,
+        }
+
+    def _menu_path(self, menu):
+        return " / ".join(self._menu_path_parts(menu))
+
+    def _menu_path_parts(self, menu):
+        root = self.env.ref("lqa_admin_panel.menu_lqa_root", raise_if_not_found=False)
+        parts = []
+        current = menu
+        while current and (not root or current.id != root.id):
+            parts.append(current.name)
+            current = current.parent_id
+        return list(reversed(parts))
+
+    def _is_panel_menu(self, menu):
+        root = self.env.ref("lqa_admin_panel.menu_lqa_root", raise_if_not_found=False)
+        if not root:
+            return False
+        current = menu
+        while current:
+            if current.id == root.id:
+                return True
+            current = current.parent_id
+        return False
+
+    def _check_access(self):
+        if not self.env.user.has_group(
+            "lqa_admin_panel.group_lqa_commercial_user"
+        ):
+            raise AccessError(_("No tenes permisos para acceder al panel comercial."))
+
+    @staticmethod
+    def _as_int(value):
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return 0

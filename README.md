@@ -63,6 +63,9 @@ Base de panel comercial construida sobre Odoo + Docker.
     - Carga manual por SKU, precio de venta y canal.
     - Importacion masiva desde Excel XLSX.
     - Historial de jobs, detalle de rentabilidad y resultado descargable.
+- Favoritos personales:
+  - Cada seccion navegable del sidebar se puede marcar con una estrella.
+  - Los favoritos se guardan por usuario y aparecen como accesos directos en el Panel Principal.
   - Seccion `Acciones masivas` para forzar actualizacion de precio, estado y stock.
   - Seccion `Orders` para ordenes de Fravega, Megatone y OnCity:
     - Vistas rapidas Last 24h, 48h, 72h e historico.

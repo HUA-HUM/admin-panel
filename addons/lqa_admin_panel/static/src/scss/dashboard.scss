@@ -97,7 +97,8 @@
 }
 
 .o_lqa_dashboard__loading,
-.o_lqa_dashboard__grid {
+.o_lqa_dashboard__grid,
+.o_lqa_dashboard_favorites {
     max-width: 1180px;
     margin: 0 auto;
 }
@@ -115,6 +116,135 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
     gap: 16px;
+}
+
+.o_lqa_dashboard_favorites {
+    margin-bottom: 20px;
+    padding: 16px;
+    border: 1px solid #d7dee7;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.o_lqa_dashboard_favorites__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 12px;
+
+    p {
+        margin: 0 0 3px;
+        color: #60758a;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    h2 {
+        margin: 0;
+        font-size: 19px;
+        letter-spacing: 0;
+    }
+
+    > span {
+        color: #60758a;
+        font-size: 12px;
+        font-weight: 600;
+    }
+}
+
+.o_lqa_dashboard_favorites__empty {
+    display: flex;
+    min-height: 76px;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    border: 1px dashed #c8d2dc;
+    border-radius: 8px;
+    background: #f8fafc;
+    color: #60758a;
+
+    > i {
+        color: #d09a16;
+        font-size: 20px;
+    }
+
+    strong,
+    span {
+        display: block;
+    }
+
+    strong {
+        color: #334e68;
+    }
+
+    span {
+        margin-top: 2px;
+        font-size: 13px;
+    }
+}
+
+.o_lqa_dashboard_favorites__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 8px;
+
+    button {
+        display: grid;
+        min-width: 0;
+        min-height: 64px;
+        grid-template-columns: 28px minmax(0, 1fr) 12px;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        border: 1px solid #d7dee7;
+        border-radius: 8px;
+        background: #fff;
+        color: #334e68;
+        text-align: left;
+
+        &:hover {
+            border-color: #aab8c8;
+            background: #f8fafc;
+        }
+    }
+
+    button > i:first-child {
+        color: #ff4f5a;
+        font-size: 17px;
+        text-align: center;
+    }
+
+    button > i:last-child {
+        color: #94a3b8;
+        font-size: 10px;
+    }
+
+    span,
+    strong,
+    small {
+        display: block;
+        min-width: 0;
+    }
+
+    strong,
+    small {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    strong {
+        color: #1f2933;
+        font-size: 13px;
+    }
+
+    small {
+        margin-top: 3px;
+        color: #60758a;
+        font-size: 11px;
+    }
 }
 
 .o_lqa_module {
@@ -282,6 +412,10 @@
 
     .o_lqa_dashboard__status {
         width: 100%;
+    }
+
+    .o_lqa_dashboard_favorites__grid {
+        grid-template-columns: 1fr;
     }
 
     .o_lqa_module__brand {

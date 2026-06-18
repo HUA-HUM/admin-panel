@@ -67,30 +67,51 @@
                         t-as="section"
                         t-key="section.id"
                     >
-                        <button
+                        <div
                             t-if="section.childrenTree.length"
-                            type="button"
-                            class="o_lqa_sidebar__group-toggle"
-                            t-on-click="() => this.lqaToggleSection(section)"
+                            class="o_lqa_sidebar__menu-row"
                         >
-                            <span>
+                            <button
+                                type="button"
+                                class="o_lqa_sidebar__group-toggle"
+                                t-on-click="() => this.lqaToggleSection(section)"
+                            >
+                                <span>
+                                    <i
+                                        t-att-class="section.name === 'MercadoLibre'
+                                            ? 'fa fa-shopping-bag'
+                                            : section.name === 'Automeli'
+                                                ? 'fa fa-cubes'
+                                                : section.name === 'Retailers'
+                                                    ? 'fa fa-building-o'
+                                                    : 'fa fa-folder-o'"
+                                    />
+                                    <t t-esc="section.name"/>
+                                </span>
                                 <i
-                                    t-att-class="section.name === 'MercadoLibre'
-                                        ? 'fa fa-shopping-bag'
-                                        : section.name === 'Automeli'
-                                            ? 'fa fa-cubes'
-                                            : section.name === 'Retailers'
-                                                ? 'fa fa-building-o'
-                                                : 'fa fa-folder-o'"
+                                    t-att-class="lqaIsExpanded(section)
+                                        ? 'fa fa-chevron-up'
+                                        : 'fa fa-chevron-down'"
                                 />
-                                <t t-esc="section.name"/>
-                            </span>
-                            <i
-                                t-att-class="lqaIsExpanded(section)
-                                    ? 'fa fa-chevron-up'
-                                    : 'fa fa-chevron-down'"
-                            />
-                        </button>
+                            </button>
+                            <button
+                                t-if="lqaCanFavorite(section)"
+                                type="button"
+                                t-att-class="lqaIsFavorite(section)
+                                    ? 'o_lqa_sidebar__favorite is-favorite'
+                                    : 'o_lqa_sidebar__favorite'"
+                                t-att-title="lqaFavoriteTitle(section)"
+                                t-att-aria-label="lqaFavoriteTitle(section)"
+                                t-att-disabled="lqaNavigation.favoritePending[section.id]"
+                                t-on-click="(event) => this.lqaToggleFavorite(section, event)"
+                            >
+                                <i
+                                    t-att-class="lqaIsFavorite(section)
+                                        ? 'fa fa-star'
+                                        : 'fa fa-star-o'"
+                                />
+                            </button>
+                        </div>
 
                         <div
                             class="o_lqa_sidebar__children"
@@ -102,101 +123,187 @@
                                 t-key="child.id"
                                 class="o_lqa_sidebar__child"
                             >
-                                <button
+                                <div
                                     t-if="child.childrenTree.length"
-                                    type="button"
-                                    class="o_lqa_sidebar__child-toggle"
-                                    t-on-click="() => this.lqaToggleSection(child)"
+                                    class="o_lqa_sidebar__menu-row"
                                 >
-                                    <span>
+                                    <button
+                                        type="button"
+                                        class="o_lqa_sidebar__child-toggle"
+                                        t-on-click="() => this.lqaToggleSection(child)"
+                                    >
+                                        <span>
+                                            <i
+                                                t-att-class="child.name === 'Catalogo'
+                                                    ? 'fa fa-th'
+                                                    : child.name === 'Marketplaces'
+                                                        ? 'fa fa-shopping-cart'
+                                                        : child.name === 'Publicador'
+                                                            ? 'fa fa-cloud-upload'
+                                                        : 'fa fa-folder-o'"
+                                            />
+                                            <t t-esc="child.name"/>
+                                        </span>
                                         <i
-                                            t-att-class="child.name === 'Catalogo'
-                                                ? 'fa fa-th'
-                                                : child.name === 'Marketplaces'
-                                                    ? 'fa fa-shopping-cart'
-                                                    : child.name === 'Publicador'
-                                                        ? 'fa fa-cloud-upload'
-                                                    : 'fa fa-folder-o'"
+                                            t-att-class="lqaIsExpanded(child)
+                                                ? 'fa fa-chevron-up'
+                                                : 'fa fa-chevron-down'"
                                         />
-                                        <t t-esc="child.name"/>
-                                    </span>
-                                    <i
-                                        t-att-class="lqaIsExpanded(child)
-                                            ? 'fa fa-chevron-up'
-                                            : 'fa fa-chevron-down'"
-                                    />
-                                </button>
+                                    </button>
+                                    <button
+                                        t-if="lqaCanFavorite(child)"
+                                        type="button"
+                                        t-att-class="lqaIsFavorite(child)
+                                            ? 'o_lqa_sidebar__favorite is-favorite'
+                                            : 'o_lqa_sidebar__favorite'"
+                                        t-att-title="lqaFavoriteTitle(child)"
+                                        t-att-aria-label="lqaFavoriteTitle(child)"
+                                        t-att-disabled="lqaNavigation.favoritePending[child.id]"
+                                        t-on-click="(event) => this.lqaToggleFavorite(child, event)"
+                                    >
+                                        <i
+                                            t-att-class="lqaIsFavorite(child)
+                                                ? 'fa fa-star'
+                                                : 'fa fa-star-o'"
+                                        />
+                                    </button>
+                                </div>
                                 <div
                                     t-if="child.childrenTree.length and lqaIsExpanded(child)"
                                     class="o_lqa_sidebar__grandchildren"
                                 >
-                                    <button
-                                        type="button"
+                                    <div
                                         t-foreach="child.childrenTree"
                                         t-as="grandchild"
                                         t-key="grandchild.id"
-                                        t-on-click="() => this.lqaSelectMenu(grandchild)"
+                                        class="o_lqa_sidebar__menu-row"
+                                    >
+                                        <button
+                                            type="button"
+                                            class="o_lqa_sidebar__menu-link"
+                                            t-on-click="() => this.lqaSelectMenu(grandchild)"
+                                        >
+                                            <i
+                                                t-att-class="grandchild.name === 'Selecciones'
+                                                    ? 'fa fa-folder-open-o'
+                                                    : grandchild.name === 'Productos'
+                                                        ? 'fa fa-th'
+                                                        : grandchild.name === 'Todos los marketplaces'
+                                                            ? 'fa fa-th-large'
+                                                            : grandchild.name === 'Catalogo'
+                                                                ? 'fa fa-th'
+                                                            : grandchild.name === 'Carpetas'
+                                                                ? 'fa fa-folder-open-o'
+                                                                : grandchild.name === 'Publicar'
+                                                                    ? 'fa fa-cloud-upload'
+                                                                    : grandchild.name === 'Seguimiento'
+                                                                        ? 'fa fa-list-alt'
+                                                            : 'fa fa-shopping-cart'"
+                                            />
+                                            <span t-esc="grandchild.name"/>
+                                        </button>
+                                        <button
+                                            t-if="lqaCanFavorite(grandchild)"
+                                            type="button"
+                                            t-att-class="lqaIsFavorite(grandchild)
+                                                ? 'o_lqa_sidebar__favorite is-favorite'
+                                                : 'o_lqa_sidebar__favorite'"
+                                            t-att-title="lqaFavoriteTitle(grandchild)"
+                                            t-att-aria-label="lqaFavoriteTitle(grandchild)"
+                                            t-att-disabled="lqaNavigation.favoritePending[grandchild.id]"
+                                            t-on-click="(event) => this.lqaToggleFavorite(grandchild, event)"
+                                        >
+                                            <i
+                                                t-att-class="lqaIsFavorite(grandchild)
+                                                    ? 'fa fa-star'
+                                                    : 'fa fa-star-o'"
+                                            />
+                                        </button>
+                                    </div>
+                                </div>
+                                <div
+                                    t-if="!child.childrenTree.length"
+                                    class="o_lqa_sidebar__menu-row"
+                                >
+                                    <button
+                                        type="button"
+                                        class="o_lqa_sidebar__menu-link"
+                                        t-on-click="() => this.lqaSelectMenu(child)"
                                     >
                                         <i
-                                            t-att-class="grandchild.name === 'Selecciones'
-                                                ? 'fa fa-folder-open-o'
-                                                : grandchild.name === 'Productos'
+                                            t-att-class="child.name === 'Dashboard'
+                                                ? 'fa fa-line-chart'
+                                                : child.name === 'Catalogo'
                                                     ? 'fa fa-th'
-                                                    : grandchild.name === 'Todos los marketplaces'
-                                                        ? 'fa fa-th-large'
-                                                        : grandchild.name === 'Catalogo'
-                                                            ? 'fa fa-th'
-                                                        : grandchild.name === 'Carpetas'
-                                                            ? 'fa fa-folder-open-o'
-                                                            : grandchild.name === 'Publicar'
-                                                                ? 'fa fa-cloud-upload'
-                                                                : grandchild.name === 'Seguimiento'
-                                                                    ? 'fa fa-list-alt'
-                                                        : 'fa fa-shopping-cart'"
+                                                        : child.name === 'Eliminador'
+                                                            ? 'fa fa-trash-o'
+                                                            : child.name === 'Usuarios'
+                                                                ? 'fa fa-users'
+                                                                : child.name === 'Pricing'
+                                                                    ? 'fa fa-usd'
+                                                                    : child.name === 'Central de Promociones'
+                                                                        ? 'fa fa-bullhorn'
+                                                                        : child.name === 'Marketplaces'
+                                                                            ? 'fa fa-shopping-cart'
+                                                                            : child.name === 'Orders'
+                                                                                ? 'fa fa-list-alt'
+                                                                                : child.name === 'Acciones masivas'
+                                                                                    ? 'fa fa-bolt'
+                                                                                    : 'fa fa-circle-o'"
                                         />
-                                        <span t-esc="grandchild.name"/>
+                                        <span t-esc="child.name"/>
+                                    </button>
+                                    <button
+                                        t-if="lqaCanFavorite(child)"
+                                        type="button"
+                                        t-att-class="lqaIsFavorite(child)
+                                            ? 'o_lqa_sidebar__favorite is-favorite'
+                                            : 'o_lqa_sidebar__favorite'"
+                                        t-att-title="lqaFavoriteTitle(child)"
+                                        t-att-aria-label="lqaFavoriteTitle(child)"
+                                        t-att-disabled="lqaNavigation.favoritePending[child.id]"
+                                        t-on-click="(event) => this.lqaToggleFavorite(child, event)"
+                                    >
+                                        <i
+                                            t-att-class="lqaIsFavorite(child)
+                                                ? 'fa fa-star'
+                                                : 'fa fa-star-o'"
+                                        />
                                     </button>
                                 </div>
-                                <button
-                                    t-if="!child.childrenTree.length"
-                                    type="button"
-                                    t-on-click="() => this.lqaSelectMenu(child)"
-                                >
-                                    <i
-                                        t-att-class="child.name === 'Dashboard'
-                                            ? 'fa fa-line-chart'
-                                            : child.name === 'Catalogo'
-                                                ? 'fa fa-th'
-                                                    : child.name === 'Eliminador'
-                                                        ? 'fa fa-trash-o'
-                                                        : child.name === 'Usuarios'
-                                                            ? 'fa fa-users'
-                                                            : child.name === 'Pricing'
-                                                                ? 'fa fa-usd'
-                                                                : child.name === 'Central de Promociones'
-                                                                    ? 'fa fa-bullhorn'
-                                                                    : child.name === 'Marketplaces'
-                                                                        ? 'fa fa-shopping-cart'
-                                                                        : child.name === 'Orders'
-                                                                            ? 'fa fa-list-alt'
-                                                                            : child.name === 'Acciones masivas'
-                                                                                ? 'fa fa-bolt'
-                                                                                : 'fa fa-circle-o'"
-                                    />
-                                    <span t-esc="child.name"/>
-                                </button>
                             </div>
                         </div>
 
-                        <button
+                        <div
                             t-if="!section.childrenTree.length"
-                            type="button"
-                            class="o_lqa_sidebar__single"
-                            t-on-click="() => this.lqaSelectMenu(section)"
+                            class="o_lqa_sidebar__menu-row"
                         >
-                            <i class="fa fa-cog"/>
-                            <span t-esc="section.name"/>
-                        </button>
+                            <button
+                                type="button"
+                                class="o_lqa_sidebar__single"
+                                t-on-click="() => this.lqaSelectMenu(section)"
+                            >
+                                <i class="fa fa-cog"/>
+                                <span t-esc="section.name"/>
+                            </button>
+                            <button
+                                t-if="lqaCanFavorite(section)"
+                                type="button"
+                                t-att-class="lqaIsFavorite(section)
+                                    ? 'o_lqa_sidebar__favorite is-favorite'
+                                    : 'o_lqa_sidebar__favorite'"
+                                t-att-title="lqaFavoriteTitle(section)"
+                                t-att-aria-label="lqaFavoriteTitle(section)"
+                                t-att-disabled="lqaNavigation.favoritePending[section.id]"
+                                t-on-click="(event) => this.lqaToggleFavorite(section, event)"
+                            >
+                                <i
+                                    t-att-class="lqaIsFavorite(section)
+                                        ? 'fa fa-star'
+                                        : 'fa fa-star-o'"
+                                />
+                            </button>
+                        </div>
                     </div>
                 </nav>
 

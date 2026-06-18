@@ -10,6 +10,7 @@ from . import mercadolibre_selection
 from . import mercadolibre_promotions_service
 from . import panel_module
 from . import res_config_settings
+from . import res_users
 from . import retailers_publication_run
 from . import retailers_publisher_service
 from . import retailers_pricing

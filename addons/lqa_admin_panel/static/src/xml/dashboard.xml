@@ -43,13 +43,55 @@
                 Cargando panel...
             </div>
 
-            <div class="o_lqa_dashboard__grid" t-else="">
+            <t t-else="">
                 <section
-                    class="o_lqa_module"
-                    t-foreach="state.modules"
-                    t-as="module"
-                    t-key="module.code"
+                    t-if="!state.selectedModuleCode"
+                    class="o_lqa_dashboard_favorites"
                 >
+                    <div class="o_lqa_dashboard_favorites__head">
+                        <div>
+                            <p>Accesos directos</p>
+                            <h2>Favoritos</h2>
+                        </div>
+                        <span t-if="state.favorites.length">
+                            <t t-esc="state.favorites.length"/>
+                            secciones
+                        </span>
+                    </div>
+                    <div
+                        t-if="!state.favorites.length"
+                        class="o_lqa_dashboard_favorites__empty"
+                    >
+                        <i class="fa fa-star-o"/>
+                        <div>
+                            <strong>No hay secciones favoritas</strong>
+                        </div>
+                    </div>
+                    <div t-else="" class="o_lqa_dashboard_favorites__grid">
+                        <button
+                            type="button"
+                            t-foreach="state.favorites"
+                            t-as="favorite"
+                            t-key="favorite.menu_id"
+                            t-on-click="() => this.openFavorite(favorite)"
+                        >
+                            <i t-att-class="favoriteIcon(favorite)"/>
+                            <span>
+                                <strong t-esc="favorite.name"/>
+                                <small t-esc="favorite.path || 'Panel Comercial'"/>
+                            </span>
+                            <i class="fa fa-chevron-right"/>
+                        </button>
+                    </div>
+                </section>
+
+                <div class="o_lqa_dashboard__grid">
+                    <section
+                        class="o_lqa_module"
+                        t-foreach="state.modules"
+                        t-as="module"
+                        t-key="module.code"
+                    >
                     <div t-att-class="'o_lqa_module__brand is-' + module.code">
                         <img
                             t-if="module.code === 'automeli'"
@@ -109,8 +151,9 @@
                             <small t-if="section.badge" t-esc="section.badge"/>
                         </button>
                     </div>
-                </section>
-            </div>
+                    </section>
+                </div>
+            </t>
         </div>
     </t>
 </templates>
