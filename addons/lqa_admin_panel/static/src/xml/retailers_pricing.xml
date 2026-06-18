@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="lqa_admin_panel.RetailersPricing">
+        <div class="o_lqa_retailers_pricing">
+            <header class="o_lqa_retailers_pricing__header">
+                <div>
+                    <p>Retailers</p>
+                    <h1>Pricing</h1>
+                    <span>Rentabilidad y precio sugerido por canal de venta.</span>
+                </div>
+                <button
+                    type="button"
+                    class="btn btn-secondary"
+                    t-att-disabled="state.downloadingTemplate"
+                    t-on-click="downloadTemplate"
+                >
+                    <i class="fa fa-download"/>
+                    Plantilla Excel
+                </button>
+            </header>
+
+            <section class="o_lqa_retailers_pricing_inputs">
+                <form
+                    class="o_lqa_retailers_pricing_input"
+                    t-on-submit.prevent="submitManual"
+                >
+                    <div class="o_lqa_retailers_pricing_section_head">
+                        <div>
+                            <h2>Carga manual</h2>
+                            <span>Calculá un SKU puntual.</span>
+                        </div>
+                    </div>
+                    <div class="o_lqa_retailers_pricing_manual">
+                        <label>
+                            <span>SKU</span>
+                            <input
+                                type="text"
+                                placeholder="B0F47N62NN"
+                                t-model="state.manual.sku"
+                            />
+                        </label>
+                        <label>
+                            <span>Precio de venta</span>
+                            <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                placeholder="731399"
+                                t-model="state.manual.salePrice"
+                            />
+                        </label>
+                        <label>
+                            <span>Canal</span>
+                            <select class="form-select" t-model="state.manual.salesChannel">
+                                <option value="fravega">Fravega</option>
+                                <option value="megatone">Megatone</option>
+                                <option value="oncity">OnCity</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div class="o_lqa_retailers_pricing_actions">
+                        <button
+                            type="submit"
+                            class="btn btn-primary"
+                            t-att-disabled="state.creatingManual"
+                        >
+                            <t t-if="state.creatingManual">Creando...</t>
+                            <t t-else="">Calcular pricing</t>
+                        </button>
+                    </div>
+                </form>
+
+                <form
+                    class="o_lqa_retailers_pricing_input"
+                    t-on-submit.prevent="submitXlsx"
+                >
+                    <div class="o_lqa_retailers_pricing_section_head">
+                        <div>
+                            <h2>Carga masiva</h2>
+                            <span>Excel con sku, salePrice y salesChannel.</span>
+                        </div>
+                        <span
+                            t-if="state.upload.name"
+                            class="o_lqa_retailers_pricing_file"
+                            t-esc="state.upload.name"
+                        />
+                    </div>
+                    <label class="o_lqa_retailers_pricing_upload">
+                        <input
+                            type="file"
+                            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                            t-on-change="onXlsxSelected"
+                        />
+                        <span>
+                            <i class="fa fa-file-excel-o"/>
+                            <t t-esc="state.upload.name || 'Seleccionar Excel XLSX'"/>
+                        </span>
+                    </label>
+                    <div class="o_lqa_retailers_pricing_actions">
+                        <button
+                            type="button"
+                            class="btn btn-secondary"
+                            t-att-disabled="!state.upload.content"
+                            t-on-click="clearUpload"
+                        >
+                            Limpiar
+                        </button>
+                        <button
+                            type="submit"
+                            class="btn btn-primary"
+                            t-att-disabled="!state.upload.content || state.creatingXlsx"
+                        >
+                            <t t-if="state.creatingXlsx">Creando...</t>
+                            <t t-else="">Procesar Excel</t>
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="o_lqa_retailers_pricing_jobs">
+                <aside class="o_lqa_retailers_pricing_jobs__list">
+                    <div class="o_lqa_retailers_pricing_section_head">
+                        <div>
+                            <h2>Jobs</h2>
+                            <span>
+                                <t t-esc="formatNumber(state.jobs.length)"/>
+                                recientes
+                            </span>
+                        </div>
+                        <button
+                            type="button"
+                            class="btn btn-secondary"
+                            t-on-click="() => this.loadJobs()"
+                        >
+                            <i class="fa fa-refresh"/>
+                        </button>
+                    </div>
+                    <div t-if="state.loadingJobs" class="o_lqa_retailers_pricing_empty">
+                        Cargando jobs...
+                    </div>
+                    <div t-elif="!state.jobs.length" class="o_lqa_retailers_pricing_empty">
+                        Todavía no hay jobs de pricing.
+                    </div>
+                    <div t-else="" class="o_lqa_retailers_pricing_job_list">
+                        <button
+                            type="button"
+                            t-foreach="state.jobs"
+                            t-as="job"
+                            t-key="job.id"
+                            t-att-class="isSelectedJob(job) ? 'is-active' : ''"
+                            t-on-click="() => this.loadJob(job.id)"
+                        >
+                            <div>
+                                <strong t-esc="job.name"/>
+                                <span
+                                    t-att-class="'o_lqa_retailers_pricing_status is-' + job.state"
+                                    t-esc="stateLabel(job.state)"
+                                />
+                            </div>
+                            <small>
+                                <t t-esc="formatNumber(job.inputCount)"/>
+                                filas ·
+                                <t t-esc="formatDateTime(job.createdAt)"/>
+                            </small>
+                        </button>
+                    </div>
+                </aside>
+
+                <article class="o_lqa_retailers_pricing_detail">
+                    <div
+                        t-if="!state.selectedJob"
+                        class="o_lqa_retailers_pricing_empty is-large"
+                    >
+                        Seleccioná un job para ver el resultado.
+                    </div>
+                    <t t-else="">
+                        <div class="o_lqa_retailers_pricing_detail__head">
+                            <div>
+                                <p>Job #<t t-esc="state.selectedJob.id"/></p>
+                                <h2 t-esc="state.selectedJob.name"/>
+                                <span>
+                                    Creado por
+                                    <strong t-esc="state.selectedJob.userName"/>
+                                    ·
+                                    <strong t-esc="formatDateTime(state.selectedJob.createdAt)"/>
+                                </span>
+                            </div>
+                            <button
+                                type="button"
+                                class="btn btn-primary"
+                                t-att-disabled="!canDownload(state.selectedJob) || isDownloading(state.selectedJob)"
+                                t-on-click="() => this.downloadJobXlsx(state.selectedJob)"
+                            >
+                                <i class="fa fa-download"/>
+                                <t t-if="isDownloading(state.selectedJob)">Descargando...</t>
+                                <t t-else="">Descargar Excel</t>
+                            </button>
+                        </div>
+
+                        <div class="o_lqa_retailers_pricing_stats">
+                            <article>
+                                <small>Estado</small>
+                                <strong t-esc="stateLabel(state.selectedJob.state)"/>
+                            </article>
+                            <article>
+                                <small>Filas</small>
+                                <strong t-esc="formatNumber(state.selectedJob.inputCount)"/>
+                            </article>
+                            <article>
+                                <small>Listas</small>
+                                <strong t-esc="formatNumber(state.selectedJob.successCount)"/>
+                            </article>
+                            <article>
+                                <small>Errores</small>
+                                <strong t-esc="formatNumber(state.selectedJob.failedCount)"/>
+                            </article>
+                        </div>
+
+                        <div
+                            t-if="state.selectedJob.errorMessage"
+                            class="o_lqa_retailers_pricing_error"
+                            t-esc="state.selectedJob.errorMessage"
+                        />
+                        <div t-if="state.loadingJob" class="o_lqa_retailers_pricing_empty">
+                            Cargando detalle...
+                        </div>
+                        <div
+                            t-elif="!state.selectedJob.lines || !state.selectedJob.lines.length"
+                            class="o_lqa_retailers_pricing_empty"
+                        >
+                            Todavía no hay detalle disponible.
+                        </div>
+                        <div t-else="" class="o_lqa_retailers_pricing_table_wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>SKU</th>
+                                        <th>Canal</th>
+                                        <th>Precio venta</th>
+                                        <th>Precio sugerido</th>
+                                        <th>Ganancia</th>
+                                        <th>Margen</th>
+                                        <th>Rentabilidad</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr
+                                        t-foreach="state.selectedJob.lines"
+                                        t-as="line"
+                                        t-key="line.id"
+                                    >
+                                        <td><strong t-esc="line.sku"/></td>
+                                        <td t-esc="channelLabel(line.salesChannel)"/>
+                                        <td t-esc="formatCurrency(line.salePrice)"/>
+                                        <td t-esc="formatCurrency(line.suggestedPrice)"/>
+                                        <td t-esc="formatCurrency(line.operatingProfit)"/>
+                                        <td t-esc="line.operatingProfitPercent || '-'"/>
+                                        <td>
+                                            <span
+                                                t-att-class="'o_lqa_retailers_profitability ' + profitabilityClass(line)"
+                                                t-esc="profitabilityLabel(line)"
+                                            />
+                                        </td>
+                                        <td>
+                                            <span
+                                                t-att-class="'o_lqa_retailers_pricing_status is-' + line.state"
+                                                t-esc="stateLabel(line.state)"
+                                            />
+                                            <small
+                                                t-if="line.errorMessage"
+                                                t-esc="line.errorMessage"
+                                            />
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </t>
+                </article>
+            </section>
+        </div>
+    </t>
+</templates>

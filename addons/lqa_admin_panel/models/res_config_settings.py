@@ -175,6 +175,23 @@ class ResConfigSettings(models.TransientModel):
         string="Token Madre Retailers",
         config_parameter="lqa_admin_panel.retailers_madre_api_token",
     )
+    lqa_retailers_pricing_url = fields.Char(
+        string="URL Pricing Retailers",
+        default=(
+            "https://api.price.loquieroaca.com/"
+            "internal/getProfit/channel/details/bulk"
+        ),
+        config_parameter="lqa_admin_panel.retailers_pricing_url",
+    )
+    lqa_retailers_pricing_api_key = fields.Char(
+        string="API key Pricing Retailers",
+        config_parameter="lqa_admin_panel.retailers_pricing_api_key",
+    )
+    lqa_retailers_pricing_timeout_seconds = fields.Integer(
+        string="Timeout Pricing Retailers",
+        default=300,
+        config_parameter="lqa_admin_panel.retailers_pricing_timeout_seconds",
+    )
     lqa_retailers_orders_proxy_url = fields.Char(
         string="URL Orders Retailers",
         default="https://order.api.loquieroaca.com/orders",

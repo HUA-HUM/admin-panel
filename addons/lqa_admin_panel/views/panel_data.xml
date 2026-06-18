@@ -110,8 +110,20 @@
         <field name="description">Actualizacion forzada de precio, estado y stock por marketplace.</field>
         <field name="badge">Nuevo</field>
         <field name="status">available</field>
-        <field name="sequence">40</field>
+        <field name="sequence">50</field>
         <field name="action_xmlid">lqa_admin_panel.action_lqa_retailers_bulk_actions</field>
+        <field name="active">True</field>
+    </record>
+
+    <record id="panel_section_retailers_pricing" model="lqa.panel.section">
+        <field name="module_id" ref="panel_module_retailers"/>
+        <field name="name">Pricing</field>
+        <field name="code">pricing</field>
+        <field name="description">Rentabilidad y precio sugerido por SKU y canal de venta.</field>
+        <field name="badge">Nuevo</field>
+        <field name="status">available</field>
+        <field name="sequence">40</field>
+        <field name="action_xmlid">lqa_admin_panel.action_lqa_retailers_pricing</field>
         <field name="active">True</field>
     </record>
 
@@ -256,6 +268,7 @@
                 'description': 'Actualizacion forzada de precio, estado y stock por marketplace.',
                 'badge': 'Nuevo',
                 'status': 'available',
+                'sequence': 50,
                 'action_xmlid': 'lqa_admin_panel.action_lqa_retailers_bulk_actions',
                 'active': True,
             }"
@@ -271,6 +284,20 @@
                 'status': 'available',
                 'sequence': 30,
                 'action_xmlid': 'lqa_admin_panel.action_lqa_retailers_publisher_folders',
+                'active': True,
+            }"
+        />
+    </function>
+
+    <function model="lqa.panel.section" name="write">
+        <value eval="[ref('panel_section_retailers_pricing')]"/>
+        <value
+            eval="{
+                'description': 'Rentabilidad y precio sugerido por SKU y canal de venta.',
+                'badge': 'Nuevo',
+                'status': 'available',
+                'sequence': 40,
+                'action_xmlid': 'lqa_admin_panel.action_lqa_retailers_pricing',
                 'active': True,
             }"
         />

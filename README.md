@@ -56,6 +56,10 @@ Base de panel comercial construida sobre Odoo + Docker.
   - Seccion `Publicador / Seguimiento`:
     - Detalle paginado de jobs por publication run.
     - Vista de publicaciones pendientes globales.
+  - Seccion `Pricing` para Fravega, Megatone y OnCity:
+    - Carga manual por SKU, precio de venta y canal.
+    - Importacion masiva desde Excel XLSX.
+    - Historial de jobs, detalle de rentabilidad y resultado descargable.
   - Seccion `Acciones masivas` para forzar actualizacion de precio, estado y stock.
   - Seccion `Orders` para ordenes de Fravega, Megatone y OnCity:
     - Vistas rapidas Last 24h, 48h, 72h e historico.
@@ -172,6 +176,8 @@ Ir a `Ajustes > Panel Comercial` y completar:
 - URL de estado de Catalogo Automeli.
 - URLs base Madre y Products para Retailers.
 - Token Madre para el Publicador de Retailers.
+- URL, API key y timeout de Pricing Retailers.
+  Si no se define una API key especifica, reutiliza la de Pricing MercadoLibre.
 - URL/token de Orders para Retailers.
 - Timeout.
 - Variables de entorno Retailers:
@@ -179,6 +185,9 @@ Ir a `Ajustes > Panel Comercial` y completar:
   - `NEXT_PUBLIC_PRODUCTS_API_URL=https://api.products.loquieroaca.com`
   - `NEXT_PUBLIC_ORDERS_API_URL=https://order.api.loquieroaca.com/orders`
   - `LQA_RETAILERS_MADRE_API_TOKEN=`
+  - `LQA_RETAILERS_PRICING_URL=https://api.price.loquieroaca.com/internal/getProfit/channel/details/bulk`
+  - `LQA_RETAILERS_PRICING_API_KEY=`
+  - `LQA_RETAILERS_PRICING_TIMEOUT_SECONDS=300`
   - `ORDERS_API_URL=`
   - `ORDERS_API_TOKEN=`
 
@@ -221,6 +230,7 @@ https://api.madre.loquieroaca.com/api/analytics/marketplace-favorites/{folderId}
 https://api.products.loquieroaca.com/api/publications/execute/run
 https://api.madre.loquieroaca.com/api/publication-jobs/{runId}/jobs
 https://api.madre.loquieroaca.com/api/publication-jobs/pending
+https://api.price.loquieroaca.com/internal/getProfit/channel/details/bulk
 https://api.products.loquieroaca.com/api/internal/import/{marketplace}/run
 https://api.products.loquieroaca.com/api/internal/marketplace-changes/refresh-published/{marketplace}
 https://order.api.loquieroaca.com/orders/overview/last-24-hours

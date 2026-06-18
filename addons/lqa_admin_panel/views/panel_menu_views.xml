@@ -79,6 +79,11 @@
         <field name="tag">lqa_admin_panel.retailers_publisher_tracking</field>
     </record>
 
+    <record id="action_lqa_retailers_pricing" model="ir.actions.client">
+        <field name="name">Pricing Retailers</field>
+        <field name="tag">lqa_admin_panel.retailers_pricing</field>
+    </record>
+
     <record id="action_lqa_mercadolibre_catalog" model="ir.actions.client">
         <field name="name">Catalogo MercadoLibre</field>
         <field name="tag">lqa_admin_panel.mercadolibre_catalog</field>
@@ -339,11 +344,20 @@
     />
 
     <menuitem
+        id="menu_lqa_retailers_pricing"
+        name="Pricing"
+        parent="menu_lqa_retailers"
+        action="action_lqa_retailers_pricing"
+        sequence="50"
+        groups="lqa_admin_panel.group_lqa_commercial_user"
+    />
+
+    <menuitem
         id="menu_lqa_retailers_bulk_actions"
         name="Acciones masivas"
         parent="menu_lqa_retailers"
         action="action_lqa_retailers_bulk_actions"
-        sequence="50"
+        sequence="60"
         groups="lqa_admin_panel.group_lqa_commercial_user"
     />
 

@@ -76,6 +76,13 @@
                                 password="True"
                                 placeholder="Bearer token Madre"
                             />
+                            <field name="lqa_retailers_pricing_url"/>
+                            <field
+                                name="lqa_retailers_pricing_api_key"
+                                password="True"
+                                placeholder="API key Pricing Retailers"
+                            />
+                            <field name="lqa_retailers_pricing_timeout_seconds"/>
                             <field name="lqa_retailers_orders_proxy_url"/>
                             <field
                                 name="lqa_retailers_orders_api_token"
