@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="lqa_admin_panel.RetailersPublisher">
+        <div class="o_lqa_retailers_publisher">
+            <header class="o_lqa_retailers_publisher__header">
+                <div>
+                    <p>Retailers / Publicador</p>
+                    <h1>Carpetas</h1>
+                    <span>Selecciones de productos guardadas en Madre.</span>
+                </div>
+                <button
+                    type="button"
+                    class="btn btn-secondary"
+                    t-att-disabled="state.loadingFolders"
+                    t-on-click="loadFolders"
+                >
+                    <i class="fa fa-refresh"/>
+                    Actualizar
+                </button>
+            </header>
+
+            <nav class="o_lqa_retailers_publisher__tabs">
+                <button type="button" class="is-active">
+                    <i class="fa fa-folder-open-o"/>
+                    Carpetas
+                </button>
+            </nav>
+
+            <form
+                class="o_lqa_retailers_publisher_create"
+                t-on-submit.prevent="createFolder"
+            >
+                <div>
+                    <label for="lqa-publisher-folder-name">Nueva carpeta</label>
+                    <input
+                        id="lqa-publisher-folder-name"
+                        type="text"
+                        maxlength="120"
+                        placeholder="Nombre de la carpeta"
+                        t-model="state.newFolderName"
+                    />
+                </div>
+                <button
+                    type="submit"
+                    class="btn btn-primary"
+                    t-att-disabled="state.creatingFolder"
+                >
+                    <i class="fa fa-plus"/>
+                    Crear carpeta
+                </button>
+            </form>
+
+            <section class="o_lqa_retailers_publisher_layout">
+                <aside class="o_lqa_retailers_publisher_folders">
+                    <div class="o_lqa_retailers_publisher_folders__head">
+                        <h2>Carpetas</h2>
+                        <span>
+                            <t t-esc="formatNumber(state.folders.length)"/>
+                            disponibles
+                        </span>
+                    </div>
+
+                    <div
+                        t-if="state.loadingFolders"
+                        class="o_lqa_retailers_publisher_empty"
+                    >
+                        Cargando carpetas...
+                    </div>
+                    <div
+                        t-elif="!state.folders.length"
+                        class="o_lqa_retailers_publisher_empty"
+                    >
+                        No hay carpetas creadas.
+                    </div>
+                    <div t-else="" class="o_lqa_retailers_publisher_folder_list">
+                        <button
+                            type="button"
+                            t-foreach="state.folders"
+                            t-as="folder"
+                            t-key="folder.id"
+                            t-att-class="isSelectedFolder(folder) ? 'is-active' : ''"
+                            t-on-click="() => this.selectFolder(folder)"
+                        >
+                            <strong t-esc="folder.name"/>
+                            <span>
+                                <t t-esc="formatNumber(folder.product_count)"/>
+                                productos
+                            </span>
+                            <small>
+                                ID
+                                <t t-esc="folder.id"/>
+                            </small>
+                        </button>
+                    </div>
+                </aside>
+
+                <section class="o_lqa_retailers_publisher_detail">
+                    <div
+                        t-if="!selectedFolder"
+                        class="o_lqa_retailers_publisher_empty is-large"
+                    >
+                        Selecciona o crea una carpeta.
+                    </div>
+
+                    <t t-else="">
+                        <div class="o_lqa_retailers_publisher_detail__head">
+                            <div>
+                                <p>Carpeta seleccionada</p>
+                                <h2 t-esc="selectedFolder.name"/>
+                                <span>
+                                    Folder ID:
+                                    <strong t-esc="selectedFolder.id"/>
+                                </span>
+                            </div>
+                            <strong class="o_lqa_retailers_publisher_count">
+                                <t t-esc="formatNumber(selectedFolder.product_count)"/>
+                                productos
+                            </strong>
+                        </div>
+
+                        <div class="o_lqa_retailers_publisher_inputs">
+                            <form
+                                class="o_lqa_retailers_publisher_manual"
+                                t-on-submit.prevent="addManualProduct"
+                            >
+                                <div class="o_lqa_retailers_publisher_form_head">
+                                    <i class="fa fa-keyboard-o"/>
+                                    <div>
+                                        <small>Carga manual</small>
+                                        <h3>Agregar producto</h3>
+                                    </div>
+                                </div>
+                                <label>
+                                    <span>Product ID / MLA</span>
+                                    <input
+                                        type="text"
+                                        placeholder="MLA123456789"
+                                        t-model="state.manual.productId"
+                                    />
+                                </label>
+                                <label>
+                                    <span>Seller SKU</span>
+                                    <input
+                                        type="text"
+                                        placeholder="SKU-001"
+                                        t-model="state.manual.sellerSku"
+                                    />
+                                </label>
+                                <button
+                                    type="submit"
+                                    class="btn btn-primary"
+                                    t-att-disabled="state.addingManual"
+                                >
+                                    <i class="fa fa-plus"/>
+                                    Agregar a la carpeta
+                                </button>
+                            </form>
+
+                            <form
+                                class="o_lqa_retailers_publisher_import"
+                                t-on-submit.prevent="importFile"
+                            >
+                                <div class="o_lqa_retailers_publisher_form_head">
+                                    <i class="fa fa-file-excel-o"/>
+                                    <div>
+                                        <small>Carga masiva</small>
+                                        <h3>Importar productos</h3>
+                                    </div>
+                                </div>
+                                <label class="o_lqa_retailers_publisher_file">
+                                    <input
+                                        type="file"
+                                        accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
+                                        t-on-change="onFileChange"
+                                    />
+                                    <span>
+                                        <i class="fa fa-upload"/>
+                                        <t t-esc="state.upload.name || 'Seleccionar XLSX o CSV'"/>
+                                    </span>
+                                </label>
+                                <div class="o_lqa_retailers_publisher_import_actions">
+                                    <button
+                                        type="button"
+                                        class="btn btn-secondary"
+                                        t-on-click="downloadTemplate"
+                                    >
+                                        <i class="fa fa-download"/>
+                                        Plantilla CSV
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        class="btn btn-primary"
+                                        t-att-disabled="!state.upload.content || state.importingFile"
+                                    >
+                                        <i class="fa fa-upload"/>
+                                        Importar
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="o_lqa_retailers_publisher_products">
+                            <div class="o_lqa_retailers_publisher_products__head">
+                                <div>
+                                    <h3>Productos informados por Madre</h3>
+                                    <span t-esc="formatDateTime(selectedFolder.updated_at)"/>
+                                </div>
+                                <strong t-esc="formatNumber(selectedFolder.products.length)"/>
+                            </div>
+                            <div
+                                t-if="!selectedFolder.products.length"
+                                class="o_lqa_retailers_publisher_empty"
+                            >
+                                Madre no informo productos dentro de esta carpeta.
+                            </div>
+                            <div t-else="" class="o_lqa_retailers_publisher_table_wrap">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Product ID / MLA</th>
+                                            <th>Seller SKU</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr
+                                            t-foreach="selectedFolder.products"
+                                            t-as="product"
+                                            t-key="product.productId + '-' + product.sellerSku"
+                                        >
+                                            <td t-esc="product.productId || '-'"/>
+                                            <td t-esc="product.sellerSku || '-'"/>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </t>
+                </section>
+            </section>
+        </div>
+    </t>
+</templates>

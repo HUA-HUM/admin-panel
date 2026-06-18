@@ -45,6 +45,7 @@ services:
       NEXT_PUBLIC_MADRE_API_URL: ${NEXT_PUBLIC_MADRE_API_URL:-https://api.madre.loquieroaca.com}
       NEXT_PUBLIC_PRODUCTS_API_URL: ${NEXT_PUBLIC_PRODUCTS_API_URL:-https://api.products.loquieroaca.com}
       NEXT_PUBLIC_ORDERS_API_URL: ${NEXT_PUBLIC_ORDERS_API_URL:-https://order.api.loquieroaca.com/orders}
+      LQA_RETAILERS_MADRE_API_TOKEN: ${LQA_RETAILERS_MADRE_API_TOKEN:-}
       ORDERS_API_URL: ${ORDERS_API_URL:-}
       ORDERS_API_TOKEN: ${ORDERS_API_TOKEN:-}
     expose:

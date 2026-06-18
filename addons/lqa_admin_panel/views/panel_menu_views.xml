@@ -64,6 +64,11 @@
         <field name="params" eval="{'view': 'bulk_actions'}"/>
     </record>
 
+    <record id="action_lqa_retailers_publisher_folders" model="ir.actions.client">
+        <field name="name">Publicador - Carpetas</field>
+        <field name="tag">lqa_admin_panel.retailers_publisher</field>
+    </record>
+
     <record id="action_lqa_mercadolibre_catalog" model="ir.actions.client">
         <field name="name">Catalogo MercadoLibre</field>
         <field name="tag">lqa_admin_panel.mercadolibre_catalog</field>
@@ -288,11 +293,29 @@
     />
 
     <menuitem
+        id="menu_lqa_retailers_publisher"
+        name="Publicador"
+        parent="menu_lqa_retailers"
+        action="action_lqa_retailers_publisher_folders"
+        sequence="40"
+        groups="lqa_admin_panel.group_lqa_commercial_user"
+    />
+
+    <menuitem
+        id="menu_lqa_retailers_publisher_folders"
+        name="Carpetas"
+        parent="menu_lqa_retailers_publisher"
+        action="action_lqa_retailers_publisher_folders"
+        sequence="10"
+        groups="lqa_admin_panel.group_lqa_commercial_user"
+    />
+
+    <menuitem
         id="menu_lqa_retailers_bulk_actions"
         name="Acciones masivas"
         parent="menu_lqa_retailers"
         action="action_lqa_retailers_bulk_actions"
-        sequence="40"
+        sequence="50"
         groups="lqa_admin_panel.group_lqa_commercial_user"
     />
 

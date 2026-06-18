@@ -114,6 +114,8 @@
                                                 ? 'fa fa-th'
                                                 : child.name === 'Marketplaces'
                                                     ? 'fa fa-shopping-cart'
+                                                    : child.name === 'Publicador'
+                                                        ? 'fa fa-cloud-upload'
                                                     : 'fa fa-folder-o'"
                                         />
                                         <t t-esc="child.name"/>
@@ -142,6 +144,8 @@
                                                     ? 'fa fa-th'
                                                     : grandchild.name === 'Todos los marketplaces'
                                                         ? 'fa fa-th-large'
+                                                        : grandchild.name === 'Carpetas'
+                                                            ? 'fa fa-folder-open-o'
                                                         : 'fa fa-shopping-cart'"
                                         />
                                         <span t-esc="grandchild.name"/>

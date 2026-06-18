@@ -110,8 +110,20 @@
         <field name="description">Actualizacion forzada de precio, estado y stock por marketplace.</field>
         <field name="badge">Nuevo</field>
         <field name="status">available</field>
-        <field name="sequence">30</field>
+        <field name="sequence">40</field>
         <field name="action_xmlid">lqa_admin_panel.action_lqa_retailers_bulk_actions</field>
+        <field name="active">True</field>
+    </record>
+
+    <record id="panel_section_retailers_publisher" model="lqa.panel.section">
+        <field name="module_id" ref="panel_module_retailers"/>
+        <field name="name">Publicador</field>
+        <field name="code">publisher</field>
+        <field name="description">Carpetas de productos preparadas en Madre para publicar en retailers.</field>
+        <field name="badge">Nuevo</field>
+        <field name="status">available</field>
+        <field name="sequence">30</field>
+        <field name="action_xmlid">lqa_admin_panel.action_lqa_retailers_publisher_folders</field>
         <field name="active">True</field>
     </record>
 
@@ -245,6 +257,20 @@
                 'badge': 'Nuevo',
                 'status': 'available',
                 'action_xmlid': 'lqa_admin_panel.action_lqa_retailers_bulk_actions',
+                'active': True,
+            }"
+        />
+    </function>
+
+    <function model="lqa.panel.section" name="write">
+        <value eval="[ref('panel_section_retailers_publisher')]"/>
+        <value
+            eval="{
+                'description': 'Carpetas de productos preparadas en Madre para publicar en retailers.',
+                'badge': 'Nuevo',
+                'status': 'available',
+                'sequence': 30,
+                'action_xmlid': 'lqa_admin_panel.action_lqa_retailers_publisher_folders',
                 'active': True,
             }"
         />

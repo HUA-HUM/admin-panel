@@ -43,6 +43,10 @@ Base de panel comercial construida sobre Odoo + Docker.
   - Products consulta productos paginados por marketplace, SKU y estado.
   - Imports permite disparar importaciones asincronicas con confirmacion e historial.
   - Status muestra la distribucion visual de estados de publicaciones.
+  - Seccion `Publicador / Carpetas` conectada a Madre:
+    - Creacion y listado de carpetas.
+    - Carga manual por `productId`/MLA y `sellerSku`.
+    - Importacion masiva desde CSV o XLSX.
   - Seccion `Acciones masivas` para forzar actualizacion de precio, estado y stock.
   - Seccion `Orders` para ordenes de Fravega, Megatone y OnCity:
     - Vistas rapidas Last 24h, 48h, 72h e historico.
@@ -158,12 +162,14 @@ Ir a `Ajustes > Panel Comercial` y completar:
 - URL de Catalogo Automeli.
 - URL de estado de Catalogo Automeli.
 - URLs base Madre y Products para Retailers.
+- Token Madre para el Publicador de Retailers.
 - URL/token de Orders para Retailers.
 - Timeout.
 - Variables de entorno Retailers:
   - `NEXT_PUBLIC_MADRE_API_URL=https://api.madre.loquieroaca.com`
   - `NEXT_PUBLIC_PRODUCTS_API_URL=https://api.products.loquieroaca.com`
   - `NEXT_PUBLIC_ORDERS_API_URL=https://order.api.loquieroaca.com/orders`
+  - `LQA_RETAILERS_MADRE_API_TOKEN=`
   - `ORDERS_API_URL=`
   - `ORDERS_API_TOKEN=`
 
@@ -200,6 +206,8 @@ Retailers usa por defecto:
 https://api.madre.loquieroaca.com/api/internal/marketplace/products/items/all
 https://api.madre.loquieroaca.com/api/internal/product-sync/runs
 https://api.madre.loquieroaca.com/api/internal/marketplace/products/{marketplace}/status
+https://api.madre.loquieroaca.com/api/analytics/marketplace-favorites/marketplaces
+https://api.madre.loquieroaca.com/api/analytics/marketplace-favorites/bulk
 https://api.products.loquieroaca.com/api/internal/import/{marketplace}/run
 https://api.products.loquieroaca.com/api/internal/marketplace-changes/refresh-published/{marketplace}
 https://order.api.loquieroaca.com/orders/overview/last-24-hours
