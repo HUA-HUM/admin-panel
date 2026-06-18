@@ -5,23 +5,37 @@
             <header class="o_lqa_retailers__header">
                 <div>
                     <p>Retailers</p>
-                    <h1 t-if="showGrid">Marketplaces</h1>
+                    <h1 t-if="showDashboard">Dashboard</h1>
+                    <h1 t-elif="showMarketplaces">Marketplaces</h1>
+                    <h1 t-elif="showBulkActions">Acciones masivas</h1>
                     <h1 t-else="" t-esc="selectedMarketplace.name"/>
-                    <span t-if="showGrid">Canales retail separados por productos, imports y status.</span>
+                    <span t-if="showDashboard">Resumen operativo de retailers y ordenes recientes.</span>
+                    <span t-elif="showMarketplaces">Canales retail separados por productos, imports y status.</span>
+                    <span t-elif="showBulkActions">Procesos operativos para actualizar publicaciones por marketplace.</span>
                     <span t-else="" t-esc="selectedMarketplace.description"/>
                 </div>
                 <div class="o_lqa_retailers__actions">
                     <button
-                        t-if="!showGrid"
+                        t-if="showDashboard"
                         type="button"
                         class="btn btn-secondary"
-                        t-on-click="backToGrid"
+                        t-att-disabled="state.loadingDashboard"
+                        t-on-click="refreshDashboard"
+                    >
+                        <i class="fa fa-refresh"/>
+                        Actualizar
+                    </button>
+                    <button
+                        t-if="showMarketplaceDetail"
+                        type="button"
+                        class="btn btn-secondary"
+                        t-on-click="backToMarketplaces"
                     >
                         <i class="fa fa-arrow-left"/>
                         Volver
                     </button>
                     <button
-                        t-if="!showGrid"
+                        t-if="showMarketplaceDetail"
                         type="button"
                         class="btn btn-secondary"
                         t-att-disabled="state.loadingProducts || state.loadingImports || state.loadingStatus"
@@ -33,7 +47,37 @@
                 </div>
             </header>
 
-            <section t-if="showGrid" class="o_lqa_retailers_grid">
+            <section t-if="showDashboard" class="o_lqa_retailers_dashboard">
+                <article class="o_lqa_retailers_kpi is-main">
+                    <small>Ordenes ultimas 24h</small>
+                    <strong t-if="!state.loadingDashboard" t-esc="formatNumber(state.dashboardOrders.total || 0)"/>
+                    <strong t-else="">...</strong>
+                    <span>Fravega, Megatone y OnCity</span>
+                </article>
+                <article
+                    class="o_lqa_retailers_kpi"
+                    t-foreach="dashboardMarketplaceBreakdown"
+                    t-as="marketplace"
+                    t-key="marketplace.id"
+                >
+                    <small t-esc="marketplace.name"/>
+                    <strong t-if="!state.loadingDashboard" t-esc="formatNumber(marketplace.total)"/>
+                    <strong t-else="">...</strong>
+                    <span>ordenes</span>
+                </article>
+                <article class="o_lqa_retailers_kpi">
+                    <small>Errores</small>
+                    <strong t-if="!state.loadingDashboard" t-esc="formatNumber(dashboardErrorsCount)"/>
+                    <strong t-else="">...</strong>
+                    <span>respuestas del servicio</span>
+                </article>
+                <div t-if="state.dashboardError" class="o_lqa_retailers_dashboard_error">
+                    <i class="fa fa-exclamation-triangle"/>
+                    <span t-esc="state.dashboardError"/>
+                </div>
+            </section>
+
+            <section t-if="showMarketplaces" class="o_lqa_retailers_grid">
                 <button
                     type="button"
                     t-foreach="state.marketplaces"
@@ -58,7 +102,63 @@
                 </button>
             </section>
 
-            <section t-if="!showGrid" class="o_lqa_retailers_detail">
+            <section t-if="showBulkActions" class="o_lqa_retailers_bulk">
+                <article class="o_lqa_retailers_bulk_card">
+                    <div>
+                        <small>Precio, estado y stock</small>
+                        <h2>Actualizar publicaciones publicadas</h2>
+                        <p>
+                            Dispara la actualizacion forzada de publicaciones ya publicadas
+                            para el marketplace seleccionado.
+                        </p>
+                    </div>
+                    <form class="o_lqa_retailers_bulk_form" t-on-submit.prevent="openRefreshConfirmation">
+                        <label>
+                            <span>Marketplace</span>
+                            <select class="form-select" t-model="state.refreshForm.marketplace">
+                                <option
+                                    t-foreach="state.actionMarketplaces"
+                                    t-as="marketplace"
+                                    t-key="marketplace.id"
+                                    t-att-value="marketplace.id"
+                                    t-esc="marketplace.name"
+                                />
+                            </select>
+                        </label>
+                        <button
+                            type="submit"
+                            class="btn btn-primary"
+                            t-att-disabled="state.refreshingPublished"
+                        >
+                            <i class="fa fa-refresh"/>
+                            Actualizar precio, estado y stock
+                        </button>
+                    </form>
+                </article>
+
+                <article t-if="state.refreshResult" class="o_lqa_retailers_bulk_result">
+                    <div>
+                        <small>Ultima ejecucion enviada</small>
+                        <h2 t-esc="state.refreshResult.marketplace_name || marketplaceName(state.refreshResult.marketplace)"/>
+                    </div>
+                    <dl>
+                        <div>
+                            <dt>Estado</dt>
+                            <dd t-esc="statusLabel(state.refreshResult.status)"/>
+                        </div>
+                        <div>
+                            <dt>Mensaje</dt>
+                            <dd t-esc="state.refreshResult.message || '-'"/>
+                        </div>
+                        <div>
+                            <dt>Fecha</dt>
+                            <dd t-esc="formatDateTime(state.refreshResult.triggered_at)"/>
+                        </div>
+                    </dl>
+                </article>
+            </section>
+
+            <section t-if="showMarketplaceDetail" class="o_lqa_retailers_detail">
                 <div t-att-class="'o_lqa_retailers_detail__brand is-' + selectedMarketplace.accent">
                     <img t-att-src="selectedMarketplace.logo" t-att-alt="selectedMarketplace.name"/>
                     <small>
@@ -371,6 +471,35 @@
                             t-on-click="confirmRunImport"
                         >
                             Confirmar import
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="o_lqa_modal_backdrop" t-if="state.confirmRefresh">
+                <div class="o_lqa_retailers_modal">
+                    <h2>Confirmar actualizacion</h2>
+                    <p>
+                        Vas a forzar la actualizacion de precio, estado y stock para
+                        <strong t-esc="selectedRefreshMarketplace ? selectedRefreshMarketplace.name : marketplaceName(state.refreshForm.marketplace)"/>.
+                    </p>
+                    <p>El proceso se ejecuta en backend y puede tardar algunos minutos.</p>
+                    <div class="o_lqa_retailers_modal__actions">
+                        <button
+                            type="button"
+                            class="btn btn-secondary"
+                            t-att-disabled="state.refreshingPublished"
+                            t-on-click="closeRefreshConfirmation"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="button"
+                            class="btn btn-danger"
+                            t-att-disabled="state.refreshingPublished"
+                            t-on-click="confirmRefreshPublished"
+                        >
+                            Confirmar actualizacion
                         </button>
                     </div>
                 </div>

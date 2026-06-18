@@ -20,6 +20,13 @@
     <record id="action_lqa_retailers_dashboard" model="ir.actions.client">
         <field name="name">Retailers</field>
         <field name="tag">lqa_admin_panel.retailers</field>
+        <field name="params" eval="{'view': 'dashboard'}"/>
+    </record>
+
+    <record id="action_lqa_retailers_marketplaces" model="ir.actions.client">
+        <field name="name">Marketplaces</field>
+        <field name="tag">lqa_admin_panel.retailers</field>
+        <field name="params" eval="{'view': 'marketplaces'}"/>
     </record>
 
     <record id="action_lqa_retailers_google_merchant" model="ir.actions.client">
@@ -49,6 +56,12 @@
     <record id="action_lqa_retailers_orders" model="ir.actions.client">
         <field name="name">Orders</field>
         <field name="tag">lqa_admin_panel.retailers_orders</field>
+    </record>
+
+    <record id="action_lqa_retailers_bulk_actions" model="ir.actions.client">
+        <field name="name">Acciones masivas</field>
+        <field name="tag">lqa_admin_panel.retailers</field>
+        <field name="params" eval="{'view': 'bulk_actions'}"/>
     </record>
 
     <record id="action_lqa_mercadolibre_catalog" model="ir.actions.client">
@@ -215,8 +228,17 @@
         id="menu_lqa_retailers_marketplaces"
         name="Marketplaces"
         parent="menu_lqa_retailers"
-        action="action_lqa_retailers_dashboard"
+        action="action_lqa_retailers_marketplaces"
         sequence="20"
+        groups="lqa_admin_panel.group_lqa_commercial_user"
+    />
+
+    <menuitem
+        id="menu_lqa_retailers_marketplaces_overview"
+        name="Todos los marketplaces"
+        parent="menu_lqa_retailers_marketplaces"
+        action="action_lqa_retailers_marketplaces"
+        sequence="5"
         groups="lqa_admin_panel.group_lqa_commercial_user"
     />
 
@@ -262,6 +284,15 @@
         parent="menu_lqa_retailers"
         action="action_lqa_retailers_orders"
         sequence="30"
+        groups="lqa_admin_panel.group_lqa_commercial_user"
+    />
+
+    <menuitem
+        id="menu_lqa_retailers_bulk_actions"
+        name="Acciones masivas"
+        parent="menu_lqa_retailers"
+        action="action_lqa_retailers_bulk_actions"
+        sequence="40"
         groups="lqa_admin_panel.group_lqa_commercial_user"
     />
 

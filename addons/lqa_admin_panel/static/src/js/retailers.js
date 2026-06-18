@@ -1,6 +1,6 @@
 /** @odoo-module **/
 
-import { Component, onMounted, onWillUnmount, useState } from "@odoo/owl";
+import { Component, onMounted, onWillUnmount, onWillUpdateProps, useState } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 
@@ -39,6 +39,19 @@ const MARKETPLACES = [
     },
 ];
 
+const ACTION_MARKETPLACES = MARKETPLACES.filter((marketplace) =>
+    ["fravega", "megatone", "oncity"].includes(marketplace.id)
+);
+
+const emptyOrdersOverview = () => ({
+    mode: "last24",
+    range: { from: "", to: "" },
+    total: 0,
+    marketplaces: [],
+    items: [],
+    errors: [],
+});
+
 const defaultProductFilters = () => ({
     offset: 0,
     limit: "10",
@@ -58,16 +71,28 @@ export class LqaRetailers extends Component {
         this.notification = useService("notification");
         this.orm = useService("orm");
         const params = this.props.action?.params || {};
+        const initialMarketplaceId = params.marketplace_id || "";
 
         this.state = useState({
+            viewMode: initialMarketplaceId ? "marketplace" : params.view || "dashboard",
             marketplaces: MARKETPLACES,
-            marketplaceId: params.marketplace_id || "",
+            actionMarketplaces: ACTION_MARKETPLACES,
+            marketplaceId: initialMarketplaceId,
             activeTab: "products",
+            loadingDashboard: false,
             loadingProducts: false,
             loadingImports: false,
             loadingStatus: false,
             runningImport: false,
+            refreshingPublished: false,
             confirmImport: false,
+            confirmRefresh: false,
+            dashboardOrders: emptyOrdersOverview(),
+            dashboardError: "",
+            refreshForm: {
+                marketplace: "fravega",
+            },
+            refreshResult: null,
             products: { items: [], summary: {}, pagination: {} },
             imports: { items: [], pagination: {} },
             status: { total: 0, statuses: [] },
@@ -76,9 +101,11 @@ export class LqaRetailers extends Component {
         });
 
         onMounted(() => {
-            if (this.state.marketplaceId) {
-                this.loadCurrentTab();
-            }
+            this.loadCurrentView();
+        });
+
+        onWillUpdateProps((nextProps) => {
+            this.applyActionParams(nextProps.action?.params || {});
         });
 
         onWillUnmount(() => {
@@ -92,8 +119,44 @@ export class LqaRetailers extends Component {
         return this.state.marketplaces.find((item) => item.id === this.state.marketplaceId);
     }
 
-    get showGrid() {
-        return !this.state.marketplaceId;
+    get selectedRefreshMarketplace() {
+        return this.state.actionMarketplaces.find(
+            (item) => item.id === this.state.refreshForm.marketplace
+        );
+    }
+
+    get showDashboard() {
+        return this.state.viewMode === "dashboard" && !this.state.marketplaceId;
+    }
+
+    get showMarketplaces() {
+        return this.state.viewMode === "marketplaces" && !this.state.marketplaceId;
+    }
+
+    get showBulkActions() {
+        return this.state.viewMode === "bulk_actions" && !this.state.marketplaceId;
+    }
+
+    get showMarketplaceDetail() {
+        return this.state.viewMode === "marketplace" && Boolean(this.state.marketplaceId);
+    }
+
+    get dashboardMarketplaceBreakdown() {
+        const totals = new Map();
+        for (const item of this.state.dashboardOrders.marketplaces || []) {
+            const marketplace = String(item.marketplace || "").toLowerCase();
+            if (marketplace) {
+                totals.set(marketplace, Number(item.total || 0));
+            }
+        }
+        return ACTION_MARKETPLACES.map((marketplace) => ({
+            ...marketplace,
+            total: totals.get(marketplace.id) || 0,
+        }));
+    }
+
+    get dashboardErrorsCount() {
+        return (this.state.dashboardOrders.errors || []).length;
     }
 
     get statusOptions() {
@@ -119,23 +182,75 @@ export class LqaRetailers extends Component {
         return options;
     }
 
-    openMarketplace(marketplace) {
-        this.state.marketplaceId = marketplace.id;
+    applyActionParams(params) {
+        const marketplaceId = params.marketplace_id || "";
+        const viewMode = marketplaceId ? "marketplace" : params.view || "dashboard";
+        if (this.state.marketplaceId === marketplaceId && this.state.viewMode === viewMode) {
+            return;
+        }
+        this.state.marketplaceId = marketplaceId;
+        this.state.viewMode = viewMode;
+        this.state.confirmImport = false;
+        this.state.confirmRefresh = false;
+        if (marketplaceId) {
+            this.resetMarketplaceDetail();
+        }
+        this.loadCurrentView();
+    }
+
+    loadCurrentView() {
+        if (this.showDashboard) {
+            this.loadDashboard();
+        } else if (this.showMarketplaceDetail) {
+            this.loadCurrentTab();
+        }
+    }
+
+    async loadDashboard() {
+        this.state.loadingDashboard = true;
+        this.state.dashboardError = "";
+        try {
+            this.state.dashboardOrders = await this.orm.call(
+                "lqa.retailers.service",
+                "get_orders_overview",
+                ["last24", {}]
+            );
+        } catch (error) {
+            this.state.dashboardOrders = emptyOrdersOverview();
+            this.state.dashboardError =
+                error?.data?.message || "No se pudo cargar el resumen de ordenes.";
+        } finally {
+            this.state.loadingDashboard = false;
+        }
+    }
+
+    resetMarketplaceDetail() {
         this.state.activeTab = "products";
         this.state.productFilters = defaultProductFilters();
         this.state.importFilters = defaultImportFilters();
         this.state.products = { items: [], summary: {}, pagination: {} };
         this.state.imports = { items: [], pagination: {} };
         this.state.status = { total: 0, statuses: [] };
+    }
+
+    openMarketplace(marketplace) {
+        this.state.viewMode = "marketplace";
+        this.state.marketplaceId = marketplace.id;
+        this.resetMarketplaceDetail();
         this.loadProducts();
     }
 
-    backToGrid() {
+    backToMarketplaces() {
+        this.state.viewMode = "marketplaces";
         this.state.marketplaceId = "";
         this.state.confirmImport = false;
         if (this.importPollingTimer) {
             clearTimeout(this.importPollingTimer);
         }
+    }
+
+    async refreshDashboard() {
+        await this.loadDashboard();
     }
 
     async setTab(tab) {
@@ -297,6 +412,42 @@ export class LqaRetailers extends Component {
         } finally {
             this.state.runningImport = false;
         }
+    }
+
+    openRefreshConfirmation() {
+        this.state.confirmRefresh = true;
+    }
+
+    closeRefreshConfirmation() {
+        if (!this.state.refreshingPublished) {
+            this.state.confirmRefresh = false;
+        }
+    }
+
+    async confirmRefreshPublished() {
+        this.state.refreshingPublished = true;
+        try {
+            const result = await this.orm.call(
+                "lqa.retailers.service",
+                "refresh_published",
+                [this.state.refreshForm.marketplace]
+            );
+            this.state.refreshResult = result;
+            this.state.confirmRefresh = false;
+            this.notification.add(
+                `Actualizacion enviada para ${result.marketplace_name || this.marketplaceName(result.marketplace)}.`,
+                { type: "success" }
+            );
+        } catch (error) {
+            this.notifyError(error, "No se pudo disparar la actualizacion.");
+        } finally {
+            this.state.refreshingPublished = false;
+        }
+    }
+
+    marketplaceName(value) {
+        const marketplace = MARKETPLACES.find((item) => item.id === value);
+        return marketplace?.name || this.humanizeStatus(value);
     }
 
     statusLabel(value) {

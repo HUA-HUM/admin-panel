@@ -140,7 +140,9 @@
                                                 ? 'fa fa-folder-open-o'
                                                 : grandchild.name === 'Productos'
                                                     ? 'fa fa-th'
-                                                    : 'fa fa-shopping-cart'"
+                                                    : grandchild.name === 'Todos los marketplaces'
+                                                        ? 'fa fa-th-large'
+                                                        : 'fa fa-shopping-cart'"
                                         />
                                         <span t-esc="grandchild.name"/>
                                     </button>
@@ -167,7 +169,9 @@
                                                                         ? 'fa fa-shopping-cart'
                                                                         : child.name === 'Orders'
                                                                             ? 'fa fa-list-alt'
-                                                                            : 'fa fa-circle-o'"
+                                                                            : child.name === 'Acciones masivas'
+                                                                                ? 'fa fa-bolt'
+                                                                                : 'fa fa-circle-o'"
                                     />
                                     <span t-esc="child.name"/>
                                 </button>

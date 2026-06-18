@@ -37,11 +37,13 @@ Base de panel comercial construida sobre Odoo + Docker.
   - Seleccion masiva de productos y guardado en carpetas persistentes.
   - Vista `Selecciones` con detalle de carpetas, creador, descarga CSV de MLAs y eliminacion de carpetas.
 - Modulo `Retailers`:
-  - Dashboard local de marketplaces: Google Merchant, Fravega, OnCity y Megatone.
+  - Dashboard con resumen de ordenes de las ultimas 24 horas por marketplace.
+  - Seccion `Marketplaces` con tarjetas para Google Merchant, Fravega, OnCity y Megatone.
   - Pantalla por marketplace con tabs `Products`, `Imports` y `Status`.
   - Products consulta productos paginados por marketplace, SKU y estado.
   - Imports permite disparar importaciones asincronicas con confirmacion e historial.
   - Status muestra la distribucion visual de estados de publicaciones.
+  - Seccion `Acciones masivas` para forzar actualizacion de precio, estado y stock.
   - Seccion `Orders` para ordenes de Fravega, Megatone y OnCity:
     - Vistas rapidas Last 24h, 48h, 72h e historico.
     - Rango custom para todos los marketplaces o por canal.
@@ -199,6 +201,7 @@ https://api.madre.loquieroaca.com/api/internal/marketplace/products/items/all
 https://api.madre.loquieroaca.com/api/internal/product-sync/runs
 https://api.madre.loquieroaca.com/api/internal/marketplace/products/{marketplace}/status
 https://api.products.loquieroaca.com/api/internal/import/{marketplace}/run
+https://api.products.loquieroaca.com/api/internal/marketplace-changes/refresh-published/{marketplace}
 https://order.api.loquieroaca.com/orders/overview/last-24-hours
 https://order.api.loquieroaca.com/orders/overview/recent/{hours}
 https://order.api.loquieroaca.com/orders/overview/historical

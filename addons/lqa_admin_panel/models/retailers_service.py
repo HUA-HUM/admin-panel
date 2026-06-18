@@ -2,7 +2,7 @@ import json
 import os
 from urllib.parse import urlsplit, urlunsplit
 
-from odoo import _, api, models
+from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError
 
 
@@ -16,6 +16,7 @@ class LqaRetailersService(models.AbstractModel):
     DEFAULT_TIMEOUT_SECONDS = 60
     DEFAULT_ORDERS_TIMEOUT_SECONDS = 90
     ORDER_MARKETPLACES = ("fravega", "megatone", "oncity")
+    REFRESH_PUBLISHED_MARKETPLACES = ("fravega", "megatone", "oncity")
     MARKETPLACES = {
         "oncity": {
             "name": "OnCity",
@@ -194,6 +195,42 @@ class LqaRetailersService(models.AbstractModel):
             timeout=self._orders_timeout(),
         )
         return self._normalize_orders_response(response, mode)
+
+    @api.model
+    def refresh_published(self, marketplace_id):
+        self._check_access()
+        marketplace_id = self._clean(marketplace_id).lower()
+        if marketplace_id not in self.REFRESH_PUBLISHED_MARKETPLACES:
+            raise UserError(_("Marketplace no disponible para actualizacion masiva."))
+
+        response = self.env["lqa.api.client"].request_absolute_json(
+            "POST",
+            self._join_url(
+                self._products_base_url(),
+                f"/api/internal/marketplace-changes/refresh-published/{marketplace_id}",
+            ),
+            payload={},
+            timeout=self._timeout(),
+        )
+        payload = response if isinstance(response, dict) else {}
+        marketplace = self.MARKETPLACES.get(marketplace_id, {})
+        return {
+            "marketplace": marketplace_id,
+            "marketplace_name": marketplace.get("name") or marketplace_id,
+            "status": self._clean(
+                payload.get("status")
+                or payload.get("state")
+                or payload.get("result")
+                or "QUEUED"
+            ),
+            "message": self._clean(
+                payload.get("message")
+                or payload.get("detail")
+                or payload.get("description")
+            ),
+            "triggered_at": fields.Datetime.to_string(fields.Datetime.now()),
+            "raw": payload,
+        }
 
     def _check_access(self):
         if not self.env.user.has_group("lqa_admin_panel.group_lqa_commercial_user"):
