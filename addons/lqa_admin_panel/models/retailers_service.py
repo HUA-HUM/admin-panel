@@ -13,6 +13,8 @@ class LqaRetailersService(models.AbstractModel):
     DEFAULT_MADRE_API_URL = "https://api.madre.loquieroaca.com"
     DEFAULT_PRODUCTS_API_URL = "https://api.products.loquieroaca.com"
     DEFAULT_ORDERS_PROXY_URL = "https://order.api.loquieroaca.com/orders"
+    FRAVEGA_IMAGE_BASE_URL = "https://images.fravega.com"
+    FRAVEGA_IMAGE_DEFAULT_SIZE = "f500"
     DEFAULT_TIMEOUT_SECONDS = 60
     DEFAULT_ORDERS_TIMEOUT_SECONDS = 90
     ORDER_MARKETPLACES = ("fravega", "megatone", "oncity")
@@ -83,7 +85,7 @@ class LqaRetailersService(models.AbstractModel):
         has_next = bool(response.get("hasNext")) if isinstance(response, dict) else offset + limit < total
         next_offset = response.get("nextOffset") if isinstance(response, dict) else offset + limit
         return {
-            "items": [self._normalize_product(item) for item in items],
+            "items": [self._normalize_product(item, marketplace_id) for item in items],
             "summary": self._normalize_product_summary(response),
             "pagination": {
                 "total": total,
@@ -542,7 +544,7 @@ class LqaRetailersService(models.AbstractModel):
             return self._join_url(value, "/orders" if value.endswith("/api") else "/api/orders")
         return self._join_url(value, "/orders")
 
-    def _normalize_product(self, item):
+    def _normalize_product(self, item, marketplace_id=""):
         item = item if isinstance(item, dict) else {}
         raw_payload = item.get("raw_payload") if isinstance(item.get("raw_payload"), dict) else {}
         raw_images = raw_payload.get("images") if isinstance(raw_payload.get("images"), list) else []
@@ -558,6 +560,7 @@ class LqaRetailersService(models.AbstractModel):
             or (raw_images[0] if raw_images else "")
             or ""
         )
+        marketplace = item.get("marketplace") or raw_payload.get("marketplace") or marketplace_id or ""
         price = (
             item.get("price")
             or item.get("salePrice")
@@ -578,11 +581,11 @@ class LqaRetailersService(models.AbstractModel):
             "sku": item.get("sku") or item.get("seller_sku") or item.get("sellerSku") or raw_payload.get("sellerSku") or "",
             "market_sku": item.get("market_sku") or item.get("marketSku") or raw_payload.get("marketSku") or "",
             "title": item.get("title") or item.get("name") or item.get("productName") or raw_payload.get("title") or "Sin titulo",
-            "image": image,
+            "image": self._normalize_product_image(marketplace, image),
             "price": self._as_float(price, None),
             "stock": self._as_int(stock, 0),
             "status": item.get("status") or item.get("publicationStatus") or "",
-            "marketplace": item.get("marketplace") or "",
+            "marketplace": marketplace,
             "external_id": (
                 item.get("external_id")
                 or item.get("externalId")
@@ -609,6 +612,30 @@ class LqaRetailersService(models.AbstractModel):
                 or ""
             ),
         }
+
+    def _normalize_product_image(self, marketplace_id, value):
+        if isinstance(value, dict):
+            value = (
+                value.get("url")
+                or value.get("image")
+                or value.get("imageUrl")
+                or value.get("src")
+                or value.get("path")
+            )
+        image = self._clean(value)
+        if not image:
+            return ""
+        if image.startswith(("http://", "https://", "data:", "//")):
+            return image
+        if self._clean(marketplace_id).lower() != "fravega":
+            return image
+
+        image = image.lstrip("/")
+        if image.startswith("images.fravega.com/"):
+            return f"https://{image}"
+        if "/" not in image:
+            image = self._join_url(self.FRAVEGA_IMAGE_DEFAULT_SIZE, image)
+        return self._join_url(self.FRAVEGA_IMAGE_BASE_URL, image)
 
     def _normalize_product_summary(self, response):
         if not isinstance(response, dict):
