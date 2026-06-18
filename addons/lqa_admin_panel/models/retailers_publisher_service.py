@@ -6,6 +6,7 @@ import posixpath
 import re
 import zipfile
 from xml.etree import ElementTree
+from xml.sax.saxutils import escape
 
 from odoo import _, api, models
 from odoo.exceptions import UserError
@@ -17,6 +18,7 @@ class LqaRetailersPublisherService(models.AbstractModel):
 
     FOLDERS_PATH = "/api/analytics/marketplace-favorites/marketplaces"
     BULK_PRODUCTS_PATH = "/api/analytics/marketplace-favorites/bulk"
+    FAVORITES_PATH = "/api/analytics/marketplace-favorites/{folder_id}/favorites"
     MAX_IMPORT_ROWS = 10000
     MAX_UPLOAD_BYTES = 20 * 1024 * 1024
     MAX_XLSX_XML_BYTES = 40 * 1024 * 1024
@@ -33,6 +35,20 @@ class LqaRetailersPublisherService(models.AbstractModel):
         "sku",
         "skuventa",
         "sellerid",
+    }
+    PRODUCT_FILTERS = {
+        "brand",
+        "categoryId",
+        "minPrice",
+        "maxPrice",
+        "minStock",
+        "maxStock",
+        "minVisits",
+        "maxVisits",
+        "minOrders",
+        "maxOrders",
+        "sortBy",
+        "sortOrder",
     }
 
     @api.model
@@ -77,6 +93,64 @@ class LqaRetailersPublisherService(models.AbstractModel):
         return self._normalize_folder(folder_payload)
 
     @api.model
+    def get_folder_products(self, folder_id, filters=None):
+        self._check_access()
+        folder_id = self._normalize_folder_id(folder_id)
+        params = self._prepare_product_filters(filters or {})
+        response = self.env["lqa.api.client"].request_absolute_json(
+            "GET",
+            self._favorites_url(folder_id),
+            params=params,
+            headers=self._madre_headers(),
+            timeout=self._timeout(),
+        )
+        items = self._extract_list(
+            response,
+            ("favorites", "products", "items", "data", "results"),
+        )
+        response_dict = response if isinstance(response, dict) else {}
+        pagination = self._extract_pagination(response)
+        page = self._as_int(
+            pagination.get("page")
+            or pagination.get("currentPage")
+            or response_dict.get("page"),
+            params["page"],
+        )
+        limit = self._as_int(
+            pagination.get("limit")
+            or pagination.get("perPage")
+            or pagination.get("pageSize")
+            or response_dict.get("limit"),
+            params["limit"],
+        )
+        total = self._as_int(
+            pagination.get("total")
+            or pagination.get("totalItems")
+            or response_dict.get("total"),
+            len(items),
+        )
+        total_pages = self._as_int(
+            pagination.get("totalPages")
+            or pagination.get("pages")
+            or response_dict.get("totalPages"),
+            0,
+        )
+        if not total_pages:
+            total_pages = max((total + limit - 1) // limit, 1) if limit else 1
+
+        return {
+            "products": [self._normalize_favorite(item) for item in items],
+            "pagination": {
+                "page": page,
+                "limit": limit,
+                "total": total,
+                "total_pages": total_pages,
+                "has_previous": page > 1,
+                "has_next": page < total_pages,
+            },
+        }
+
+    @api.model
     def add_products(self, folder_id, products):
         self._check_access()
         folder_id = self._normalize_folder_id(folder_id)
@@ -91,6 +165,51 @@ class LqaRetailersPublisherService(models.AbstractModel):
         result = self._send_products(folder_id, products)
         result["filename"] = self._clean(filename)
         return result
+
+    @api.model
+    def delete_products(self, folder_id, product_ids):
+        self._check_access()
+        folder_id = self._normalize_folder_id(folder_id)
+        normalized_ids = []
+        seen = set()
+        for product_id in product_ids or []:
+            product_id = self._clean(product_id)
+            if not product_id or product_id in seen:
+                continue
+            seen.add(product_id)
+            normalized_ids.append(product_id)
+        if not normalized_ids:
+            raise UserError(_("Selecciona al menos un producto para eliminar."))
+
+        batches = 0
+        for offset in range(0, len(normalized_ids), self.BULK_BATCH_SIZE):
+            batch = normalized_ids[offset : offset + self.BULK_BATCH_SIZE]
+            self.env["lqa.api.client"].request_absolute_json(
+                "DELETE",
+                self._favorites_url(folder_id),
+                payload={"productIds": batch},
+                headers=self._madre_headers(),
+                timeout=self._timeout(),
+            )
+            batches += 1
+        return {
+            "folder_id": folder_id,
+            "count": len(normalized_ids),
+            "batches": batches,
+        }
+
+    @api.model
+    def download_import_template(self):
+        self._check_access()
+        content = self._build_template_xlsx()
+        return {
+            "filename": "retailers-publicador-productos.xlsx",
+            "content": base64.b64encode(content).decode("ascii"),
+            "mimetype": (
+                "application/vnd.openxmlformats-officedocument."
+                "spreadsheetml.sheet"
+            ),
+        }
 
     def _send_products(self, folder_id, products):
         if not products:
@@ -135,7 +254,7 @@ class LqaRetailersPublisherService(models.AbstractModel):
         elif extension == ".xlsx":
             rows = self._read_xlsx_rows(content)
         else:
-            raise UserError(_("Usa un archivo CSV o XLSX."))
+            raise UserError(_("Usa un archivo de Excel XLSX."))
         return self._products_from_rows(rows)
 
     def _read_csv_rows(self, content):
@@ -359,6 +478,174 @@ class LqaRetailersPublisherService(models.AbstractModel):
             ),
         }
 
+    def _normalize_favorite(self, item):
+        item = item if isinstance(item, dict) else {}
+        product = item.get("product") if isinstance(item.get("product"), dict) else item
+        delete_id = self._first(
+            product,
+            "_id",
+            "id",
+            "productInternalId",
+            "internalId",
+            "product_id",
+            "productId",
+        ) or self._first(
+            item,
+            "productInternalId",
+            "internalId",
+            "product_id",
+            "productId",
+            "_id",
+            "id",
+        )
+        delete_id = self._clean(delete_id)
+        if delete_id.upper().startswith("MLA"):
+            delete_id = ""
+        product_id = self._first(
+            product,
+            "item_id",
+            "itemId",
+            "mla",
+            "externalId",
+            "marketplaceId",
+        )
+        if not product_id:
+            candidate = self._clean(self._first(item, "mla", "externalId", "productId"))
+            if candidate.upper().startswith("MLA"):
+                product_id = candidate
+
+        return {
+            "delete_id": delete_id,
+            "product_id": self._clean(product_id),
+            "seller_sku": self._clean(
+                self._first(
+                    product,
+                    "sellerSku",
+                    "seller_sku",
+                    "sku",
+                )
+                or self._first(item, "sellerSku", "seller_sku", "sku")
+            ),
+            "title": self._clean(
+                self._first(product, "title", "name", "productName")
+                or self._first(item, "title", "name")
+            )
+            or "Producto sin titulo",
+            "image": self._clean(
+                self._first(
+                    product,
+                    "thumbnail",
+                    "image",
+                    "imageUrl",
+                    "picture",
+                    "pictureUrl",
+                )
+            ),
+            "brand": self._clean(self._first(product, "brand")),
+            "category_id": self._clean(
+                self._first(product, "categoryId", "category_id")
+            ),
+            "price": self._as_float(
+                self._first(product, "price", "salePrice", "amount"),
+                None,
+            ),
+            "stock": self._as_int(
+                self._first(
+                    product,
+                    "stock",
+                    "availableQuantity",
+                    "available_quantity",
+                    "stockQuantity",
+                ),
+                0,
+            ),
+            "visits": self._as_int(
+                self._first(product, "visits", "totalVisits", "total_visits"),
+                0,
+            ),
+            "orders": self._as_int(
+                self._first(product, "orders", "ordersCount", "orders_count"),
+                0,
+            ),
+        }
+
+    def _prepare_product_filters(self, filters):
+        params = {
+            "page": max(self._as_int(filters.get("page"), 1), 1),
+            "limit": min(max(self._as_int(filters.get("limit"), 20), 1), 100),
+        }
+        for key in self.PRODUCT_FILTERS:
+            value = self._clean(filters.get(key))
+            if value:
+                params[key] = value
+        if params.get("sortOrder") not in (None, "asc", "desc"):
+            params["sortOrder"] = "asc"
+        return params
+
+    def _extract_pagination(self, response):
+        if not isinstance(response, dict):
+            return {}
+        pagination = response.get("pagination")
+        if isinstance(pagination, dict):
+            return pagination
+        data = response.get("data")
+        if isinstance(data, dict) and isinstance(data.get("pagination"), dict):
+            return data["pagination"]
+        return {}
+
+    def _build_template_xlsx(self):
+        worksheet = (
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            "<sheetData>"
+            '<row r="1">'
+            f'<c r="A1" t="inlineStr"><is><t>{escape("productId")}</t></is></c>'
+            f'<c r="B1" t="inlineStr"><is><t>{escape("sellerSku")}</t></is></c>'
+            "</row>"
+            '<row r="2">'
+            f'<c r="A2" t="inlineStr"><is><t>{escape("MLA123456789")}</t></is></c>'
+            f'<c r="B2" t="inlineStr"><is><t>{escape("SKU-001")}</t></is></c>'
+            "</row>"
+            "</sheetData>"
+            "</worksheet>"
+        )
+        output = io.BytesIO()
+        with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as workbook:
+            workbook.writestr(
+                "[Content_Types].xml",
+                '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+                '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+                '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+                '<Default Extension="xml" ContentType="application/xml"/>'
+                '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+                '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+                "</Types>",
+            )
+            workbook.writestr(
+                "_rels/.rels",
+                '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+                '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+                '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
+                "</Relationships>",
+            )
+            workbook.writestr(
+                "xl/workbook.xml",
+                '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+                '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
+                'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+                '<sheets><sheet name="Productos" sheetId="1" r:id="rId1"/></sheets>'
+                "</workbook>",
+            )
+            workbook.writestr(
+                "xl/_rels/workbook.xml.rels",
+                '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+                '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+                '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
+                "</Relationships>",
+            )
+            workbook.writestr("xl/worksheets/sheet1.xml", worksheet)
+        return output.getvalue()
+
     def _madre_headers(self):
         params = self.env["ir.config_parameter"].sudo()
         token = (
@@ -399,6 +686,12 @@ class LqaRetailersPublisherService(models.AbstractModel):
             raise UserError(_("Selecciona una carpeta."))
         return int(value) if value.isdigit() else value
 
+    def _favorites_url(self, folder_id):
+        return self._join_url(
+            self._madre_base_url(),
+            self.FAVORITES_PATH.format(folder_id=folder_id),
+        )
+
     @classmethod
     def _extract_list(cls, payload, keys):
         if isinstance(payload, list):
@@ -436,6 +729,15 @@ class LqaRetailersPublisherService(models.AbstractModel):
                 return index
         return -1
 
+    @staticmethod
+    def _first(source, *keys):
+        source = source if isinstance(source, dict) else {}
+        for key in keys:
+            value = source.get(key)
+            if value not in (None, ""):
+                return value
+        return ""
+
     @classmethod
     def _cell(cls, row, index):
         return cls._clean(row[index]) if index < len(row) else ""
@@ -462,6 +764,13 @@ class LqaRetailersPublisherService(models.AbstractModel):
     def _as_int(value, default=0):
         try:
             return int(float(value))
+        except (TypeError, ValueError):
+            return default
+
+    @staticmethod
+    def _as_float(value, default=0.0):
+        try:
+            return float(value)
         except (TypeError, ValueError):
             return default
 

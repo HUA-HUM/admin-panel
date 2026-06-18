@@ -4,6 +4,23 @@ import { Component, onWillStart, useState } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 
+const defaultProductFilters = () => ({
+    page: 1,
+    limit: "20",
+    brand: "",
+    categoryId: "",
+    minPrice: "",
+    maxPrice: "",
+    minStock: "",
+    maxStock: "",
+    minVisits: "",
+    maxVisits: "",
+    minOrders: "",
+    maxOrders: "",
+    sortBy: "",
+    sortOrder: "asc",
+});
+
 export class LqaRetailersPublisher extends Component {
     static template = "lqa_admin_panel.RetailersPublisher";
 
@@ -13,11 +30,20 @@ export class LqaRetailersPublisher extends Component {
         this.fileInput = null;
         this.state = useState({
             folders: [],
+            products: [],
+            pagination: {},
             selectedFolderId: "",
+            selectedProductIds: {},
             loadingFolders: true,
+            loadingProducts: false,
             creatingFolder: false,
             addingManual: false,
             importingFile: false,
+            deletingProducts: false,
+            downloadingTemplate: false,
+            confirmDelete: false,
+            filtersOpen: false,
+            filters: defaultProductFilters(),
             newFolderName: "",
             manual: {
                 productId: "",
@@ -40,6 +66,25 @@ export class LqaRetailersPublisher extends Component {
         );
     }
 
+    get selectedProductIds() {
+        return Object.keys(this.state.selectedProductIds).filter(
+            (productId) => this.state.selectedProductIds[productId]
+        );
+    }
+
+    get selectableProducts() {
+        return this.state.products.filter((product) => product.delete_id);
+    }
+
+    get allCurrentProductsSelected() {
+        return (
+            this.selectableProducts.length > 0 &&
+            this.selectableProducts.every(
+                (product) => this.state.selectedProductIds[product.delete_id]
+            )
+        );
+    }
+
     async loadFolders(preferredFolderId = this.state.selectedFolderId) {
         this.state.loadingFolders = true;
         try {
@@ -59,6 +104,7 @@ export class LqaRetailersPublisher extends Component {
             } else {
                 this.state.selectedFolderId = "";
             }
+            await this.loadFolderProducts();
         } catch (error) {
             this.notifyError(error, "No se pudieron cargar las carpetas de Madre.");
         } finally {
@@ -66,8 +112,40 @@ export class LqaRetailersPublisher extends Component {
         }
     }
 
-    selectFolder(folder) {
+    async selectFolder(folder) {
+        if (String(folder.id) === String(this.state.selectedFolderId)) {
+            return;
+        }
         this.state.selectedFolderId = String(folder.id);
+        this.state.filters = defaultProductFilters();
+        this.clearProductSelection();
+        await this.loadFolderProducts();
+    }
+
+    async loadFolderProducts() {
+        if (!this.selectedFolder) {
+            this.state.products = [];
+            this.state.pagination = {};
+            return;
+        }
+        this.state.loadingProducts = true;
+        try {
+            const response = await this.orm.call(
+                "lqa.retailers.publisher.service",
+                "get_folder_products",
+                [this.selectedFolder.id, { ...this.state.filters }]
+            );
+            this.state.products = response.products || [];
+            this.state.pagination = response.pagination || {};
+            this.state.filters.page = this.state.pagination.page || 1;
+            this.selectedFolder.product_count = this.state.pagination.total || 0;
+        } catch (error) {
+            this.state.products = [];
+            this.state.pagination = {};
+            this.notifyError(error, "No se pudieron cargar los productos de la carpeta.");
+        } finally {
+            this.state.loadingProducts = false;
+        }
     }
 
     async createFolder() {
@@ -92,7 +170,7 @@ export class LqaRetailersPublisher extends Component {
                     (folder) => folder.name === name
                 );
                 if (matchingFolder) {
-                    this.state.selectedFolderId = String(matchingFolder.id);
+                    await this.selectFolder(matchingFolder);
                 }
             }
             this.notification.add("Carpeta creada en Madre.", { type: "success" });
@@ -108,6 +186,7 @@ export class LqaRetailersPublisher extends Component {
             this.notification.add("Selecciona una carpeta.", { type: "warning" });
             return;
         }
+        const folderId = this.selectedFolder.id;
         const productId = this.state.manual.productId.trim();
         const sellerSku = this.state.manual.sellerSku.trim();
         if (!productId || !sellerSku) {
@@ -121,14 +200,12 @@ export class LqaRetailersPublisher extends Component {
             const result = await this.orm.call(
                 "lqa.retailers.publisher.service",
                 "add_products",
-                [
-                    this.selectedFolder.id,
-                    [{ productId, sellerSku }],
-                ]
+                [folderId, [{ productId, sellerSku }]]
             );
             this.state.manual.productId = "";
             this.state.manual.sellerSku = "";
-            await this.loadFolders(this.selectedFolder.id);
+            this.state.filters.page = 1;
+            await this.loadFolders(folderId);
             this.notification.add(
                 `${this.formatNumber(result.count)} producto agregado a la carpeta.`,
                 { type: "success" }
@@ -147,6 +224,13 @@ export class LqaRetailersPublisher extends Component {
             this.clearUpload();
             return;
         }
+        if (!file.name.toLowerCase().endsWith(".xlsx")) {
+            this.clearUpload();
+            this.notification.add("Selecciona un archivo de Excel XLSX.", {
+                type: "warning",
+            });
+            return;
+        }
         try {
             const dataUrl = await this.readFileAsDataUrl(file);
             this.state.upload.name = file.name;
@@ -163,20 +247,21 @@ export class LqaRetailersPublisher extends Component {
             return;
         }
         if (!this.state.upload.content) {
-            this.notification.add("Selecciona un archivo CSV o XLSX.", {
+            this.notification.add("Selecciona un archivo de Excel XLSX.", {
                 type: "warning",
             });
             return;
         }
+        const folderId = this.selectedFolder.id;
         this.state.importingFile = true;
         try {
-            const folderId = this.selectedFolder.id;
             const result = await this.orm.call(
                 "lqa.retailers.publisher.service",
                 "import_products",
                 [folderId, this.state.upload.name, this.state.upload.content]
             );
             this.clearUpload();
+            this.state.filters.page = 1;
             await this.loadFolders(folderId);
             this.notification.add(
                 `${this.formatNumber(result.count)} productos agregados en ${this.formatNumber(result.batches)} lote(s).`,
@@ -189,25 +274,122 @@ export class LqaRetailersPublisher extends Component {
         }
     }
 
+    async downloadTemplate() {
+        this.state.downloadingTemplate = true;
+        try {
+            const result = await this.orm.call(
+                "lqa.retailers.publisher.service",
+                "download_import_template",
+                []
+            );
+            this.downloadBase64File(result.filename, result.content, result.mimetype);
+        } catch (error) {
+            this.notifyError(error, "No se pudo descargar la plantilla de Excel.");
+        } finally {
+            this.state.downloadingTemplate = false;
+        }
+    }
+
+    toggleFilters() {
+        this.state.filtersOpen = !this.state.filtersOpen;
+    }
+
+    async applyProductFilters() {
+        this.state.filters.page = 1;
+        this.clearProductSelection();
+        await this.loadFolderProducts();
+    }
+
+    async clearProductFilters() {
+        this.state.filters = defaultProductFilters();
+        this.clearProductSelection();
+        await this.loadFolderProducts();
+    }
+
+    async previousProductsPage() {
+        this.state.filters.page = Math.max(
+            Number(this.state.pagination.page || 1) - 1,
+            1
+        );
+        this.clearProductSelection();
+        await this.loadFolderProducts();
+    }
+
+    async nextProductsPage() {
+        this.state.filters.page = Number(this.state.pagination.page || 1) + 1;
+        this.clearProductSelection();
+        await this.loadFolderProducts();
+    }
+
+    toggleProduct(product) {
+        if (!product.delete_id) {
+            return;
+        }
+        this.state.selectedProductIds[product.delete_id] =
+            !this.state.selectedProductIds[product.delete_id];
+    }
+
+    toggleCurrentPage() {
+        const shouldSelect = !this.allCurrentProductsSelected;
+        for (const product of this.selectableProducts) {
+            this.state.selectedProductIds[product.delete_id] = shouldSelect;
+        }
+    }
+
+    clearProductSelection() {
+        this.state.selectedProductIds = {};
+    }
+
+    openDeleteConfirmation() {
+        if (!this.selectedProductIds.length) {
+            return;
+        }
+        this.state.confirmDelete = true;
+    }
+
+    closeDeleteConfirmation() {
+        if (!this.state.deletingProducts) {
+            this.state.confirmDelete = false;
+        }
+    }
+
+    async confirmDeleteProducts() {
+        if (!this.selectedFolder || !this.selectedProductIds.length) {
+            return;
+        }
+        const folderId = this.selectedFolder.id;
+        const productIds = [...this.selectedProductIds];
+        this.state.deletingProducts = true;
+        try {
+            const result = await this.orm.call(
+                "lqa.retailers.publisher.service",
+                "delete_products",
+                [folderId, productIds]
+            );
+            this.state.confirmDelete = false;
+            this.clearProductSelection();
+            await this.loadFolders(folderId);
+            if (!this.state.products.length && this.state.filters.page > 1) {
+                this.state.filters.page -= 1;
+                await this.loadFolderProducts();
+            }
+            this.notification.add(
+                `${this.formatNumber(result.count)} productos eliminados de la carpeta.`,
+                { type: "success" }
+            );
+        } catch (error) {
+            this.notifyError(error, "No se pudieron eliminar los productos.");
+        } finally {
+            this.state.deletingProducts = false;
+        }
+    }
+
     clearUpload() {
         this.state.upload.name = "";
         this.state.upload.content = "";
         if (this.fileInput) {
             this.fileInput.value = "";
         }
-    }
-
-    downloadTemplate() {
-        const content = "productId,sellerSku\nMLA123456789,SKU-001\n";
-        const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
-        const url = URL.createObjectURL(blob);
-        const anchor = document.createElement("a");
-        anchor.href = url;
-        anchor.download = "retailers-publicador-productos.csv";
-        document.body.appendChild(anchor);
-        anchor.click();
-        anchor.remove();
-        URL.revokeObjectURL(url);
     }
 
     readFileAsDataUrl(file) {
@@ -219,8 +401,37 @@ export class LqaRetailersPublisher extends Component {
         });
     }
 
+    downloadBase64File(filename, content, mimetype) {
+        const binary = window.atob(content || "");
+        const bytes = new Uint8Array(binary.length);
+        for (let index = 0; index < binary.length; index++) {
+            bytes[index] = binary.charCodeAt(index);
+        }
+        const blob = new Blob([bytes], { type: mimetype });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = filename || "retailers-publicador-productos.xlsx";
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        URL.revokeObjectURL(url);
+    }
+
     isSelectedFolder(folder) {
         return String(folder.id) === String(this.state.selectedFolderId);
+    }
+
+    isProductSelected(product) {
+        return Boolean(
+            product.delete_id && this.state.selectedProductIds[product.delete_id]
+        );
+    }
+
+    productUrl(product) {
+        return product.product_id
+            ? `https://articulo.mercadolibre.com.ar/${product.product_id}`
+            : false;
     }
 
     formatNumber(value) {
@@ -230,21 +441,16 @@ export class LqaRetailersPublisher extends Component {
         );
     }
 
-    formatDateTime(value) {
-        if (!value) {
+    formatCurrency(value) {
+        const numericValue = Number(value);
+        if (!Number.isFinite(numericValue)) {
             return "-";
         }
-        const date = new Date(value);
-        if (Number.isNaN(date.getTime())) {
-            return value;
-        }
-        return new Intl.DateTimeFormat("es-AR", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-        }).format(date);
+        return new Intl.NumberFormat("es-AR", {
+            style: "currency",
+            currency: "ARS",
+            maximumFractionDigits: 0,
+        }).format(numericValue);
     }
 
     notifyError(error, fallback) {

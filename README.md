@@ -46,7 +46,9 @@ Base de panel comercial construida sobre Odoo + Docker.
   - Seccion `Publicador / Carpetas` conectada a Madre:
     - Creacion y listado de carpetas.
     - Carga manual por `productId`/MLA y `sellerSku`.
-    - Importacion masiva desde CSV o XLSX.
+    - Importacion masiva desde Excel XLSX.
+    - Consulta paginada con filtros de los productos de cada carpeta.
+    - Seleccion y eliminacion masiva usando IDs internos de Madre.
   - Seccion `Acciones masivas` para forzar actualizacion de precio, estado y stock.
   - Seccion `Orders` para ordenes de Fravega, Megatone y OnCity:
     - Vistas rapidas Last 24h, 48h, 72h e historico.
@@ -208,6 +210,7 @@ https://api.madre.loquieroaca.com/api/internal/product-sync/runs
 https://api.madre.loquieroaca.com/api/internal/marketplace/products/{marketplace}/status
 https://api.madre.loquieroaca.com/api/analytics/marketplace-favorites/marketplaces
 https://api.madre.loquieroaca.com/api/analytics/marketplace-favorites/bulk
+https://api.madre.loquieroaca.com/api/analytics/marketplace-favorites/{folderId}/favorites
 https://api.products.loquieroaca.com/api/internal/import/{marketplace}/run
 https://api.products.loquieroaca.com/api/internal/marketplace-changes/refresh-published/{marketplace}
 https://order.api.loquieroaca.com/orders/overview/last-24-hours

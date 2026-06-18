@@ -170,22 +170,23 @@
                                 <label class="o_lqa_retailers_publisher_file">
                                     <input
                                         type="file"
-                                        accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
+                                        accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                                         t-on-change="onFileChange"
                                     />
                                     <span>
                                         <i class="fa fa-upload"/>
-                                        <t t-esc="state.upload.name || 'Seleccionar XLSX o CSV'"/>
+                                        <t t-esc="state.upload.name || 'Seleccionar Excel XLSX'"/>
                                     </span>
                                 </label>
                                 <div class="o_lqa_retailers_publisher_import_actions">
                                     <button
                                         type="button"
                                         class="btn btn-secondary"
+                                        t-att-disabled="state.downloadingTemplate"
                                         t-on-click="downloadTemplate"
                                     >
                                         <i class="fa fa-download"/>
-                                        Plantilla CSV
+                                        Plantilla Excel
                                     </button>
                                     <button
                                         type="submit"
@@ -202,33 +203,227 @@
                         <div class="o_lqa_retailers_publisher_products">
                             <div class="o_lqa_retailers_publisher_products__head">
                                 <div>
-                                    <h3>Productos informados por Madre</h3>
-                                    <span t-esc="formatDateTime(selectedFolder.updated_at)"/>
+                                    <h3>Productos de la carpeta</h3>
+                                    <span>
+                                        <t t-esc="formatNumber(state.pagination.total || 0)"/>
+                                        productos
+                                    </span>
                                 </div>
-                                <strong t-esc="formatNumber(selectedFolder.products.length)"/>
+                                <div class="o_lqa_retailers_publisher_products__actions">
+                                    <button
+                                        type="button"
+                                        class="btn btn-secondary"
+                                        t-on-click="toggleFilters"
+                                    >
+                                        <i class="fa fa-filter"/>
+                                        Filtros
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="btn btn-danger"
+                                        t-att-disabled="!selectedProductIds.length"
+                                        t-on-click="openDeleteConfirmation"
+                                    >
+                                        <i class="fa fa-trash-o"/>
+                                        Eliminar
+                                        <t t-if="selectedProductIds.length">
+                                            (<t t-esc="formatNumber(selectedProductIds.length)"/>)
+                                        </t>
+                                    </button>
+                                </div>
                             </div>
+
+                            <form
+                                t-if="state.filtersOpen"
+                                class="o_lqa_retailers_publisher_filters"
+                                t-on-submit.prevent="applyProductFilters"
+                            >
+                                <label>
+                                    <span>Marca</span>
+                                    <input type="text" t-model="state.filters.brand"/>
+                                </label>
+                                <label>
+                                    <span>Categoria</span>
+                                    <input type="text" t-model="state.filters.categoryId"/>
+                                </label>
+                                <label>
+                                    <span>Precio minimo</span>
+                                    <input type="number" min="0" t-model="state.filters.minPrice"/>
+                                </label>
+                                <label>
+                                    <span>Precio maximo</span>
+                                    <input type="number" min="0" t-model="state.filters.maxPrice"/>
+                                </label>
+                                <label>
+                                    <span>Stock minimo</span>
+                                    <input type="number" min="0" t-model="state.filters.minStock"/>
+                                </label>
+                                <label>
+                                    <span>Stock maximo</span>
+                                    <input type="number" min="0" t-model="state.filters.maxStock"/>
+                                </label>
+                                <label>
+                                    <span>Visitas minimas</span>
+                                    <input type="number" min="0" t-model="state.filters.minVisits"/>
+                                </label>
+                                <label>
+                                    <span>Visitas maximas</span>
+                                    <input type="number" min="0" t-model="state.filters.maxVisits"/>
+                                </label>
+                                <label>
+                                    <span>Ordenes minimas</span>
+                                    <input type="number" min="0" t-model="state.filters.minOrders"/>
+                                </label>
+                                <label>
+                                    <span>Ordenes maximas</span>
+                                    <input type="number" min="0" t-model="state.filters.maxOrders"/>
+                                </label>
+                                <label>
+                                    <span>Ordenar por</span>
+                                    <select class="form-select" t-model="state.filters.sortBy">
+                                        <option value="">Predeterminado</option>
+                                        <option value="price">Precio</option>
+                                        <option value="stock">Stock</option>
+                                        <option value="visits">Visitas</option>
+                                        <option value="orders">Ordenes</option>
+                                    </select>
+                                </label>
+                                <label>
+                                    <span>Direccion</span>
+                                    <select class="form-select" t-model="state.filters.sortOrder">
+                                        <option value="asc">Ascendente</option>
+                                        <option value="desc">Descendente</option>
+                                    </select>
+                                </label>
+                                <div class="o_lqa_retailers_publisher_filters__actions">
+                                    <button
+                                        type="button"
+                                        class="btn btn-secondary"
+                                        t-on-click="clearProductFilters"
+                                    >
+                                        Limpiar
+                                    </button>
+                                    <button type="submit" class="btn btn-primary">
+                                        Aplicar
+                                    </button>
+                                </div>
+                            </form>
+
+                            <div class="o_lqa_retailers_publisher_table_head">
+                                <label>
+                                    <input
+                                        type="checkbox"
+                                        t-att-checked="allCurrentProductsSelected"
+                                        t-att-disabled="!selectableProducts.length"
+                                        t-on-change="toggleCurrentPage"
+                                    />
+                                    <span>Seleccionar pagina</span>
+                                </label>
+                                <div class="o_lqa_retailers_publisher_pager">
+                                    <select
+                                        class="form-select"
+                                        t-model="state.filters.limit"
+                                        t-on-change="applyProductFilters"
+                                    >
+                                        <option value="20">20 por pagina</option>
+                                        <option value="50">50 por pagina</option>
+                                        <option value="100">100 por pagina</option>
+                                    </select>
+                                    <button
+                                        type="button"
+                                        class="btn btn-secondary"
+                                        t-att-disabled="!state.pagination.has_previous || state.loadingProducts"
+                                        t-on-click="previousProductsPage"
+                                    >
+                                        Anterior
+                                    </button>
+                                    <span>
+                                        Pagina
+                                        <t t-esc="state.pagination.page || 1"/>
+                                        de
+                                        <t t-esc="state.pagination.total_pages || 1"/>
+                                    </span>
+                                    <button
+                                        type="button"
+                                        class="btn btn-secondary"
+                                        t-att-disabled="!state.pagination.has_next || state.loadingProducts"
+                                        t-on-click="nextProductsPage"
+                                    >
+                                        Siguiente
+                                    </button>
+                                </div>
+                            </div>
+
                             <div
-                                t-if="!selectedFolder.products.length"
+                                t-if="state.loadingProducts"
                                 class="o_lqa_retailers_publisher_empty"
                             >
-                                Madre no informo productos dentro de esta carpeta.
+                                Cargando productos...
+                            </div>
+                            <div
+                                t-elif="!state.products.length"
+                                class="o_lqa_retailers_publisher_empty"
+                            >
+                                No hay productos para mostrar.
                             </div>
                             <div t-else="" class="o_lqa_retailers_publisher_table_wrap">
                                 <table>
                                     <thead>
                                         <tr>
-                                            <th>Product ID / MLA</th>
-                                            <th>Seller SKU</th>
+                                            <th class="is-selection"/>
+                                            <th>Producto</th>
+                                            <th>MLA / SKU</th>
+                                            <th>Marca</th>
+                                            <th>Precio</th>
+                                            <th>Stock</th>
+                                            <th>Visitas</th>
+                                            <th>Ordenes</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <tr
-                                            t-foreach="selectedFolder.products"
+                                            t-foreach="state.products"
                                             t-as="product"
-                                            t-key="product.productId + '-' + product.sellerSku"
+                                            t-key="product.delete_id || product.product_id + '-' + product.seller_sku"
+                                            t-att-class="isProductSelected(product) ? 'is-selected' : ''"
                                         >
-                                            <td t-esc="product.productId || '-'"/>
-                                            <td t-esc="product.sellerSku || '-'"/>
+                                            <td class="is-selection">
+                                                <input
+                                                    type="checkbox"
+                                                    t-att-checked="isProductSelected(product)"
+                                                    t-att-disabled="!product.delete_id"
+                                                    t-on-change="() => this.toggleProduct(product)"
+                                                />
+                                            </td>
+                                            <td>
+                                                <div class="o_lqa_retailers_publisher_product">
+                                                    <img
+                                                        t-if="product.image"
+                                                        t-att-src="product.image"
+                                                        t-att-alt="product.title"
+                                                    />
+                                                    <div>
+                                                        <strong t-esc="product.title"/>
+                                                        <small t-esc="product.category_id || '-'"/>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <a
+                                                    t-if="productUrl(product)"
+                                                    t-att-href="productUrl(product)"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    t-esc="product.product_id"
+                                                />
+                                                <strong t-else="" t-esc="product.product_id || '-'"/>
+                                                <small t-esc="product.seller_sku || '-'"/>
+                                            </td>
+                                            <td t-esc="product.brand || '-'"/>
+                                            <td t-esc="formatCurrency(product.price)"/>
+                                            <td t-esc="formatNumber(product.stock)"/>
+                                            <td t-esc="formatNumber(product.visits)"/>
+                                            <td t-esc="formatNumber(product.orders)"/>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -237,6 +432,36 @@
                     </t>
                 </section>
             </section>
+
+            <div class="o_lqa_modal_backdrop" t-if="state.confirmDelete">
+                <div class="o_lqa_retailers_publisher_modal">
+                    <h2>Eliminar productos</h2>
+                    <p>
+                        Vas a eliminar
+                        <strong t-esc="formatNumber(selectedProductIds.length)"/>
+                        productos de
+                        <strong t-esc="selectedFolder.name"/>.
+                    </p>
+                    <div class="o_lqa_retailers_publisher_modal__actions">
+                        <button
+                            type="button"
+                            class="btn btn-secondary"
+                            t-att-disabled="state.deletingProducts"
+                            t-on-click="closeDeleteConfirmation"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="button"
+                            class="btn btn-danger"
+                            t-att-disabled="state.deletingProducts"
+                            t-on-click="confirmDeleteProducts"
+                        >
+                            Eliminar productos
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </t>
 </templates>
