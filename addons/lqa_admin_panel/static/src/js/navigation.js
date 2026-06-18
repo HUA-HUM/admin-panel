@@ -43,8 +43,16 @@ patch(NavBar.prototype, {
     },
 
     lqaCanFavorite(menu) {
+        const currentApp = this.currentApp;
         const isPanelApp =
-            Number(this.currentApp?.id) === Number(this.lqaNavigation.panelRootMenuId);
+            currentApp?.xmlid === "lqa_admin_panel.menu_lqa_root" ||
+            currentApp?.xmlID === "lqa_admin_panel.menu_lqa_root" ||
+            currentApp?.name === "Panel Comercial" ||
+            (
+                this.lqaNavigation.panelRootMenuId &&
+                Number(currentApp?.id) ===
+                    Number(this.lqaNavigation.panelRootMenuId)
+            );
         return Boolean(
             isPanelApp && (menu?.actionID || menu?.actionId || menu?.action)
         );
@@ -68,8 +76,12 @@ patch(NavBar.prototype, {
                 []
             );
             this.lqaSetFavoriteState(data);
-        } catch {
+        } catch (error) {
             this.lqaNavigation.favoriteMenuIds = {};
+            if (this.currentApp?.name === "Panel Comercial") {
+                this.lqaNavigation.panelRootMenuId = this.currentApp.id;
+            }
+            console.warn("No se pudieron cargar los favoritos del panel.", error);
         }
     },
 
