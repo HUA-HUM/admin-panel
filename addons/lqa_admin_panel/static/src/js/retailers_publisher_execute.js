@@ -38,13 +38,17 @@ export class LqaRetailersPublisherExecute extends Component {
                 oncity: true,
             },
             loadingFolders: true,
+            loadingHistory: true,
             executing: false,
             confirmExecution: false,
-            result: null,
+            history: [],
         });
 
         onWillStart(async () => {
-            await this.loadFolders();
+            await Promise.all([
+                this.loadFolders(),
+                this.loadPublicationHistory(),
+            ]);
         });
     }
 
@@ -93,6 +97,21 @@ export class LqaRetailersPublisherExecute extends Component {
         }
     }
 
+    async loadPublicationHistory() {
+        this.state.loadingHistory = true;
+        try {
+            this.state.history = await this.orm.call(
+                "lqa.retailers.publisher.service",
+                "get_publication_history",
+                [30]
+            );
+        } catch (error) {
+            this.notifyError(error, "No se pudo cargar el historial de publicaciones.");
+        } finally {
+            this.state.loadingHistory = false;
+        }
+    }
+
     toggleMarketplace(marketplace) {
         this.state.selectedMarketplaces[marketplace.id] =
             !this.state.selectedMarketplaces[marketplace.id];
@@ -129,17 +148,20 @@ export class LqaRetailersPublisherExecute extends Component {
                 "execute_publication",
                 [this.selectedFolder.id, this.selectedMarketplaceIds]
             );
-            this.state.result = result;
             if (result.run_id) {
                 window.sessionStorage.setItem("lqaPublisherRunId", result.run_id);
             }
             this.state.confirmExecution = false;
-            this.notification.add("Publication run creado correctamente.", {
-                type: "success",
-            });
+            this.notification.add(
+                result.ok
+                    ? "Publication run creado correctamente."
+                    : result.message || "La publicacion no pudo ejecutarse.",
+                { type: result.ok ? "success" : "danger" }
+            );
         } catch (error) {
             this.notifyError(error, "No se pudo ejecutar la publicacion.");
         } finally {
+            await this.loadPublicationHistory();
             this.state.executing = false;
         }
     }

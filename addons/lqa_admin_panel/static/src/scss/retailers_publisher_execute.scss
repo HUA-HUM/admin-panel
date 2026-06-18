@@ -14,7 +14,7 @@
 
 .o_lqa_retailers_publish__header,
 .o_lqa_retailers_publish_form,
-.o_lqa_retailers_publish_result {
+.o_lqa_retailers_publish_history {
     max-width: 1180px;
     margin-right: auto;
     margin-left: auto;
@@ -114,31 +114,6 @@
     }
 }
 
-.o_lqa_retailers_publish_folder {
-    display: flex;
-    max-width: 560px;
-    align-items: center;
-    gap: 10px;
-    margin-top: 10px;
-    padding: 10px 12px;
-    border: 1px solid #d9e1ec;
-    border-radius: 8px;
-    background: #f8fafc;
-
-    strong {
-        min-width: 0;
-        flex: 1;
-        overflow-wrap: anywhere;
-    }
-
-    span,
-    small {
-        flex: 0 0 auto;
-        color: #607086;
-        font-size: 12px;
-    }
-}
-
 .o_lqa_retailers_publish_marketplaces {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -228,9 +203,67 @@
     }
 }
 
-.o_lqa_retailers_publish_result {
+.o_lqa_retailers_publish_history {
     margin-top: 14px;
+}
+
+.o_lqa_retailers_publish_history__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 1px solid #d9e1ec;
+    border-radius: 8px;
+    background: #fff;
+
+    h2 {
+        margin: 0;
+        color: #1f2937;
+        font-size: 18px;
+        font-weight: 800;
+    }
+
+    span {
+        display: block;
+        margin-top: 4px;
+        color: #607086;
+    }
+
+    .btn {
+        min-height: 38px;
+        border-color: #d4dce8;
+        background: #fff;
+        color: #314158;
+        font-weight: 700;
+    }
+
+    i {
+        margin-right: 6px;
+    }
+}
+
+.o_lqa_retailers_publish_history__list {
+    display: grid;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.o_lqa_retailers_publish_history__empty {
+    margin-top: 10px;
+    padding: 36px 18px;
+    border: 1px solid #d9e1ec;
+    border-radius: 8px;
+    background: #fff;
+    color: #607086;
+    text-align: center;
+}
+
+.o_lqa_retailers_publish_result {
     padding: 16px;
+    border: 1px solid #d9e1ec;
+    border-radius: 8px;
+    background: #fff;
 }
 
 .o_lqa_retailers_publish_result__head {
@@ -348,7 +381,8 @@
 
     .o_lqa_retailers_publish__header,
     .o_lqa_retailers_publish_submit,
-    .o_lqa_retailers_publish_result__head {
+    .o_lqa_retailers_publish_result__head,
+    .o_lqa_retailers_publish_history__head {
         align-items: stretch;
         flex-direction: column;
     }
@@ -362,8 +396,4 @@
         grid-template-columns: 1fr;
     }
 
-    .o_lqa_retailers_publish_folder {
-        align-items: flex-start;
-        flex-direction: column;
-    }
 }

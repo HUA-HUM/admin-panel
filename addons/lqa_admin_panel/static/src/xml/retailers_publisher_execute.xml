@@ -35,23 +35,11 @@
                                 t-foreach="state.folders"
                                 t-as="folder"
                                 t-key="folder.id"
-                                t-att-value="folder.id"
+                                t-att-value="String(folder.id)"
                             >
                                 <t t-esc="folder.name"/>
-                                (ID <t t-esc="folder.id"/>)
                             </option>
                         </select>
-                        <div t-if="selectedFolder" class="o_lqa_retailers_publish_folder">
-                            <strong t-esc="selectedFolder.name"/>
-                            <span>
-                                Folder ID:
-                                <t t-esc="selectedFolder.id"/>
-                            </span>
-                            <small>
-                                <t t-esc="formatNumber(selectedFolder.product_count)"/>
-                                productos
-                            </small>
-                        </div>
                     </div>
                 </div>
 
@@ -102,44 +90,81 @@
                 </div>
             </section>
 
-            <section t-if="state.result" class="o_lqa_retailers_publish_result">
-                <div class="o_lqa_retailers_publish_result__head">
+            <section class="o_lqa_retailers_publish_history">
+                <div class="o_lqa_retailers_publish_history__head">
                     <div>
-                        <small>Ultima ejecucion</small>
-                        <h2>
-                            Run
-                            <t t-esc="state.result.run_id || 'creado'"/>
-                        </h2>
+                        <h2>Respuestas guardadas</h2>
+                        <span>Historial persistente de ejecuciones de publicación.</span>
                     </div>
-                    <strong t-esc="statusLabel(state.result.status)"/>
+                    <button
+                        type="button"
+                        class="btn btn-secondary"
+                        t-att-disabled="state.loadingHistory"
+                        t-on-click="loadPublicationHistory"
+                    >
+                        <i class="fa fa-refresh"/>
+                        Actualizar
+                    </button>
                 </div>
-                <dl>
-                    <div>
-                        <dt>Carpeta</dt>
-                        <dd t-esc="state.result.folder_id"/>
-                    </div>
-                    <div>
-                        <dt>Marketplaces</dt>
-                        <dd>
-                            <t
-                                t-foreach="state.result.marketplaces"
-                                t-as="marketplaceId"
-                                t-key="marketplaceId"
-                            >
-                                <span t-esc="marketplaceName(marketplaceId)"/>
-                            </t>
-                        </dd>
-                    </div>
-                    <div>
-                        <dt>Jobs</dt>
-                        <dd t-esc="formatNumber(state.result.jobs_count)"/>
-                    </div>
-                    <div>
-                        <dt>Fecha</dt>
-                        <dd t-esc="formatDateTime(state.result.triggered_at)"/>
-                    </div>
-                </dl>
-                <p t-if="state.result.message" t-esc="state.result.message"/>
+
+                <div
+                    t-if="state.loadingHistory"
+                    class="o_lqa_retailers_publish_history__empty"
+                >
+                    Cargando respuestas...
+                </div>
+                <div
+                    t-elif="!state.history.length"
+                    class="o_lqa_retailers_publish_history__empty"
+                >
+                    Todavía no hay ejecuciones guardadas.
+                </div>
+                <div t-else="" class="o_lqa_retailers_publish_history__list">
+                    <article
+                        class="o_lqa_retailers_publish_result"
+                        t-foreach="state.history"
+                        t-as="execution"
+                        t-key="execution.id"
+                    >
+                        <div class="o_lqa_retailers_publish_result__head">
+                            <div>
+                                <small t-esc="execution.user_name || 'Usuario'"/>
+                                <h2>
+                                    Run
+                                    <t t-esc="execution.run_id || 'sin ID'"/>
+                                </h2>
+                            </div>
+                            <strong t-esc="statusLabel(execution.status)"/>
+                        </div>
+                        <dl>
+                            <div>
+                                <dt>Carpeta</dt>
+                                <dd t-esc="execution.folder_id"/>
+                            </div>
+                            <div>
+                                <dt>Marketplaces</dt>
+                                <dd>
+                                    <t
+                                        t-foreach="execution.marketplaces"
+                                        t-as="marketplaceId"
+                                        t-key="marketplaceId"
+                                    >
+                                        <span t-esc="marketplaceName(marketplaceId)"/>
+                                    </t>
+                                </dd>
+                            </div>
+                            <div>
+                                <dt>Jobs</dt>
+                                <dd t-esc="formatNumber(execution.jobs_count)"/>
+                            </div>
+                            <div>
+                                <dt>Fecha</dt>
+                                <dd t-esc="formatDateTime(execution.triggered_at)"/>
+                            </div>
+                        </dl>
+                        <p t-if="execution.message" t-esc="execution.message"/>
+                    </article>
+                </div>
             </section>
 
             <div class="o_lqa_modal_backdrop" t-if="state.confirmExecution">

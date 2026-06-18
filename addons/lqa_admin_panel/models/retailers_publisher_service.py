@@ -1,6 +1,7 @@
 import base64
 import csv
 import io
+import json
 import os
 import posixpath
 import re
@@ -231,18 +232,34 @@ class LqaRetailersPublisherService(models.AbstractModel):
         if not normalized_marketplaces:
             raise UserError(_("Selecciona al menos un marketplace para publicar."))
 
-        response = self.env["lqa.api.client"].request_absolute_json(
-            "POST",
-            self._join_url(
-                self._products_base_url(),
-                self.EXECUTE_PUBLICATION_PATH,
-            ),
-            payload={
-                "marketplaces": normalized_marketplaces,
-                "folderId": folder_id,
-            },
-            timeout=self._timeout(),
-        )
+        history_values = {
+            "user_id": self.env.user.id,
+            "folder_id": self._clean(folder_id),
+            "marketplaces_json": json.dumps(normalized_marketplaces),
+        }
+        try:
+            response = self.env["lqa.api.client"].request_absolute_json(
+                "POST",
+                self._join_url(
+                    self._products_base_url(),
+                    self.EXECUTE_PUBLICATION_PATH,
+                ),
+                payload={
+                    "marketplaces": normalized_marketplaces,
+                    "folderId": folder_id,
+                },
+                timeout=self._timeout(),
+            )
+        except UserError as error:
+            history = self.env["lqa.retailers.publication.run"].sudo().create(
+                {
+                    **history_values,
+                    "status": "ERROR",
+                    "message": str(error),
+                    "response_json": "{}",
+                }
+            )
+            return history.to_panel_dict()
         payload = self._extract_record(
             response,
             ("run", "publicationRun", "data", "result"),
@@ -251,7 +268,7 @@ class LqaRetailersPublisherService(models.AbstractModel):
             payload,
             ("run", "publicationRun", "data", "result"),
         )
-        return {
+        result = {
             "run_id": self._clean(
                 self._first(
                     payload,
@@ -307,6 +324,32 @@ class LqaRetailersPublisherService(models.AbstractModel):
             "marketplaces": normalized_marketplaces,
             "triggered_at": fields.Datetime.to_string(fields.Datetime.now()),
         }
+        history = self.env["lqa.retailers.publication.run"].sudo().create(
+            {
+                **history_values,
+                "run_id": result["run_id"],
+                "status": result["status"],
+                "jobs_count": result["jobs_count"],
+                "message": result["message"],
+                "response_json": json.dumps(
+                    response,
+                    ensure_ascii=False,
+                    default=str,
+                ),
+            }
+        )
+        return history.to_panel_dict()
+
+    @api.model
+    def get_publication_history(self, limit=20):
+        self._check_access()
+        limit = min(max(self._as_int(limit, 20), 1), 100)
+        history = self.env["lqa.retailers.publication.run"].search(
+            [],
+            order="triggered_at desc, id desc",
+            limit=limit,
+        )
+        return [execution.to_panel_dict() for execution in history]
 
     @api.model
     def get_publication_run_jobs(self, run_id, limit=50, offset=0):

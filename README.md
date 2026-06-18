@@ -52,6 +52,7 @@ Base de panel comercial construida sobre Odoo + Docker.
   - Seccion `Publicador / Publicar`:
     - Seleccion de carpeta y marketplaces.
     - Creacion del publication run y jobs en Products API.
+    - Historial persistente de respuestas exitosas y fallidas.
   - Seccion `Publicador / Seguimiento`:
     - Detalle paginado de jobs por publication run.
     - Vista de publicaciones pendientes globales.
