@@ -130,6 +130,9 @@ export class LqaRetailersPublisherExecute extends Component {
                 [this.selectedFolder.id, this.selectedMarketplaceIds]
             );
             this.state.result = result;
+            if (result.run_id) {
+                window.sessionStorage.setItem("lqaPublisherRunId", result.run_id);
+            }
             this.state.confirmExecution = false;
             this.notification.add("Publication run creado correctamente.", {
                 type: "success",

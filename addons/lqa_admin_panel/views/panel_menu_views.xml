@@ -74,6 +74,11 @@
         <field name="tag">lqa_admin_panel.retailers_publisher_execute</field>
     </record>
 
+    <record id="action_lqa_retailers_publisher_tracking" model="ir.actions.client">
+        <field name="name">Publicador - Seguimiento</field>
+        <field name="tag">lqa_admin_panel.retailers_publisher_tracking</field>
+    </record>
+
     <record id="action_lqa_mercadolibre_catalog" model="ir.actions.client">
         <field name="name">Catalogo MercadoLibre</field>
         <field name="tag">lqa_admin_panel.mercadolibre_catalog</field>
@@ -321,6 +326,15 @@
         parent="menu_lqa_retailers_publisher"
         action="action_lqa_retailers_publisher_execute"
         sequence="20"
+        groups="lqa_admin_panel.group_lqa_commercial_user"
+    />
+
+    <menuitem
+        id="menu_lqa_retailers_publisher_tracking"
+        name="Seguimiento"
+        parent="menu_lqa_retailers_publisher"
+        action="action_lqa_retailers_publisher_tracking"
+        sequence="30"
         groups="lqa_admin_panel.group_lqa_commercial_user"
     />
 

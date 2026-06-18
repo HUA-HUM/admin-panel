@@ -1,0 +1,286 @@
+.o_lqa_publication_tracking {
+    height: 100%;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 24px;
+    background: #f5f7fa;
+    color: #202a37;
+
+    * {
+        box-sizing: border-box;
+    }
+}
+
+.o_lqa_publication_tracking__header,
+.o_lqa_publication_tracking__tabs,
+.o_lqa_publication_tracking_panel {
+    max-width: 1520px;
+    margin-right: auto;
+    margin-left: auto;
+}
+
+.o_lqa_publication_tracking__header {
+    margin-bottom: 14px;
+
+    p {
+        margin: 0 0 6px;
+        color: #ff4f5a;
+        font-size: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+
+    h1 {
+        margin: 0;
+        color: #1f2937;
+        font-size: 34px;
+        font-weight: 800;
+        letter-spacing: 0;
+        line-height: 1.15;
+    }
+
+    span {
+        display: block;
+        margin-top: 6px;
+        color: #607086;
+    }
+}
+
+.o_lqa_publication_tracking__tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+
+    button {
+        display: inline-flex;
+        min-height: 38px;
+        align-items: center;
+        gap: 7px;
+        padding: 0 14px;
+        border: 1px solid #cfd8e5;
+        border-radius: 8px;
+        background: #fff;
+        color: #405064;
+        font-weight: 800;
+    }
+
+    button.is-active {
+        border-color: #ff4f5a;
+        background: #ff4f5a;
+        color: #fff;
+    }
+}
+
+.o_lqa_publication_tracking_panel {
+    overflow: hidden;
+    border: 1px solid #d9e1ec;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.o_lqa_publication_tracking_search {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 150px auto;
+    gap: 10px;
+    align-items: end;
+    padding: 14px;
+    border-bottom: 1px solid #e2e8f0;
+    background: #f8fafc;
+
+    label {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: 5px;
+        margin: 0;
+    }
+
+    label > span {
+        color: #607086;
+        font-size: 10px;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+
+    input,
+    .form-select {
+        width: 100%;
+        min-height: 40px;
+        border: 1px solid #d6dee8;
+        border-radius: 7px;
+        background: #fff;
+        color: #253348;
+    }
+
+    input {
+        padding: 0 12px;
+    }
+
+    .btn-primary {
+        min-height: 40px;
+        border-color: #ff4f5a;
+        background: #ff4f5a;
+        font-weight: 800;
+    }
+
+    i {
+        margin-right: 6px;
+    }
+}
+
+.o_lqa_publication_tracking_table_head,
+.o_lqa_publication_tracking_pending_head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 13px 14px;
+    border-bottom: 1px solid #e2e8f0;
+
+    h2 {
+        margin: 0;
+        color: #1f2937;
+        font-size: 18px;
+        font-weight: 800;
+    }
+
+    span {
+        display: block;
+        margin-top: 3px;
+        color: #607086;
+        font-size: 12px;
+    }
+}
+
+.o_lqa_publication_tracking_pending_head > div:last-child,
+.o_lqa_publication_tracking_pager {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .form-select {
+        width: auto;
+        min-width: 150px;
+        min-height: 36px;
+        border-color: #d6dee8;
+        border-radius: 7px;
+    }
+
+    .btn {
+        min-height: 36px;
+        border-color: #d4dce8;
+        background: #fff;
+        color: #314158;
+        font-weight: 700;
+    }
+
+    i {
+        margin-right: 6px;
+    }
+}
+
+.o_lqa_publication_tracking_table_wrap {
+    max-height: calc(100vh - 330px);
+    overflow: auto;
+}
+
+.o_lqa_publication_tracking_table {
+    width: 100%;
+    min-width: 1120px;
+    border-collapse: collapse;
+
+    th,
+    td {
+        padding: 11px 13px;
+        border-bottom: 1px solid #e2e8f0;
+        text-align: left;
+        vertical-align: middle;
+    }
+
+    th {
+        position: sticky;
+        z-index: 1;
+        top: 0;
+        background: #f8fafc;
+        color: #607086;
+        font-size: 10px;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+
+    td {
+        color: #263243;
+        font-size: 13px;
+        overflow-wrap: anywhere;
+    }
+}
+
+.o_lqa_publication_status {
+    display: inline-flex;
+    min-width: 88px;
+    justify-content: center;
+    padding: 5px 8px;
+    border: 1px solid #bfdbfe;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.o_lqa_publication_status.is-success {
+    border-color: #99f6c8;
+    background: #ecfdf5;
+    color: #047857;
+}
+
+.o_lqa_publication_status.is-error {
+    border-color: #fecaca;
+    background: #fef2f2;
+    color: #b91c1c;
+}
+
+.o_lqa_publication_status.is-processing {
+    border-color: #fde68a;
+    background: #fffbeb;
+    color: #a16207;
+}
+
+.o_lqa_publication_error {
+    color: #b91c1c;
+    font-weight: 700;
+}
+
+.o_lqa_publication_tracking_empty {
+    padding: 48px 18px;
+    color: #607086;
+    text-align: center;
+}
+
+@media (max-width: 720px) {
+    .o_lqa_publication_tracking {
+        padding: 16px;
+    }
+
+    .o_lqa_publication_tracking__header h1 {
+        font-size: 28px;
+    }
+
+    .o_lqa_publication_tracking__tabs,
+    .o_lqa_publication_tracking_table_head,
+    .o_lqa_publication_tracking_pending_head,
+    .o_lqa_publication_tracking_pending_head > div:last-child,
+    .o_lqa_publication_tracking_pager {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .o_lqa_publication_tracking_search {
+        grid-template-columns: 1fr;
+    }
+
+    .o_lqa_publication_tracking_pending_head .form-select {
+        width: 100%;
+    }
+}

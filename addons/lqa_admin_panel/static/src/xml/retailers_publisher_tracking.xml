@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="lqa_admin_panel.RetailersPublisherTracking">
+        <div class="o_lqa_publication_tracking">
+            <header class="o_lqa_publication_tracking__header">
+                <div>
+                    <p>Retailers / Publicador</p>
+                    <h1>Seguimiento</h1>
+                    <span>Estado de los jobs de publicación por run y pendientes globales.</span>
+                </div>
+            </header>
+
+            <nav class="o_lqa_publication_tracking__tabs">
+                <button
+                    type="button"
+                    t-att-class="state.mode === 'run' ? 'is-active' : ''"
+                    t-on-click="() => this.setMode('run')"
+                >
+                    <i class="fa fa-list-alt"/>
+                    Por run
+                </button>
+                <button
+                    type="button"
+                    t-att-class="state.mode === 'pending' ? 'is-active' : ''"
+                    t-on-click="() => this.setMode('pending')"
+                >
+                    <i class="fa fa-clock-o"/>
+                    Pendientes globales
+                </button>
+            </nav>
+
+            <section t-if="state.mode === 'run'" class="o_lqa_publication_tracking_panel">
+                <form
+                    class="o_lqa_publication_tracking_search"
+                    t-on-submit.prevent="searchRunJobs"
+                >
+                    <label>
+                        <span>Run ID</span>
+                        <input
+                            type="text"
+                            placeholder="Ingresar publication run ID"
+                            t-model="state.runId"
+                        />
+                    </label>
+                    <select
+                        class="form-select"
+                        t-model="state.runLimit"
+                        t-on-change="changeRunLimit"
+                    >
+                        <option value="20">20 por página</option>
+                        <option value="50">50 por página</option>
+                        <option value="100">100 por página</option>
+                    </select>
+                    <button
+                        type="submit"
+                        class="btn btn-primary"
+                        t-att-disabled="state.loadingRun"
+                    >
+                        <i class="fa fa-search"/>
+                        Consultar
+                    </button>
+                </form>
+
+                <div class="o_lqa_publication_tracking_table_head">
+                    <div>
+                        <h2>Jobs del run</h2>
+                        <span>
+                            <t t-esc="formatNumber(state.runPagination.total || 0)"/>
+                            resultados
+                        </span>
+                    </div>
+                    <div class="o_lqa_publication_tracking_pager">
+                        <button
+                            type="button"
+                            class="btn btn-secondary"
+                            t-att-disabled="!state.runPagination.has_previous || state.loadingRun"
+                            t-on-click="previousRunPage"
+                        >
+                            Anterior
+                        </button>
+                        <span>
+                            Página
+                            <t t-esc="state.runPagination.page || 1"/>
+                        </span>
+                        <button
+                            type="button"
+                            class="btn btn-secondary"
+                            t-att-disabled="!state.runPagination.has_next || state.loadingRun"
+                            t-on-click="nextRunPage"
+                        >
+                            Siguiente
+                        </button>
+                    </div>
+                </div>
+
+                <div t-if="state.loadingRun" class="o_lqa_publication_tracking_empty">
+                    Consultando jobs...
+                </div>
+                <div
+                    t-elif="state.runLoaded &amp;&amp; !state.runJobs.length"
+                    class="o_lqa_publication_tracking_empty"
+                >
+                    No se encontraron jobs para este run.
+                </div>
+                <div
+                    t-elif="!state.runLoaded"
+                    class="o_lqa_publication_tracking_empty"
+                >
+                    Ingresá un run ID para consultar sus publicaciones.
+                </div>
+                <div t-else="" class="o_lqa_publication_tracking_table_wrap">
+                    <t t-call="lqa_admin_panel.PublicationJobsTable">
+                        <t t-set="jobs" t-value="state.runJobs"/>
+                        <t t-set="showRun" t-value="false"/>
+                    </t>
+                </div>
+            </section>
+
+            <section t-else="" class="o_lqa_publication_tracking_panel">
+                <div class="o_lqa_publication_tracking_pending_head">
+                    <div>
+                        <h2>Publicaciones pendientes</h2>
+                        <span>Jobs pendientes de todos los publication runs.</span>
+                    </div>
+                    <div>
+                        <select
+                            class="form-select"
+                            t-model="state.pendingLimit"
+                            t-on-change="loadPendingJobs"
+                        >
+                            <option value="20">20 resultados</option>
+                            <option value="50">50 resultados</option>
+                            <option value="100">100 resultados</option>
+                        </select>
+                        <button
+                            type="button"
+                            class="btn btn-secondary"
+                            t-att-disabled="state.loadingPending"
+                            t-on-click="loadPendingJobs"
+                        >
+                            <i class="fa fa-refresh"/>
+                            Actualizar
+                        </button>
+                    </div>
+                </div>
+
+                <div t-if="state.loadingPending" class="o_lqa_publication_tracking_empty">
+                    Consultando publicaciones pendientes...
+                </div>
+                <div
+                    t-elif="!state.pendingJobs.length"
+                    class="o_lqa_publication_tracking_empty"
+                >
+                    No hay publicaciones pendientes.
+                </div>
+                <div t-else="" class="o_lqa_publication_tracking_table_wrap">
+                    <t t-call="lqa_admin_panel.PublicationJobsTable">
+                        <t t-set="jobs" t-value="state.pendingJobs"/>
+                        <t t-set="showRun" t-value="true"/>
+                    </t>
+                </div>
+            </section>
+        </div>
+    </t>
+
+    <t t-name="lqa_admin_panel.PublicationJobsTable">
+        <table class="o_lqa_publication_tracking_table">
+            <thead>
+                <tr>
+                    <th t-if="showRun">Run ID</th>
+                    <th>SKU</th>
+                    <th>Marketplace</th>
+                    <th>Estado</th>
+                    <th>Intentos</th>
+                    <th>ID publicado</th>
+                    <th>Error</th>
+                    <th>Actualizado</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr t-foreach="jobs" t-as="job" t-key="job.id || job.run_id + '-' + job.sku + '-' + job.marketplace">
+                    <td t-if="showRun">
+                        <strong t-esc="job.run_id || '-'"/>
+                    </td>
+                    <td>
+                        <strong t-esc="job.sku || '-'"/>
+                    </td>
+                    <td t-esc="marketplaceLabel(job.marketplace)"/>
+                    <td>
+                        <span
+                            t-att-class="'o_lqa_publication_status ' + statusClass(job.status)"
+                            t-esc="statusLabel(job.status)"
+                        />
+                    </td>
+                    <td t-esc="formatNumber(job.attempts)"/>
+                    <td t-esc="job.marketplace_item_id || '-'"/>
+                    <td>
+                        <span
+                            t-att-class="job.error_message ? 'o_lqa_publication_error' : ''"
+                            t-esc="job.error_message || '-'"
+                        />
+                    </td>
+                    <td t-esc="formatDateTime(job.updated_at || job.created_at)"/>
+                </tr>
+            </tbody>
+        </table>
+    </t>
+</templates>

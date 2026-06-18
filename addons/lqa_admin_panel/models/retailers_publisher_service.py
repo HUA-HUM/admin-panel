@@ -5,6 +5,7 @@ import os
 import posixpath
 import re
 import zipfile
+from urllib.parse import quote
 from xml.etree import ElementTree
 from xml.sax.saxutils import escape
 
@@ -20,6 +21,8 @@ class LqaRetailersPublisherService(models.AbstractModel):
     BULK_PRODUCTS_PATH = "/api/analytics/marketplace-favorites/bulk"
     FAVORITES_PATH = "/api/analytics/marketplace-favorites/{folder_id}/favorites"
     EXECUTE_PUBLICATION_PATH = "/api/publications/execute/run"
+    PUBLICATION_RUN_JOBS_PATH = "/api/publication-jobs/{run_id}/jobs"
+    PENDING_PUBLICATIONS_PATH = "/api/publication-jobs/pending"
     PUBLICATION_MARKETPLACES = ("fravega", "megatone", "oncity")
     MAX_IMPORT_ROWS = 10000
     MAX_UPLOAD_BYTES = 20 * 1024 * 1024
@@ -303,6 +306,58 @@ class LqaRetailersPublisherService(models.AbstractModel):
             "folder_id": folder_id,
             "marketplaces": normalized_marketplaces,
             "triggered_at": fields.Datetime.to_string(fields.Datetime.now()),
+        }
+
+    @api.model
+    def get_publication_run_jobs(self, run_id, limit=50, offset=0):
+        self._check_access()
+        run_id = self._clean(run_id)
+        if not run_id:
+            raise UserError(_("Ingresa el run ID para consultar sus publicaciones."))
+        limit = min(max(self._as_int(limit, 50), 1), 100)
+        offset = max(self._as_int(offset, 0), 0)
+        response = self.env["lqa.api.client"].request_absolute_json(
+            "GET",
+            self._join_url(
+                self._madre_base_url(),
+                self.PUBLICATION_RUN_JOBS_PATH.format(
+                    run_id=quote(run_id, safe="")
+                ),
+            ),
+            params={"limit": limit, "offset": offset},
+            headers=self._madre_headers(),
+            timeout=self._timeout(),
+        )
+        return self._normalize_publication_jobs_response(
+            response,
+            limit=limit,
+            offset=offset,
+            run_id=run_id,
+        )
+
+    @api.model
+    def get_pending_publications(self, limit=50):
+        self._check_access()
+        limit = min(max(self._as_int(limit, 50), 1), 100)
+        response = self.env["lqa.api.client"].request_absolute_json(
+            "GET",
+            self._join_url(
+                self._madre_base_url(),
+                self.PENDING_PUBLICATIONS_PATH,
+            ),
+            params={"limit": limit},
+            headers=self._madre_headers(),
+            timeout=self._timeout(),
+        )
+        normalized = self._normalize_publication_jobs_response(
+            response,
+            limit=limit,
+            offset=0,
+        )
+        return {
+            "jobs": normalized["jobs"],
+            "total": normalized["pagination"]["total"],
+            "limit": limit,
         }
 
     def _send_products(self, folder_id, products):
@@ -660,6 +715,120 @@ class LqaRetailersPublisherService(models.AbstractModel):
             "orders": self._as_int(
                 self._first(product, "orders", "ordersCount", "orders_count"),
                 0,
+            ),
+        }
+
+    def _normalize_publication_jobs_response(
+        self,
+        response,
+        limit,
+        offset=0,
+        run_id="",
+    ):
+        items = self._extract_list(
+            response,
+            ("jobs", "publicationJobs", "items", "data", "results"),
+        )
+        response_dict = response if isinstance(response, dict) else {}
+        pagination = self._extract_pagination(response)
+        total = self._as_int(
+            pagination.get("total")
+            or pagination.get("totalItems")
+            or response_dict.get("total")
+            or response_dict.get("count"),
+            len(items),
+        )
+        has_next_value = (
+            pagination.get("hasNext")
+            if pagination.get("hasNext") is not None
+            else response_dict.get("hasNext")
+        )
+        has_next = (
+            bool(has_next_value)
+            if has_next_value is not None
+            else offset + len(items) < total
+        )
+        return {
+            "run_id": run_id,
+            "jobs": [
+                self._normalize_publication_job(item, run_id=run_id)
+                for item in items
+            ],
+            "pagination": {
+                "limit": limit,
+                "offset": offset,
+                "total": total,
+                "count": len(items),
+                "has_previous": offset > 0,
+                "has_next": has_next,
+                "next_offset": offset + limit,
+                "page": (offset // limit) + 1,
+            },
+        }
+
+    def _normalize_publication_job(self, item, run_id=""):
+        item = item if isinstance(item, dict) else {}
+        payload = (
+            item.get("job")
+            if isinstance(item.get("job"), dict)
+            else item
+        )
+        return {
+            "id": self._clean(
+                self._first(payload, "_id", "id", "jobId")
+            ),
+            "run_id": self._clean(
+                self._first(
+                    payload,
+                    "runId",
+                    "publicationRunId",
+                    "publication_run_id",
+                )
+                or run_id
+            ),
+            "sku": self._clean(
+                self._first(payload, "sku", "sellerSku", "seller_sku")
+            ),
+            "marketplace": self._clean(
+                self._first(payload, "marketplace", "marketplaceId")
+            ).lower(),
+            "status": self._clean(
+                self._first(payload, "status", "state")
+            )
+            or "PENDING",
+            "attempts": self._as_int(
+                self._first(payload, "attempts", "attemptCount", "retries"),
+                0,
+            ),
+            "error_message": self._clean(
+                self._first(
+                    payload,
+                    "error_message",
+                    "errorMessage",
+                    "error",
+                    "lastError",
+                )
+            ),
+            "marketplace_item_id": self._clean(
+                self._first(
+                    payload,
+                    "marketplace_item_id",
+                    "marketplaceItemId",
+                    "itemId",
+                    "externalId",
+                )
+            ),
+            "created_at": self._clean(
+                self._first(payload, "createdAt", "created_at")
+            ),
+            "updated_at": self._clean(
+                self._first(
+                    payload,
+                    "updatedAt",
+                    "updated_at",
+                    "finishedAt",
+                    "finished_at",
+                )
             ),
         }
 
