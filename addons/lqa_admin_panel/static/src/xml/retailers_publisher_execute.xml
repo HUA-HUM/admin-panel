@@ -35,7 +35,7 @@
                                 t-foreach="state.folders"
                                 t-as="folder"
                                 t-key="folder.id"
-                                t-att-value="String(folder.id)"
+                                t-att-value="folder.id"
                             >
                                 <t t-esc="folder.name"/>
                             </option>
