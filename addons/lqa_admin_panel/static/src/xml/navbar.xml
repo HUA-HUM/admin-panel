@@ -146,6 +146,8 @@
                                                         ? 'fa fa-th-large'
                                                         : grandchild.name === 'Carpetas'
                                                             ? 'fa fa-folder-open-o'
+                                                            : grandchild.name === 'Publicar'
+                                                                ? 'fa fa-cloud-upload'
                                                         : 'fa fa-shopping-cart'"
                                         />
                                         <span t-esc="grandchild.name"/>

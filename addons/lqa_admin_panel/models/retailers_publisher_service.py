@@ -8,7 +8,7 @@ import zipfile
 from xml.etree import ElementTree
 from xml.sax.saxutils import escape
 
-from odoo import _, api, models
+from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
 
@@ -19,6 +19,8 @@ class LqaRetailersPublisherService(models.AbstractModel):
     FOLDERS_PATH = "/api/analytics/marketplace-favorites/marketplaces"
     BULK_PRODUCTS_PATH = "/api/analytics/marketplace-favorites/bulk"
     FAVORITES_PATH = "/api/analytics/marketplace-favorites/{folder_id}/favorites"
+    EXECUTE_PUBLICATION_PATH = "/api/publications/execute/run"
+    PUBLICATION_MARKETPLACES = ("fravega", "megatone", "oncity")
     MAX_IMPORT_ROWS = 10000
     MAX_UPLOAD_BYTES = 20 * 1024 * 1024
     MAX_XLSX_XML_BYTES = 40 * 1024 * 1024
@@ -209,6 +211,98 @@ class LqaRetailersPublisherService(models.AbstractModel):
                 "application/vnd.openxmlformats-officedocument."
                 "spreadsheetml.sheet"
             ),
+        }
+
+    @api.model
+    def execute_publication(self, folder_id, marketplaces):
+        self._check_access()
+        folder_id = self._normalize_folder_id(folder_id)
+        normalized_marketplaces = []
+        for marketplace in marketplaces or []:
+            marketplace = self._clean(marketplace).lower()
+            if (
+                marketplace in self.PUBLICATION_MARKETPLACES
+                and marketplace not in normalized_marketplaces
+            ):
+                normalized_marketplaces.append(marketplace)
+        if not normalized_marketplaces:
+            raise UserError(_("Selecciona al menos un marketplace para publicar."))
+
+        response = self.env["lqa.api.client"].request_absolute_json(
+            "POST",
+            self._join_url(
+                self._products_base_url(),
+                self.EXECUTE_PUBLICATION_PATH,
+            ),
+            payload={
+                "marketplaces": normalized_marketplaces,
+                "folderId": folder_id,
+            },
+            timeout=self._timeout(),
+        )
+        payload = self._extract_record(
+            response,
+            ("run", "publicationRun", "data", "result"),
+        )
+        payload = self._extract_record(
+            payload,
+            ("run", "publicationRun", "data", "result"),
+        )
+        return {
+            "run_id": self._clean(
+                self._first(
+                    payload,
+                    "runId",
+                    "publicationRunId",
+                    "_id",
+                    "id",
+                )
+                or self._first(
+                    response if isinstance(response, dict) else {},
+                    "runId",
+                    "publicationRunId",
+                    "_id",
+                    "id",
+                )
+            ),
+            "status": self._clean(
+                self._first(payload, "status", "state")
+                or self._first(
+                    response if isinstance(response, dict) else {},
+                    "status",
+                    "state",
+                )
+                or "QUEUED"
+            ),
+            "jobs_count": self._as_int(
+                self._first(
+                    payload,
+                    "jobsCount",
+                    "jobsCreated",
+                    "totalJobs",
+                    "total",
+                )
+                or self._first(
+                    response if isinstance(response, dict) else {},
+                    "jobsCount",
+                    "jobsCreated",
+                    "totalJobs",
+                    "total",
+                ),
+                0,
+            ),
+            "message": self._clean(
+                self._first(payload, "message", "detail", "description")
+                or self._first(
+                    response if isinstance(response, dict) else {},
+                    "message",
+                    "detail",
+                    "description",
+                )
+            ),
+            "folder_id": folder_id,
+            "marketplaces": normalized_marketplaces,
+            "triggered_at": fields.Datetime.to_string(fields.Datetime.now()),
         }
 
     def _send_products(self, folder_id, products):
@@ -664,6 +758,14 @@ class LqaRetailersPublisherService(models.AbstractModel):
             params.get_param("lqa_admin_panel.retailers_madre_api_url", "")
             or os.environ.get("NEXT_PUBLIC_MADRE_API_URL")
             or "https://api.madre.loquieroaca.com"
+        ).strip()
+
+    def _products_base_url(self):
+        params = self.env["ir.config_parameter"].sudo()
+        return (
+            params.get_param("lqa_admin_panel.retailers_products_api_url", "")
+            or os.environ.get("NEXT_PUBLIC_PRODUCTS_API_URL")
+            or "https://api.products.loquieroaca.com"
         ).strip()
 
     def _timeout(self):

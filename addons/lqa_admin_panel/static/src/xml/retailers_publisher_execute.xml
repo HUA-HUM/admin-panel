@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="lqa_admin_panel.RetailersPublisherExecute">
+        <div class="o_lqa_retailers_publish">
+            <header class="o_lqa_retailers_publish__header">
+                <div>
+                    <p>Retailers / Publicador</p>
+                    <h1>Publicar</h1>
+                    <span>Crear un publication run desde una carpeta de Madre.</span>
+                </div>
+                <button
+                    type="button"
+                    class="btn btn-secondary"
+                    t-att-disabled="state.loadingFolders"
+                    t-on-click="loadFolders"
+                >
+                    <i class="fa fa-refresh"/>
+                    Actualizar carpetas
+                </button>
+            </header>
+
+            <section class="o_lqa_retailers_publish_form">
+                <div class="o_lqa_retailers_publish_step">
+                    <div class="o_lqa_retailers_publish_step__number">1</div>
+                    <div class="o_lqa_retailers_publish_step__content">
+                        <label for="lqa-publication-folder">Carpeta de productos</label>
+                        <select
+                            id="lqa-publication-folder"
+                            class="form-select"
+                            t-model="state.selectedFolderId"
+                            t-att-disabled="state.loadingFolders || !state.folders.length"
+                        >
+                            <option value="">Seleccionar carpeta</option>
+                            <option
+                                t-foreach="state.folders"
+                                t-as="folder"
+                                t-key="folder.id"
+                                t-att-value="folder.id"
+                            >
+                                <t t-esc="folder.name"/>
+                                (ID <t t-esc="folder.id"/>)
+                            </option>
+                        </select>
+                        <div t-if="selectedFolder" class="o_lqa_retailers_publish_folder">
+                            <strong t-esc="selectedFolder.name"/>
+                            <span>
+                                Folder ID:
+                                <t t-esc="selectedFolder.id"/>
+                            </span>
+                            <small>
+                                <t t-esc="formatNumber(selectedFolder.product_count)"/>
+                                productos
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="o_lqa_retailers_publish_step">
+                    <div class="o_lqa_retailers_publish_step__number">2</div>
+                    <div class="o_lqa_retailers_publish_step__content">
+                        <label>Marketplaces</label>
+                        <div class="o_lqa_retailers_publish_marketplaces">
+                            <button
+                                type="button"
+                                t-foreach="state.marketplaces"
+                                t-as="marketplace"
+                                t-key="marketplace.id"
+                                t-att-class="isMarketplaceSelected(marketplace) ? 'is-selected' : ''"
+                                t-on-click="() => this.toggleMarketplace(marketplace)"
+                            >
+                                <span class="o_lqa_retailers_publish_marketplace__check">
+                                    <i
+                                        t-att-class="isMarketplaceSelected(marketplace)
+                                            ? 'fa fa-check'
+                                            : 'fa fa-circle-o'"
+                                    />
+                                </span>
+                                <img
+                                    t-att-src="marketplace.logo"
+                                    t-att-alt="marketplace.name"
+                                />
+                                <strong t-esc="marketplace.name"/>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="o_lqa_retailers_publish_submit">
+                    <div>
+                        <small>Seleccionados</small>
+                        <strong t-esc="selectedMarketplaceNames || 'Ninguno'"/>
+                    </div>
+                    <button
+                        type="button"
+                        class="btn btn-primary"
+                        t-att-disabled="!selectedFolder || !selectedMarketplaceIds.length || state.executing"
+                        t-on-click="openExecutionConfirmation"
+                    >
+                        <i class="fa fa-cloud-upload"/>
+                        Ejecutar publicacion
+                    </button>
+                </div>
+            </section>
+
+            <section t-if="state.result" class="o_lqa_retailers_publish_result">
+                <div class="o_lqa_retailers_publish_result__head">
+                    <div>
+                        <small>Ultima ejecucion</small>
+                        <h2>
+                            Run
+                            <t t-esc="state.result.run_id || 'creado'"/>
+                        </h2>
+                    </div>
+                    <strong t-esc="statusLabel(state.result.status)"/>
+                </div>
+                <dl>
+                    <div>
+                        <dt>Carpeta</dt>
+                        <dd t-esc="state.result.folder_id"/>
+                    </div>
+                    <div>
+                        <dt>Marketplaces</dt>
+                        <dd>
+                            <t
+                                t-foreach="state.result.marketplaces"
+                                t-as="marketplaceId"
+                                t-key="marketplaceId"
+                            >
+                                <span t-esc="marketplaceName(marketplaceId)"/>
+                            </t>
+                        </dd>
+                    </div>
+                    <div>
+                        <dt>Jobs</dt>
+                        <dd t-esc="formatNumber(state.result.jobs_count)"/>
+                    </div>
+                    <div>
+                        <dt>Fecha</dt>
+                        <dd t-esc="formatDateTime(state.result.triggered_at)"/>
+                    </div>
+                </dl>
+                <p t-if="state.result.message" t-esc="state.result.message"/>
+            </section>
+
+            <div class="o_lqa_modal_backdrop" t-if="state.confirmExecution">
+                <div class="o_lqa_retailers_publish_modal">
+                    <h2>Confirmar publicacion</h2>
+                    <p>
+                        Vas a publicar los productos de
+                        <strong t-esc="selectedFolder.name"/>
+                        en
+                        <strong t-esc="selectedMarketplaceNames"/>.
+                    </p>
+                    <div class="o_lqa_retailers_publish_modal__actions">
+                        <button
+                            type="button"
+                            class="btn btn-secondary"
+                            t-att-disabled="state.executing"
+                            t-on-click="closeExecutionConfirmation"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="button"
+                            class="btn btn-primary"
+                            t-att-disabled="state.executing"
+                            t-on-click="confirmExecutePublication"
+                        >
+                            Crear publication run
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>
