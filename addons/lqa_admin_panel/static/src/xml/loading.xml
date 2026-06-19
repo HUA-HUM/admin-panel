@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t
+        t-name="lqa_admin_panel.LoadingIndicator"
+        t-inherit="web.LoadingIndicator"
+        t-inherit-mode="extension"
+    >
+        <xpath
+            expr="//span[contains(concat(' ', normalize-space(@class), ' '), ' o_loading_indicator ')]"
+            position="replace"
+        >
+            <span
+                class="o_loading_indicator"
+                t-att-class="transition.className"
+                role="status"
+                aria-live="polite"
+            >
+                <span class="o_lqa_global_spinner" aria-hidden="true"/>
+                <strong>Cargando</strong>
+                <small t-if="env.debug" t-esc="state.count + ' solicitudes'"/>
+            </span>
+        </xpath>
+    </t>
+</templates>

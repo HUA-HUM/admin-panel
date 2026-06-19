@@ -1,3 +1,5 @@
+import json
+
 from odoo import _, api, models
 from odoo.exceptions import AccessError, UserError
 
@@ -51,11 +53,12 @@ class LqaDashboardService(models.AbstractModel):
         ):
             raise UserError(_("La seccion seleccionada no se puede agregar a favoritos."))
 
-        user = self.env.user.sudo()
-        if menu.id in user.lqa_favorite_menu_ids.ids:
-            user.write({"lqa_favorite_menu_ids": [(3, menu.id)]})
+        favorite_menu_ids = self._favorite_menu_ids()
+        if menu.id in favorite_menu_ids:
+            favorite_menu_ids.remove(menu.id)
         else:
-            user.write({"lqa_favorite_menu_ids": [(4, menu.id)]})
+            favorite_menu_ids.append(menu.id)
+        self._write_favorite_menu_ids(favorite_menu_ids)
         return self._favorite_state()
 
     def _serialize_module(self, module, include_sections=True):
@@ -134,7 +137,7 @@ class LqaDashboardService(models.AbstractModel):
 
     def _favorite_menus(self):
         visible_menu_ids = self.env["ir.ui.menu"]._visible_menu_ids()
-        menus = self.env.user.sudo().lqa_favorite_menu_ids.filtered(
+        menus = self.env["ir.ui.menu"].browse(self._favorite_menu_ids()).exists().filtered(
             lambda menu: (
                 menu.id in visible_menu_ids
                 and menu.active
@@ -149,6 +152,40 @@ class LqaDashboardService(models.AbstractModel):
                 menu.name.lower(),
             )
         )
+
+    def _favorite_menu_ids(self):
+        raw_value = (
+            self.env["ir.config_parameter"]
+            .sudo()
+            .get_param(self._favorite_param_key(), "[]")
+        )
+        try:
+            values = json.loads(raw_value)
+        except (TypeError, ValueError):
+            return []
+        if not isinstance(values, list):
+            return []
+        menu_ids = []
+        for value in values:
+            menu_id = self._as_int(value)
+            if menu_id > 0 and menu_id not in menu_ids:
+                menu_ids.append(menu_id)
+        return menu_ids
+
+    def _write_favorite_menu_ids(self, menu_ids):
+        clean_ids = []
+        for value in menu_ids:
+            menu_id = self._as_int(value)
+            if menu_id > 0 and menu_id not in clean_ids:
+                clean_ids.append(menu_id)
+        (
+            self.env["ir.config_parameter"]
+            .sudo()
+            .set_param(self._favorite_param_key(), json.dumps(clean_ids))
+        )
+
+    def _favorite_param_key(self):
+        return f"lqa_admin_panel.favorite_menu_ids.user_{self.env.user.id}"
 
     def _serialize_favorite_menus(self):
         return [

@@ -9,6 +9,7 @@ export class LqaAdminDashboard extends Component {
 
     setup() {
         this.action = useService("action");
+        this.menu = useService("menu");
         this.notification = useService("notification");
         this.orm = useService("orm");
         const params = this.props.action?.params || {};
@@ -56,7 +57,7 @@ export class LqaAdminDashboard extends Component {
 
     async openModule(module) {
         if (module.action_id) {
-            await this.action.doAction(module.action_id);
+            await this.openAction(module.action_id);
             return;
         }
         await this.loadDashboard(module.code);
@@ -64,7 +65,7 @@ export class LqaAdminDashboard extends Component {
 
     openSection(section) {
         if (section.action_id) {
-            this.action.doAction(section.action_id);
+            this.openAction(section.action_id);
             return;
         }
         this.notification.add("Esta seccion esta preparada para definir mas adelante.", {
@@ -74,8 +75,21 @@ export class LqaAdminDashboard extends Component {
 
     async openFavorite(favorite) {
         if (favorite.action_id) {
-            await this.action.doAction(favorite.action_id);
+            const menu = this.menu.getMenu(favorite.menu_id);
+            await this.openAction(favorite.action_id, menu);
         }
+    }
+
+    async openAction(actionId, menu = null) {
+        await this.action.doAction(actionId, {
+            clearBreadcrumbs: true,
+            noEmptyTransition: true,
+            onActionReady: () => {
+                if (menu) {
+                    this.menu.setCurrentMenu(menu);
+                }
+            },
+        });
     }
 
     favoriteIcon(favorite) {

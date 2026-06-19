@@ -1,6 +1,6 @@
 {
     "name": "LQA Admin Panel",
-    "version": "18.0.1.0.1",
+    "version": "18.0.1.0.3",
     "category": "Sales",
     "summary": "Panel comercial para MercadoLibre y Automeli",
     "author": "Lo Quiero Aca",
@@ -55,6 +55,7 @@
             "lqa_admin_panel/static/src/scss/retailers_orders.scss",
             "lqa_admin_panel/static/src/scss/user_management.scss",
             "lqa_admin_panel/static/src/scss/navbar.scss",
+            "lqa_admin_panel/static/src/scss/loading.scss",
             "lqa_admin_panel/static/src/xml/dashboard.xml",
             "lqa_admin_panel/static/src/xml/mercadolibre_catalog.xml",
             "lqa_admin_panel/static/src/xml/mercadolibre_selections.xml",
@@ -72,6 +73,7 @@
             "lqa_admin_panel/static/src/xml/retailers_orders.xml",
             "lqa_admin_panel/static/src/xml/user_management.xml",
             "lqa_admin_panel/static/src/xml/navbar.xml",
+            "lqa_admin_panel/static/src/xml/loading.xml",
         ],
         "web.assets_frontend": [
             "lqa_admin_panel/static/src/js/branding.js",

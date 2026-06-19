@@ -104,12 +104,23 @@
 }
 
 .o_lqa_dashboard__loading {
+    display: flex;
+    min-height: 180px;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 12px;
     padding: 32px;
     border: 1px solid #d7dee7;
     border-radius: 8px;
     background: #fff;
     color: #60758a;
     text-align: center;
+
+    strong {
+        color: #334e68;
+        font-size: 13px;
+    }
 }
 
 .o_lqa_dashboard__grid {

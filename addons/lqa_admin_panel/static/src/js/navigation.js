@@ -128,7 +128,16 @@ patch(NavBar.prototype, {
     },
 
     async lqaSelectMenu(menu) {
-        await this.menuService.selectMenu(menu);
+        if (!menu?.actionID) {
+            return;
+        }
+        await this.actionService.doAction(menu.actionID, {
+            clearBreadcrumbs: true,
+            noEmptyTransition: true,
+            onActionReady: () => {
+                this.menuService.setCurrentMenu(menu);
+            },
+        });
         this.lqaCloseMobileSidebar();
     },
 });

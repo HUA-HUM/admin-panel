@@ -40,7 +40,8 @@
             </div>
 
             <div class="o_lqa_dashboard__loading" t-if="state.loading">
-                Cargando panel...
+                <span class="o_lqa_inline_spinner" aria-hidden="true"/>
+                <strong>Cargando panel</strong>
             </div>
 
             <t t-else="">
