@@ -51,6 +51,16 @@
                         <span t-else="">Se busca cualquier valor con formato MLA + numeros.</span>
                     </div>
 
+                    <label class="o_lqa_deleter__reason">
+                        <span>Motivo del lote</span>
+                        <textarea
+                            class="form-control"
+                            rows="3"
+                            placeholder="Ej: publicaciones duplicadas, catálogo viejo, limpieza por campaña..."
+                            t-model="state.reason"
+                        ></textarea>
+                    </label>
+
                     <div class="o_lqa_deleter__controls">
                         <label>
                             <span>App key</span>
@@ -87,6 +97,7 @@
                         <li>Los MLAs duplicados se envian una sola vez.</li>
                         <li>Los valores con formato invalido se ignoran.</li>
                         <li>Cada ejecucion queda registrada con usuario y fecha.</li>
+                        <li>El motivo queda guardado en el lote para auditoria.</li>
                         <li>La accion requiere confirmacion final.</li>
                     </ul>
                     <div>
@@ -113,16 +124,44 @@
                     </button>
                 </div>
 
+                <div class="o_lqa_deleter_history_search">
+                    <label>
+                        <i class="fa fa-search"/>
+                        <input
+                            type="search"
+                            class="form-control"
+                            placeholder="Buscar MLA, motivo, usuario o lote"
+                            t-att-value="state.historySearch"
+                            t-on-input="onHistorySearchInput"
+                        />
+                    </label>
+                    <button
+                        type="button"
+                        class="btn btn-secondary"
+                        t-att-disabled="!state.historySearch"
+                        t-on-click="clearHistorySearch"
+                    >
+                        Limpiar
+                    </button>
+                    <span t-if="normalizedHistorySearch">
+                        <t t-esc="historySearchResultsCount"/>
+                        lotes encontrados
+                    </span>
+                </div>
+
                 <div class="o_lqa_deleter__loading" t-if="state.loadingHistory">
                     Cargando historial...
                 </div>
                 <div class="o_lqa_deleter__empty" t-elif="!state.history.length">
                     Todavia no hay eliminaciones registradas.
                 </div>
+                <div class="o_lqa_deleter__empty" t-elif="!filteredHistory.length">
+                    No hay lotes que coincidan con la busqueda.
+                </div>
                 <div class="o_lqa_deleter_batches" t-else="">
                     <details
                         class="o_lqa_deleter_batch"
-                        t-foreach="state.history"
+                        t-foreach="filteredHistory"
                         t-as="batch"
                         t-key="batch.id"
                     >
@@ -150,10 +189,21 @@
                             </div>
                         </summary>
 
-                        <p t-if="batch.error_message" t-esc="batch.error_message"/>
+                        <p
+                            t-if="batch.reason"
+                            class="o_lqa_deleter_batch__reason"
+                        >
+                            <strong>Motivo:</strong>
+                            <t t-esc="batch.reason"/>
+                        </p>
+                        <p
+                            t-if="batch.error_message"
+                            class="o_lqa_deleter_batch__error"
+                            t-esc="batch.error_message"
+                        />
                         <div class="o_lqa_deleter_lines">
                             <div
-                                t-foreach="batch.lines"
+                                t-foreach="batchLines(batch)"
                                 t-as="line"
                                 t-key="line.id"
                             >
@@ -185,6 +235,10 @@
                         Se enviaran
                         <strong t-esc="state.parsedIds.length"/>
                         publicaciones a la API de eliminacion. Esta operacion no se puede deshacer desde el panel.
+                    </p>
+                    <p t-if="state.reason">
+                        Motivo:
+                        <strong t-esc="state.reason"/>
                     </p>
                     <div class="o_lqa_delete_modal__actions">
                         <button

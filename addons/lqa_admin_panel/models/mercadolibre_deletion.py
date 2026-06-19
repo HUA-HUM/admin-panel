@@ -19,6 +19,7 @@ class LqaMercadolibreDeletionBatch(models.Model):
         readonly=True,
     )
     app_key = fields.Char(string="App key", required=True, default="default")
+    reason = fields.Text(string="Motivo", readonly=True)
     status = fields.Selection(
         selection=[
             ("processing", "Procesando"),
@@ -76,20 +77,23 @@ class LqaMercadolibreDeletionService(models.AbstractModel):
     DEFAULT_ENDPOINT = (
         "https://api.meli.loquieroaca.com/meli/products/bulk/delete"
     )
+    DEFAULT_CHUNK_SIZE = 1000
     MLA_PATTERN = re.compile(r"^MLA\d+$")
 
     @api.model
-    def delete_products(self, ids=None, app_key="default"):
+    def delete_products(self, ids=None, app_key="default", reason=""):
         self._check_access()
         normalized_ids = self._normalize_ids(ids or [])
         if not normalized_ids:
             raise UserError(_("Ingresa al menos una publicacion MLA valida."))
 
         app_key = (app_key or "default").strip() or "default"
+        reason = self._clean(reason)
         batch = self.env["lqa.mercadolibre.deletion.batch"].sudo().create(
             {
                 "user_id": self.env.user.id,
                 "app_key": app_key,
+                "reason": reason,
                 "requested_count": len(normalized_ids),
                 "line_ids": [
                     fields.Command.create({"mla": mla})
@@ -113,17 +117,41 @@ class LqaMercadolibreDeletionService(models.AbstractModel):
                 _("Configura la URL y la clave interna del eliminador."),
             )
 
-        try:
-            response = self.env["lqa.api.client"].request_absolute_json(
-                "POST",
-                endpoint,
-                payload={"ids": normalized_ids, "appKey": app_key},
-                headers={"x-internal-api-key": api_key},
-            )
-        except UserError as error:
-            return self._mark_failed(batch, str(error))
+        chunk_size = self._delete_chunk_size(params)
+        responses = []
+        failed = {}
+        for offset in range(0, len(normalized_ids), chunk_size):
+            chunk = normalized_ids[offset : offset + chunk_size]
+            try:
+                response = self.env["lqa.api.client"].request_absolute_json(
+                    "POST",
+                    endpoint,
+                    payload={"ids": chunk, "appKey": app_key},
+                    headers={"x-internal-api-key": api_key},
+                )
+                chunk_failed = self._extract_failed_ids(response)
+                failed.update(chunk_failed)
+                responses.append(
+                    {
+                        "offset": offset,
+                        "count": len(chunk),
+                        "failed_count": len(chunk_failed),
+                        "response": response,
+                    }
+                )
+            except UserError as error:
+                message = str(error)
+                for mla in chunk:
+                    failed[mla] = message
+                responses.append(
+                    {
+                        "offset": offset,
+                        "count": len(chunk),
+                        "failed_count": len(chunk),
+                        "error": message,
+                    }
+                )
 
-        failed = self._extract_failed_ids(response)
         deleted_count = 0
         failed_count = 0
         for line in batch.line_ids:
@@ -137,11 +165,20 @@ class LqaMercadolibreDeletionService(models.AbstractModel):
 
         batch.write(
             {
-                "status": "partial" if failed_count else "completed",
+                "status": (
+                    "failed"
+                    if failed_count == batch.requested_count
+                    else "partial"
+                    if failed_count
+                    else "completed"
+                ),
                 "deleted_count": deleted_count,
                 "failed_count": failed_count,
                 "response_payload": json.dumps(
-                    response,
+                    {
+                        "chunk_size": chunk_size,
+                        "chunks": responses,
+                    },
                     ensure_ascii=False,
                     default=str,
                 ),
@@ -155,6 +192,8 @@ class LqaMercadolibreDeletionService(models.AbstractModel):
             "message": (
                 _("El lote se proceso correctamente.")
                 if not failed_count
+                else _("No se pudo procesar ningun bloque del lote.")
+                if failed_count == batch.requested_count
                 else _("El lote termino con algunas publicaciones fallidas.")
             ),
         }
@@ -174,6 +213,7 @@ class LqaMercadolibreDeletionService(models.AbstractModel):
                 "date": fields.Datetime.to_string(batch.create_date),
                 "user": batch.user_id.name,
                 "app_key": batch.app_key,
+                "reason": batch.reason or "",
                 "status": batch.status,
                 "requested_count": batch.requested_count,
                 "deleted_count": batch.deleted_count,
@@ -208,6 +248,18 @@ class LqaMercadolibreDeletionService(models.AbstractModel):
             seen.add(mla)
             normalized.append(mla)
         return normalized
+
+    def _delete_chunk_size(self, params):
+        value = (
+            params.get_param("lqa_admin_panel.mercadolibre_delete_chunk_size")
+            or os.environ.get("LQA_MERCADOLIBRE_DELETE_CHUNK_SIZE")
+            or self.DEFAULT_CHUNK_SIZE
+        )
+        return min(max(self._as_int(value, self.DEFAULT_CHUNK_SIZE), 1), 1000)
+
+    @staticmethod
+    def _clean(value):
+        return str(value or "").strip()
 
     def _mark_failed(self, batch, message):
         batch.line_ids.write({"status": "failed", "message": message})

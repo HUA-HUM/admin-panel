@@ -100,7 +100,7 @@
     }
 }
 
-.o_lqa_deleter__input textarea {
+.o_lqa_deleter__input > textarea {
     min-height: 220px;
     resize: vertical;
     font-family: monospace;
@@ -124,6 +124,24 @@
 
     i {
         margin-right: 5px;
+    }
+}
+
+.o_lqa_deleter__reason {
+    display: block;
+    margin-top: 14px;
+
+    span {
+        display: block;
+        margin-bottom: 5px;
+        color: #40566c;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    textarea {
+        min-height: 82px;
+        resize: vertical;
     }
 }
 
@@ -203,6 +221,47 @@
     padding: 18px;
 }
 
+.o_lqa_deleter_history_search {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+
+    label {
+        position: relative;
+        flex: 1;
+        margin: 0;
+    }
+
+    i {
+        position: absolute;
+        top: 50%;
+        left: 12px;
+        color: #60758a;
+        transform: translateY(-50%);
+    }
+
+    input {
+        min-height: 38px;
+        padding-left: 36px;
+    }
+
+    .btn {
+        min-height: 38px;
+        border-color: #d7dee7;
+        background: #fff;
+        color: #40566c;
+        font-weight: 700;
+    }
+
+    > span {
+        flex: 0 0 auto;
+        color: #60758a;
+        font-size: 12px;
+        font-weight: 700;
+    }
+}
+
 .o_lqa_deleter__loading,
 .o_lqa_deleter__empty {
     padding: 30px;
@@ -251,9 +310,20 @@
         margin: 0;
         padding: 10px 14px;
         border-top: 1px solid #e1e7ef;
-        color: #a22b2b;
         font-size: 12px;
     }
+}
+
+.o_lqa_deleter_batch__reason {
+    color: #40566c;
+
+    strong {
+        color: #1f2933;
+    }
+}
+
+.o_lqa_deleter_batch__error {
+    color: #a22b2b;
 }
 
 .o_lqa_deleter_status {
@@ -393,6 +463,11 @@
 
     .o_lqa_deleter__workspace {
         grid-template-columns: 1fr;
+    }
+
+    .o_lqa_deleter_history_search {
+        align-items: stretch;
+        flex-direction: column;
     }
 
     .o_lqa_deleter__controls {

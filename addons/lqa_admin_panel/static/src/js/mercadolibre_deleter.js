@@ -19,7 +19,9 @@ export class LqaMercadolibreDeleter extends Component {
             idsText: "",
             parsedIds: [],
             appKey: "default",
+            reason: "",
             history: [],
+            historySearch: "",
             loadingHistory: true,
             processing: false,
             showConfirmation: false,
@@ -29,6 +31,24 @@ export class LqaMercadolibreDeleter extends Component {
         onWillStart(async () => {
             await this.loadHistory();
         });
+    }
+
+    get normalizedHistorySearch() {
+        return String(this.state.historySearch || "").trim().toUpperCase();
+    }
+
+    get filteredHistory() {
+        const search = this.normalizedHistorySearch;
+        if (!search) {
+            return this.state.history;
+        }
+        return this.state.history.filter((batch) =>
+            this.batchMatchesHistorySearch(batch, search)
+        );
+    }
+
+    get historySearchResultsCount() {
+        return this.filteredHistory.length;
     }
 
     async loadHistory() {
@@ -75,6 +95,7 @@ export class LqaMercadolibreDeleter extends Component {
         this.state.idsText = "";
         this.state.parsedIds = [];
         this.state.csvName = "";
+        this.state.reason = "";
     }
 
     openConfirmation() {
@@ -99,7 +120,7 @@ export class LqaMercadolibreDeleter extends Component {
             const result = await this.orm.call(
                 "lqa.mercadolibre.deletion.service",
                 "delete_products",
-                [this.state.parsedIds, this.state.appKey]
+                [this.state.parsedIds, this.state.appKey, this.state.reason]
             );
             this.notification.add(result.message, {
                 type: result.ok ? "success" : "danger",
@@ -139,6 +160,46 @@ export class LqaMercadolibreDeleter extends Component {
                 deleted: "Eliminado",
             }[status] || status
         );
+    }
+
+    onHistorySearchInput(event) {
+        this.state.historySearch = event.target.value;
+    }
+
+    clearHistorySearch() {
+        this.state.historySearch = "";
+    }
+
+    batchMatchesHistorySearch(batch, search = this.normalizedHistorySearch) {
+        if (!search) {
+            return true;
+        }
+        const batchValues = [
+            batch.id,
+            batch.reason,
+            batch.app_key,
+            batch.user,
+            batch.status,
+        ]
+            .map((value) => String(value || "").toUpperCase())
+            .join(" ");
+        if (batchValues.includes(search)) {
+            return true;
+        }
+        return (batch.lines || []).some((line) =>
+            String(line.mla || "").toUpperCase().includes(search)
+        );
+    }
+
+    batchLines(batch) {
+        const search = this.normalizedHistorySearch;
+        if (!search) {
+            return batch.lines || [];
+        }
+        const matchingLines = (batch.lines || []).filter((line) =>
+            String(line.mla || "").toUpperCase().includes(search)
+        );
+        return matchingLines.length ? matchingLines : batch.lines || [];
     }
 }
 
