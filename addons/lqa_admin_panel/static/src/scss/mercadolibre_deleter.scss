@@ -6,6 +6,10 @@
     padding: 24px;
     background: #f4f6f8;
     color: #1f2933;
+
+    * {
+        box-sizing: border-box;
+    }
 }
 
 .o_lqa_deleter__header {
@@ -13,7 +17,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 24px;
-    max-width: 1240px;
+    max-width: 1440px;
     margin: 0 auto 18px;
     padding: 18px 22px;
     border-bottom: 4px solid #ffe600;
@@ -49,7 +53,7 @@
 
 .o_lqa_deleter__workspace,
 .o_lqa_deleter_history {
-    max-width: 1240px;
+    max-width: 1440px;
     margin-inline: auto;
 }
 
@@ -142,6 +146,13 @@
     textarea {
         min-height: 82px;
         resize: vertical;
+    }
+
+    small {
+        display: block;
+        margin-top: 5px;
+        color: #60758a;
+        font-size: 11px;
     }
 }
 
@@ -275,6 +286,7 @@
 }
 
 .o_lqa_deleter_batch {
+    overflow: hidden;
     border: 1px solid #e1e7ef;
     border-radius: 6px;
     background: #fbfcfe;
@@ -315,15 +327,90 @@
 }
 
 .o_lqa_deleter_batch__reason {
+    display: grid;
+    gap: 10px;
+    padding: 12px 14px;
+    border-top: 1px solid #e1e7ef;
+    background: #fff;
     color: #40566c;
 
     strong {
+        display: block;
         color: #1f2933;
+    }
+
+    p {
+        margin: 0;
+        color: #40566c;
+        font-size: 13px;
+        line-height: 1.45;
+        overflow-wrap: anywhere;
+    }
+
+    p.is-empty {
+        color: #8a99a8;
+        font-style: italic;
+    }
+}
+
+.o_lqa_deleter_batch__reason_head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+
+    span {
+        display: block;
+        margin-top: 3px;
+        color: #60758a;
+        font-size: 12px;
+    }
+
+    .btn {
+        min-height: 34px;
+        flex: 0 0 auto;
+        border-color: #d7dee7;
+        background: #fff;
+        color: #40566c;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    i {
+        margin-right: 5px;
+    }
+}
+
+.o_lqa_deleter_batch__reason_editor {
+    display: grid;
+    gap: 8px;
+
+    textarea {
+        min-height: 84px;
+        resize: vertical;
+    }
+
+    > div {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+    }
+
+    .btn {
+        min-height: 34px;
+        font-size: 12px;
+        font-weight: 700;
     }
 }
 
 .o_lqa_deleter_batch__error {
+    margin: 0;
+    padding: 10px 14px;
+    border-top: 1px solid #e1e7ef;
+    background: #fff8f8;
     color: #a22b2b;
+    font-size: 12px;
+    overflow-wrap: anywhere;
 }
 
 .o_lqa_deleter_status {
@@ -350,39 +437,147 @@
     color: #a22b2b;
 }
 
-.o_lqa_deleter_lines {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-    gap: 1px;
-    padding: 1px;
+.o_lqa_deleter_batch__lines {
     border-top: 1px solid #e1e7ef;
-    background: #e1e7ef;
+    background: #fff;
+}
 
-    > div {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        gap: 4px 8px;
-        padding: 10px;
-        background: #fff;
+.o_lqa_deleter_batch__line_tools {
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) auto auto;
+    gap: 8px;
+    align-items: center;
+    padding: 12px 14px;
+    border-bottom: 1px solid #e1e7ef;
+    background: #f8fafc;
+
+    label {
+        position: relative;
+        margin: 0;
     }
 
-    span {
-        font-size: 11px;
+    i {
+        position: absolute;
+        top: 50%;
+        left: 12px;
+        color: #60758a;
+        transform: translateY(-50%);
+    }
+
+    input {
+        min-height: 36px;
+        padding-left: 36px;
+    }
+
+    .btn {
+        min-height: 36px;
+        border-color: #d7dee7;
+        background: #fff;
+        color: #40566c;
         font-weight: 700;
     }
 
-    span.is-deleted {
-        color: #08734b;
-    }
-
-    span.is-failed {
-        color: #a22b2b;
-    }
-
-    small {
-        grid-column: 1 / -1;
+    > span {
         color: #60758a;
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
     }
+}
+
+.o_lqa_deleter_lines_wrap {
+    max-height: 520px;
+    overflow: auto;
+}
+
+.o_lqa_deleter_lines {
+    width: 100%;
+    min-width: 720px;
+    table-layout: fixed;
+    border-collapse: collapse;
+    background: #fff;
+
+    th,
+    td {
+        padding: 10px 12px;
+        border-bottom: 1px solid #e8edf3;
+        color: #40566c;
+        font-size: 12px;
+        text-align: left;
+        vertical-align: top;
+    }
+
+    th {
+        position: sticky;
+        z-index: 1;
+        top: 0;
+        background: #f8fafc;
+        color: #526779;
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+
+    th:first-child,
+    td:first-child {
+        width: 180px;
+    }
+
+    th:nth-child(2),
+    td:nth-child(2) {
+        width: 140px;
+    }
+
+    strong {
+        color: #1f2933;
+        font-size: 13px;
+        overflow-wrap: anywhere;
+    }
+}
+
+.o_lqa_deleter_line_status {
+    display: inline-flex;
+    align-items: center;
+    min-height: 22px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: #eef2f7;
+    color: #526779;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.o_lqa_deleter_line_status.is-deleted {
+    background: #e8f7f1;
+    color: #08734b;
+}
+
+.o_lqa_deleter_line_status.is-failed {
+    background: #fff0f0;
+    color: #a22b2b;
+}
+
+.o_lqa_deleter_line_status.is-processing {
+    background: #eef4ff;
+    color: #2254a1;
+}
+
+.o_lqa_deleter_lines__message {
+    display: block;
+    max-width: 100%;
+    color: #40566c;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.o_lqa_deleter_lines__muted,
+.o_lqa_deleter_lines__empty {
+    color: #8a99a8;
+}
+
+.o_lqa_deleter_lines__empty {
+    padding: 24px 12px;
+    text-align: center;
 }
 
 .o_lqa_delete_modal {
@@ -487,5 +682,21 @@
     .o_lqa_deleter_batch summary {
         align-items: flex-start;
         flex-direction: column;
+    }
+
+    .o_lqa_deleter_batch__reason_head {
+        flex-direction: column;
+
+        .btn {
+            width: 100%;
+        }
+    }
+
+    .o_lqa_deleter_batch__line_tools {
+        grid-template-columns: 1fr;
+
+        > span {
+            white-space: normal;
+        }
     }
 }

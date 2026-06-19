@@ -52,13 +52,14 @@
                     </div>
 
                     <label class="o_lqa_deleter__reason">
-                        <span>Motivo del lote</span>
+                        <span>Motivo del lote *</span>
                         <textarea
                             class="form-control"
                             rows="3"
                             placeholder="Ej: publicaciones duplicadas, catálogo viejo, limpieza por campaña..."
                             t-model="state.reason"
                         ></textarea>
+                        <small>Se guarda en el historial del lote.</small>
                     </label>
 
                     <div class="o_lqa_deleter__controls">
@@ -81,7 +82,7 @@
                             <button
                                 type="button"
                                 class="btn btn-danger"
-                                t-att-disabled="!state.parsedIds.length"
+                                t-att-disabled="!canSubmitDeletion"
                                 t-on-click="openConfirmation"
                             >
                                 <i class="fa fa-trash"/>
@@ -189,32 +190,130 @@
                             </div>
                         </summary>
 
-                        <p
-                            t-if="batch.reason"
-                            class="o_lqa_deleter_batch__reason"
-                        >
-                            <strong>Motivo:</strong>
-                            <t t-esc="batch.reason"/>
-                        </p>
+                        <t t-set="visibleLines" t-value="batchLines(batch)"/>
+                        <section class="o_lqa_deleter_batch__reason">
+                            <div class="o_lqa_deleter_batch__reason_head">
+                                <div>
+                                    <strong>Motivo del lote</strong>
+                                    <span>Registro manual editable para auditoria.</span>
+                                </div>
+                                <button
+                                    t-if="!isEditingBatchReason(batch)"
+                                    type="button"
+                                    class="btn btn-secondary"
+                                    t-on-click="() => this.startBatchReasonEdit(batch)"
+                                >
+                                    <i class="fa fa-pencil"/>
+                                    <t t-if="batch.reason">Editar motivo</t>
+                                    <t t-else="">Registrar motivo</t>
+                                </button>
+                            </div>
+                            <div
+                                t-if="isEditingBatchReason(batch)"
+                                class="o_lqa_deleter_batch__reason_editor"
+                            >
+                                <textarea
+                                    class="form-control"
+                                    rows="3"
+                                    placeholder="Escribi el motivo de este lote..."
+                                    t-att-value="batchReasonDraft(batch)"
+                                    t-on-input="(event) => this.onBatchReasonInput(batch, event)"
+                                ></textarea>
+                                <div>
+                                    <button
+                                        type="button"
+                                        class="btn btn-secondary"
+                                        t-att-disabled="isSavingBatchReason(batch)"
+                                        t-on-click="() => this.cancelBatchReasonEdit(batch)"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="btn btn-primary"
+                                        t-att-disabled="isSavingBatchReason(batch)"
+                                        t-on-click="() => this.saveBatchReason(batch)"
+                                    >
+                                        <t t-if="isSavingBatchReason(batch)">Guardando...</t>
+                                        <t t-else="">Guardar motivo</t>
+                                    </button>
+                                </div>
+                            </div>
+                            <p t-elif="batch.reason" t-esc="batch.reason"/>
+                            <p t-else="" class="is-empty">Sin motivo registrado.</p>
+                        </section>
                         <p
                             t-if="batch.error_message"
                             class="o_lqa_deleter_batch__error"
                             t-esc="batch.error_message"
                         />
-                        <div class="o_lqa_deleter_lines">
-                            <div
-                                t-foreach="batchLines(batch)"
-                                t-as="line"
-                                t-key="line.id"
-                            >
-                                <strong t-esc="line.mla"/>
-                                <span
-                                    t-att-class="'is-' + line.status"
-                                    t-esc="statusLabel(line.status)"
-                                />
-                                <small t-if="line.message" t-esc="line.message"/>
+                        <section class="o_lqa_deleter_batch__lines">
+                            <div class="o_lqa_deleter_batch__line_tools">
+                                <label>
+                                    <i class="fa fa-search"/>
+                                    <input
+                                        type="search"
+                                        class="form-control"
+                                        placeholder="Buscar MLA dentro de este lote"
+                                        t-att-value="batchLineSearch(batch)"
+                                        t-on-input="(event) => this.onBatchLineSearchInput(batch, event)"
+                                    />
+                                </label>
+                                <button
+                                    type="button"
+                                    class="btn btn-secondary"
+                                    t-att-disabled="!batchLineSearch(batch)"
+                                    t-on-click="() => this.clearBatchLineSearch(batch)"
+                                >
+                                    Limpiar
+                                </button>
+                                <span t-esc="batchLineResultsLabel(batch)"/>
                             </div>
-                        </div>
+                            <div class="o_lqa_deleter_lines_wrap">
+                                <table class="o_lqa_deleter_lines">
+                                    <thead>
+                                        <tr>
+                                            <th>MLA</th>
+                                            <th>Estado</th>
+                                            <th>Detalle</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr t-if="!visibleLines.length">
+                                            <td colspan="3" class="o_lqa_deleter_lines__empty">
+                                                No hay publicaciones que coincidan con la busqueda.
+                                            </td>
+                                        </tr>
+                                        <tr
+                                            t-foreach="visibleLines"
+                                            t-as="line"
+                                            t-key="line.id"
+                                        >
+                                            <td>
+                                                <strong t-esc="line.mla"/>
+                                            </td>
+                                            <td>
+                                                <span
+                                                    t-att-class="'o_lqa_deleter_line_status is-' + line.status"
+                                                    t-esc="statusLabel(line.status)"
+                                                />
+                                            </td>
+                                            <td>
+                                                <span
+                                                    t-if="line.message"
+                                                    class="o_lqa_deleter_lines__message"
+                                                    t-att-title="line.message"
+                                                    t-esc="line.message"
+                                                />
+                                                <span t-else="" class="o_lqa_deleter_lines__muted">
+                                                    Sin detalle
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
                     </details>
                 </div>
             </section>
@@ -238,7 +337,7 @@
                     </p>
                     <p t-if="state.reason">
                         Motivo:
-                        <strong t-esc="state.reason"/>
+                        <strong t-esc="trimmedReason"/>
                     </p>
                     <div class="o_lqa_delete_modal__actions">
                         <button

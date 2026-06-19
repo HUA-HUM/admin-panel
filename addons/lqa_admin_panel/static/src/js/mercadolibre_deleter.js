@@ -22,6 +22,10 @@ export class LqaMercadolibreDeleter extends Component {
             reason: "",
             history: [],
             historySearch: "",
+            lineSearches: {},
+            reasonDrafts: {},
+            editingReasonBatchId: null,
+            savingReasonBatchId: null,
             loadingHistory: true,
             processing: false,
             showConfirmation: false,
@@ -49,6 +53,14 @@ export class LqaMercadolibreDeleter extends Component {
 
     get historySearchResultsCount() {
         return this.filteredHistory.length;
+    }
+
+    get trimmedReason() {
+        return String(this.state.reason || "").trim();
+    }
+
+    get canSubmitDeletion() {
+        return Boolean(this.state.parsedIds.length && this.trimmedReason);
     }
 
     async loadHistory() {
@@ -105,6 +117,12 @@ export class LqaMercadolibreDeleter extends Component {
             });
             return;
         }
+        if (!this.trimmedReason) {
+            this.notification.add("Escribi un motivo para registrar el lote.", {
+                type: "warning",
+            });
+            return;
+        }
         this.state.showConfirmation = true;
     }
 
@@ -120,7 +138,7 @@ export class LqaMercadolibreDeleter extends Component {
             const result = await this.orm.call(
                 "lqa.mercadolibre.deletion.service",
                 "delete_products",
-                [this.state.parsedIds, this.state.appKey, this.state.reason]
+                [this.state.parsedIds, this.state.appKey, this.trimmedReason]
             );
             this.notification.add(result.message, {
                 type: result.ok ? "success" : "danger",
@@ -170,6 +188,18 @@ export class LqaMercadolibreDeleter extends Component {
         this.state.historySearch = "";
     }
 
+    batchLineSearch(batch) {
+        return this.state.lineSearches[batch.id] || "";
+    }
+
+    onBatchLineSearchInput(batch, event) {
+        this.state.lineSearches[batch.id] = event.target.value;
+    }
+
+    clearBatchLineSearch(batch) {
+        this.state.lineSearches[batch.id] = "";
+    }
+
     batchMatchesHistorySearch(batch, search = this.normalizedHistorySearch) {
         if (!search) {
             return true;
@@ -187,19 +217,98 @@ export class LqaMercadolibreDeleter extends Component {
             return true;
         }
         return (batch.lines || []).some((line) =>
-            String(line.mla || "").toUpperCase().includes(search)
+            this.lineMatchesSearch(line, search)
         );
     }
 
     batchLines(batch) {
-        const search = this.normalizedHistorySearch;
-        if (!search) {
-            return batch.lines || [];
+        let lines = batch.lines || [];
+        const historySearch = this.normalizedHistorySearch;
+        if (historySearch) {
+            const matchingLines = lines.filter((line) =>
+                this.lineMatchesSearch(line, historySearch)
+            );
+            if (matchingLines.length) {
+                lines = matchingLines;
+            }
         }
-        const matchingLines = (batch.lines || []).filter((line) =>
-            String(line.mla || "").toUpperCase().includes(search)
-        );
-        return matchingLines.length ? matchingLines : batch.lines || [];
+        const lineSearch = String(this.batchLineSearch(batch) || "")
+            .trim()
+            .toUpperCase();
+        if (lineSearch) {
+            lines = lines.filter((line) => this.lineMatchesSearch(line, lineSearch));
+        }
+        return lines;
+    }
+
+    lineMatchesSearch(line, search) {
+        return [line.mla, line.status, line.message]
+            .map((value) => String(value || "").toUpperCase())
+            .some((value) => value.includes(search));
+    }
+
+    batchLineCount(batch) {
+        return (batch.lines || []).length;
+    }
+
+    batchLineResultsLabel(batch) {
+        const total = this.batchLineCount(batch);
+        const shown = this.batchLines(batch).length;
+        return `${shown} de ${total} publicaciones`;
+    }
+
+    isEditingBatchReason(batch) {
+        return this.state.editingReasonBatchId === batch.id;
+    }
+
+    isSavingBatchReason(batch) {
+        return this.state.savingReasonBatchId === batch.id;
+    }
+
+    batchReasonDraft(batch) {
+        const draft = this.state.reasonDrafts[batch.id];
+        return draft === undefined || draft === null ? batch.reason || "" : draft;
+    }
+
+    startBatchReasonEdit(batch) {
+        this.state.editingReasonBatchId = batch.id;
+        this.state.reasonDrafts[batch.id] = batch.reason || "";
+    }
+
+    onBatchReasonInput(batch, event) {
+        this.state.reasonDrafts[batch.id] = event.target.value;
+    }
+
+    cancelBatchReasonEdit(batch) {
+        if (this.isSavingBatchReason(batch)) {
+            return;
+        }
+        this.state.reasonDrafts[batch.id] = batch.reason || "";
+        this.state.editingReasonBatchId = null;
+    }
+
+    async saveBatchReason(batch) {
+        this.state.savingReasonBatchId = batch.id;
+        try {
+            const result = await this.orm.call(
+                "lqa.mercadolibre.deletion.service",
+                "update_batch_reason",
+                [batch.id, this.batchReasonDraft(batch)]
+            );
+            this.state.history = this.state.history.map((item) =>
+                item.id === batch.id ? { ...item, reason: result.reason } : item
+            );
+            this.state.reasonDrafts[batch.id] = result.reason;
+            this.state.editingReasonBatchId = null;
+            this.notification.add(result.message, { type: "success" });
+        } catch (error) {
+            this.notification.add(
+                error?.data?.message || "No se pudo guardar el motivo.",
+                { type: "danger" }
+            );
+        } finally {
+            this.state.savingReasonBatchId = null;
+        }
     }
 }
 

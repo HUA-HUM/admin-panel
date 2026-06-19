@@ -232,6 +232,25 @@ class LqaMercadolibreDeletionService(models.AbstractModel):
             for batch in batches
         ]
 
+    @api.model
+    def update_batch_reason(self, batch_id, reason=""):
+        self._check_access()
+        batch = (
+            self.env["lqa.mercadolibre.deletion.batch"]
+            .sudo()
+            .browse(self._as_int(batch_id, 0))
+        )
+        if not batch.exists():
+            raise UserError(_("No se encontro el lote indicado."))
+
+        clean_reason = self._clean(reason)
+        batch.write({"reason": clean_reason})
+        return {
+            "id": batch.id,
+            "reason": clean_reason,
+            "message": _("Motivo actualizado."),
+        }
+
     def _check_access(self):
         if not self.env.user.has_group(
             "lqa_admin_panel.group_lqa_commercial_user"
