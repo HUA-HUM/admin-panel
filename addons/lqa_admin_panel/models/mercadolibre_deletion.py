@@ -77,7 +77,6 @@ class LqaMercadolibreDeletionService(models.AbstractModel):
         "https://api.meli.loquieroaca.com/meli/products/bulk/delete"
     )
     MLA_PATTERN = re.compile(r"^MLA\d+$")
-    MAX_IDS = 1000
 
     @api.model
     def delete_products(self, ids=None, app_key="default"):
@@ -85,10 +84,6 @@ class LqaMercadolibreDeletionService(models.AbstractModel):
         normalized_ids = self._normalize_ids(ids or [])
         if not normalized_ids:
             raise UserError(_("Ingresa al menos una publicacion MLA valida."))
-        if len(normalized_ids) > self.MAX_IDS:
-            raise UserError(
-                _("Podes eliminar hasta %s publicaciones por lote.") % self.MAX_IDS
-            )
 
         app_key = (app_key or "default").strip() or "default"
         batch = self.env["lqa.mercadolibre.deletion.batch"].sudo().create(
