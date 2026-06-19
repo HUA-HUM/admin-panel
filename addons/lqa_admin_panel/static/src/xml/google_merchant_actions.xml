@@ -104,6 +104,8 @@
                                 <i
                                     t-att-class="run.status === 'completed'
                                         ? 'fa fa-check'
+                                        : run.status === 'partial'
+                                            ? 'fa fa-exclamation-triangle'
                                         : run.status === 'failed'
                                             ? 'fa fa-times'
                                             : 'fa fa-clock-o'"
@@ -111,8 +113,8 @@
                             </span>
                             <div>
                                 <small t-esc="formatDateTime(run.triggered_at)"/>
-                                <h3>Eliminación total del catálogo</h3>
-                                <p t-esc="run.message || run.error_message || 'Sin detalle adicional.'"/>
+                                <h3 t-esc="actionLabel(run.action_type)"/>
+                                <p t-esc="actionDetail(run)"/>
                             </div>
                         </div>
                         <div class="o_lqa_google_actions_run__meta">

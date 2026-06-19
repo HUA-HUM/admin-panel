@@ -278,6 +278,11 @@
         color: #087950;
     }
 
+    &.is-partial {
+        background: #fff7ed;
+        color: #c2410c;
+    }
+
     &.is-failed {
         background: #fff0f1;
         color: #cc2936;
@@ -307,6 +312,11 @@
     > strong.is-completed {
         background: #e8f8f0;
         color: #087950;
+    }
+
+    > strong.is-partial {
+        background: #fff7ed;
+        color: #c2410c;
     }
 
     > strong.is-failed {

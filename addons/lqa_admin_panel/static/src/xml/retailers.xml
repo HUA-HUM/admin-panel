@@ -244,6 +244,48 @@
                         </button>
                     </div>
 
+                    <div t-if="isGoogleMerchantDetail" class="o_lqa_retailers_selection_bar">
+                        <div>
+                            <strong>
+                                <t t-esc="formatNumber(selectedGoogleMerchantCount)"/>
+                                seleccionados
+                            </strong>
+                            <span>Google Merchant borra por idioma, feedLabel y offerId.</span>
+                        </div>
+                        <div>
+                            <button
+                                type="button"
+                                class="btn btn-secondary"
+                                t-att-disabled="!selectableGoogleMerchantProducts.length"
+                                t-on-click="toggleCurrentGoogleMerchantPage"
+                            >
+                                <i
+                                    t-att-class="allCurrentGoogleMerchantProductsSelected
+                                        ? 'fa fa-check-square-o'
+                                        : 'fa fa-square-o'"
+                                />
+                                <t t-esc="allCurrentGoogleMerchantProductsSelected ? 'Quitar pagina' : 'Seleccionar pagina'"/>
+                            </button>
+                            <button
+                                type="button"
+                                class="btn btn-secondary"
+                                t-att-disabled="!selectedGoogleMerchantCount || state.deletingGoogleMerchantProducts"
+                                t-on-click="clearGoogleMerchantSelection"
+                            >
+                                Limpiar
+                            </button>
+                            <button
+                                type="button"
+                                class="btn btn-danger"
+                                t-att-disabled="!selectedGoogleMerchantCount || state.deletingGoogleMerchantProducts"
+                                t-on-click="openGoogleMerchantDeleteConfirmation"
+                            >
+                                <i class="fa fa-trash-o"/>
+                                Eliminar seleccionados
+                            </button>
+                        </div>
+                    </div>
+
                     <div class="o_lqa_retailers_table_head">
                         <div>
                             <h2>Productos publicados</h2>
@@ -268,11 +310,31 @@
                     </div>
                     <div t-else="" class="o_lqa_products_grid">
                         <article
-                            class="o_lqa_product_card"
+                            t-att-class="productCardClass(product)"
                             t-foreach="state.products.items"
                             t-as="product"
-                            t-key="product.id || product.sku"
+                            t-key="productCardKey(product)"
                         >
+                            <button
+                                t-if="isGoogleMerchantDetail"
+                                type="button"
+                                class="o_lqa_product_card__select"
+                                t-att-class="isGoogleMerchantProductSelected(product) ? 'is-selected' : ''"
+                                t-att-disabled="!canDeleteGoogleMerchantProduct(product)"
+                                t-att-title="canDeleteGoogleMerchantProduct(product)
+                                    ? (isGoogleMerchantProductSelected(product) ? 'Quitar seleccion' : 'Seleccionar producto')
+                                    : 'Faltan datos de Google para borrar'"
+                                t-att-aria-label="canDeleteGoogleMerchantProduct(product)
+                                    ? (isGoogleMerchantProductSelected(product) ? 'Quitar seleccion' : 'Seleccionar producto')
+                                    : 'Faltan datos de Google para borrar'"
+                                t-on-click="() => this.toggleGoogleMerchantProduct(product)"
+                            >
+                                <i
+                                    t-att-class="isGoogleMerchantProductSelected(product)
+                                        ? 'fa fa-check'
+                                        : 'fa fa-plus'"
+                                />
+                            </button>
                             <div class="o_lqa_product_card__media">
                                 <img t-if="product.image" t-att-src="product.image" t-att-alt="product.title"/>
                                 <span t-else="" t-esc="product.sku || 'SKU'"/>
@@ -290,6 +352,18 @@
                                     <div>
                                         <dt>Seller SKU</dt>
                                         <dd t-esc="product.sku || '-'"/>
+                                    </div>
+                                    <div t-if="isGoogleMerchantDetail">
+                                        <dt>Offer ID</dt>
+                                        <dd t-esc="product.offer_id || '-'"/>
+                                    </div>
+                                    <div t-if="isGoogleMerchantDetail">
+                                        <dt>Idioma</dt>
+                                        <dd t-esc="product.content_language || '-'"/>
+                                    </div>
+                                    <div t-if="isGoogleMerchantDetail">
+                                        <dt>Feed label</dt>
+                                        <dd t-esc="product.feed_label || '-'"/>
                                     </div>
                                     <div>
                                         <dt>Market SKU</dt>
@@ -500,6 +574,55 @@
                             t-on-click="confirmRefreshPublished"
                         >
                             Confirmar actualizacion
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="o_lqa_modal_backdrop" t-if="state.confirmDeleteGoogleMerchant">
+                <div class="o_lqa_retailers_modal">
+                    <h2>Eliminar productos seleccionados</h2>
+                    <p>
+                        Vas a eliminar
+                        <strong t-esc="formatNumber(selectedGoogleMerchantCount)"/>
+                        productos de Google Merchant usando su clave de idioma, feedLabel y offerId.
+                    </p>
+                    <ul class="o_lqa_retailers_delete_preview">
+                        <li
+                            t-foreach="deletePreviewGoogleMerchantProducts"
+                            t-as="product"
+                            t-key="product.key"
+                        >
+                            <strong t-esc="product.offerId"/>
+                            <span>
+                                <t t-esc="product.contentLanguage"/>
+                                /
+                                <t t-esc="product.feedLabel"/>
+                            </span>
+                        </li>
+                    </ul>
+                    <p t-if="selectedGoogleMerchantCount > deletePreviewGoogleMerchantProducts.length">
+                        Y
+                        <strong t-esc="formatNumber(selectedGoogleMerchantCount - deletePreviewGoogleMerchantProducts.length)"/>
+                        productos mas.
+                    </p>
+                    <div class="o_lqa_retailers_modal__actions">
+                        <button
+                            type="button"
+                            class="btn btn-secondary"
+                            t-att-disabled="state.deletingGoogleMerchantProducts"
+                            t-on-click="closeGoogleMerchantDeleteConfirmation"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="button"
+                            class="btn btn-danger"
+                            t-att-disabled="state.deletingGoogleMerchantProducts"
+                            t-on-click="confirmDeleteGoogleMerchantProducts"
+                        >
+                            <t t-if="state.deletingGoogleMerchantProducts">Eliminando...</t>
+                            <t t-else="">Eliminar productos</t>
                         </button>
                     </div>
                 </div>

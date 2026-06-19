@@ -93,9 +93,31 @@ export class LqaGoogleMerchantActions extends Component {
             {
                 processing: "Procesando",
                 completed: "Completado",
+                partial: "Parcial",
                 failed: "Fallido",
             }[String(value || "").toLowerCase()] || value || "-"
         );
+    }
+
+    actionLabel(value) {
+        return (
+            {
+                delete_all: "Eliminación total del catálogo",
+                delete_selected: "Eliminación de productos seleccionados",
+            }[String(value || "").toLowerCase()] || "Acción Google Merchant"
+        );
+    }
+
+    actionDetail(run) {
+        const response = run.response || {};
+        if (run.action_type === "delete_selected") {
+            const deletedCount = Number(response.deleted_count || 0);
+            const failedCount = Number(response.failed_count || 0);
+            if (deletedCount || failedCount) {
+                return `${deletedCount} eliminados, ${failedCount} con error.`;
+            }
+        }
+        return run.message || run.error_message || "Sin detalle adicional.";
     }
 
     formatDateTime(value) {

@@ -608,6 +608,11 @@ class LqaRetailersService(models.AbstractModel):
     def _normalize_product(self, item, marketplace_id=""):
         item = item if isinstance(item, dict) else {}
         raw_payload = item.get("raw_payload") if isinstance(item.get("raw_payload"), dict) else {}
+        product_attributes = (
+            raw_payload.get("productAttributes")
+            if isinstance(raw_payload.get("productAttributes"), dict)
+            else {}
+        )
         raw_images = raw_payload.get("images") if isinstance(raw_payload.get("images"), list) else []
         image = (
             item.get("image")
@@ -616,6 +621,8 @@ class LqaRetailersService(models.AbstractModel):
             or item.get("picture")
             or item.get("pictureUrl")
             or item.get("mainImage")
+            or product_attributes.get("imageLink")
+            or product_attributes.get("image_link")
             or raw_payload.get("image")
             or raw_payload.get("imageUrl")
             or (raw_images[0] if raw_images else "")
@@ -630,6 +637,27 @@ class LqaRetailersService(models.AbstractModel):
             or item.get("amount")
             or raw_payload.get("price")
         )
+        if isinstance(price, dict):
+            amount_micros = price.get("amountMicros") or price.get("amount_micros")
+            numeric_micros = self._as_float(amount_micros, None)
+            price = (
+                numeric_micros / 1000000
+                if numeric_micros is not None
+                else price.get("amount")
+            )
+        elif price in (None, "", 0, "0", "0.00") and isinstance(
+            product_attributes.get("price"), dict
+        ):
+            amount_micros = (
+                product_attributes["price"].get("amountMicros")
+                or product_attributes["price"].get("amount_micros")
+            )
+            numeric_micros = self._as_float(amount_micros, None)
+            price = (
+                numeric_micros / 1000000
+                if numeric_micros is not None
+                else product_attributes["price"].get("amount")
+            )
         stock = (
             item.get("stock")
             if item.get("stock") is not None
@@ -637,11 +665,60 @@ class LqaRetailersService(models.AbstractModel):
             if item.get("stockQuantity") is not None
             else raw_payload.get("stock")
         )
+        google_product_identity = self._parse_google_product_identity(
+            item.get("name")
+            or raw_payload.get("name")
+            or item.get("external_id")
+            or item.get("externalId")
+            or ""
+        )
+        offer_id = self._clean(
+            item.get("offerId")
+            or item.get("offer_id")
+            or raw_payload.get("offerId")
+            or raw_payload.get("offer_id")
+            or google_product_identity.get("offer_id")
+        )
+        content_language = self._clean(
+            item.get("contentLanguage")
+            or item.get("content_language")
+            or raw_payload.get("contentLanguage")
+            or raw_payload.get("content_language")
+            or google_product_identity.get("content_language")
+        )
+        feed_label = self._clean(
+            item.get("feedLabel")
+            or item.get("feed_label")
+            or raw_payload.get("feedLabel")
+            or raw_payload.get("feed_label")
+            or google_product_identity.get("feed_label")
+        )
+        google_product_key = (
+            f"{content_language}~{feed_label}~{offer_id}"
+            if offer_id and content_language and feed_label
+            else ""
+        )
+        item_id = (
+            item.get("_id")
+            or item.get("id")
+            or item.get("sku")
+            or item.get("external_id")
+            or item.get("externalId")
+            or ""
+        )
         return {
-            "id": item.get("_id") or item.get("id") or item.get("sku") or item.get("external_id") or item.get("externalId") or "",
+            "id": item_id,
+            "card_key": google_product_key or item_id,
             "sku": item.get("sku") or item.get("seller_sku") or item.get("sellerSku") or raw_payload.get("sellerSku") or "",
             "market_sku": item.get("market_sku") or item.get("marketSku") or raw_payload.get("marketSku") or "",
-            "title": item.get("title") or item.get("name") or item.get("productName") or raw_payload.get("title") or "Sin titulo",
+            "title": (
+                item.get("title")
+                or item.get("name")
+                or item.get("productName")
+                or product_attributes.get("title")
+                or raw_payload.get("title")
+                or "Sin titulo"
+            ),
             "image": self._normalize_product_image(marketplace, image),
             "price": self._as_float(price, None),
             "stock": self._as_int(stock, 0),
@@ -659,6 +736,7 @@ class LqaRetailersService(models.AbstractModel):
                 item.get("publication_url")
                 or item.get("publicationUrl")
                 or item.get("link")
+                or product_attributes.get("link")
                 or raw_payload.get("LinkPublicacion")
                 or raw_payload.get("linkPublicacion")
                 or ""
@@ -672,6 +750,30 @@ class LqaRetailersService(models.AbstractModel):
                 or item.get("updated_at")
                 or ""
             ),
+            "offer_id": offer_id,
+            "content_language": content_language,
+            "feed_label": feed_label,
+            "google_product_key": google_product_key,
+            "data_source": self._clean(
+                item.get("dataSource")
+                or item.get("data_source")
+                or raw_payload.get("dataSource")
+                or raw_payload.get("data_source")
+            ),
+        }
+
+    def _parse_google_product_identity(self, value):
+        value = self._clean(value)
+        if not value or "/products/" not in value:
+            return {}
+        product_name = value.rsplit("/products/", 1)[-1]
+        parts = product_name.split("~", 2)
+        if len(parts) != 3:
+            return {}
+        return {
+            "content_language": self._clean(parts[0]),
+            "feed_label": self._clean(parts[1]),
+            "offer_id": self._clean(parts[2]),
         }
 
     def _normalize_marketplace_catalog_item(self, item):

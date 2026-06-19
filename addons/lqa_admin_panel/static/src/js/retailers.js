@@ -87,6 +87,8 @@ export class LqaRetailers extends Component {
             refreshingPublished: false,
             confirmImport: false,
             confirmRefresh: false,
+            confirmDeleteGoogleMerchant: false,
+            deletingGoogleMerchantProducts: false,
             dashboardOrders: emptyOrdersOverview(),
             dashboardError: "",
             refreshForm: {
@@ -98,6 +100,7 @@ export class LqaRetailers extends Component {
             status: { total: 0, statuses: [] },
             productFilters: defaultProductFilters(),
             importFilters: defaultImportFilters(),
+            selectedGoogleMerchantProducts: {},
         });
 
         onMounted(() => {
@@ -141,6 +144,10 @@ export class LqaRetailers extends Component {
         return this.state.viewMode === "marketplace" && Boolean(this.state.marketplaceId);
     }
 
+    get isGoogleMerchantDetail() {
+        return this.state.marketplaceId === "google-merchant";
+    }
+
     get dashboardMarketplaceBreakdown() {
         const totals = new Map();
         for (const item of this.state.dashboardOrders.marketplaces || []) {
@@ -157,6 +164,35 @@ export class LqaRetailers extends Component {
 
     get dashboardErrorsCount() {
         return (this.state.dashboardOrders.errors || []).length;
+    }
+
+    get selectableGoogleMerchantProducts() {
+        if (!this.isGoogleMerchantDetail) {
+            return [];
+        }
+        return (this.state.products.items || []).filter((product) =>
+            this.canDeleteGoogleMerchantProduct(product)
+        );
+    }
+
+    get selectedGoogleMerchantProducts() {
+        return Object.values(this.state.selectedGoogleMerchantProducts || {}).filter(Boolean);
+    }
+
+    get selectedGoogleMerchantCount() {
+        return this.selectedGoogleMerchantProducts.length;
+    }
+
+    get allCurrentGoogleMerchantProductsSelected() {
+        const products = this.selectableGoogleMerchantProducts;
+        return (
+            Boolean(products.length) &&
+            products.every((product) => this.isGoogleMerchantProductSelected(product))
+        );
+    }
+
+    get deletePreviewGoogleMerchantProducts() {
+        return this.selectedGoogleMerchantProducts.slice(0, 6);
     }
 
     get statusOptions() {
@@ -192,6 +228,7 @@ export class LqaRetailers extends Component {
         this.state.viewMode = viewMode;
         this.state.confirmImport = false;
         this.state.confirmRefresh = false;
+        this.state.confirmDeleteGoogleMerchant = false;
         if (marketplaceId) {
             this.resetMarketplaceDetail();
         }
@@ -231,6 +268,7 @@ export class LqaRetailers extends Component {
         this.state.products = { items: [], summary: {}, pagination: {} };
         this.state.imports = { items: [], pagination: {} };
         this.state.status = { total: 0, statuses: [] };
+        this.clearGoogleMerchantSelection();
     }
 
     openMarketplace(marketplace) {
@@ -244,6 +282,8 @@ export class LqaRetailers extends Component {
         this.state.viewMode = "marketplaces";
         this.state.marketplaceId = "";
         this.state.confirmImport = false;
+        this.state.confirmDeleteGoogleMerchant = false;
+        this.clearGoogleMerchantSelection();
         if (this.importPollingTimer) {
             clearTimeout(this.importPollingTimer);
         }
@@ -278,6 +318,9 @@ export class LqaRetailers extends Component {
     async loadProducts() {
         if (!this.state.marketplaceId) {
             return;
+        }
+        if (!this.isGoogleMerchantDetail) {
+            this.clearGoogleMerchantSelection();
         }
         this.state.loadingProducts = true;
         try {
@@ -443,6 +486,137 @@ export class LqaRetailers extends Component {
         } finally {
             this.state.refreshingPublished = false;
         }
+    }
+
+    googleMerchantProductKey(product) {
+        return product?.google_product_key || product?.card_key || "";
+    }
+
+    canDeleteGoogleMerchantProduct(product) {
+        return Boolean(
+            product?.offer_id &&
+            product?.content_language &&
+            product?.feed_label &&
+            this.googleMerchantProductKey(product)
+        );
+    }
+
+    isGoogleMerchantProductSelected(product) {
+        const key = this.googleMerchantProductKey(product);
+        return Boolean(key && this.state.selectedGoogleMerchantProducts[key]);
+    }
+
+    googleMerchantDeletePayload(product) {
+        return {
+            key: this.googleMerchantProductKey(product),
+            offerId: product.offer_id,
+            contentLanguage: product.content_language,
+            feedLabel: product.feed_label,
+            sellerSku: product.sku,
+            title: product.title,
+            dataSource: product.data_source,
+        };
+    }
+
+    toggleGoogleMerchantProduct(product) {
+        if (!this.canDeleteGoogleMerchantProduct(product)) {
+            this.notification.add(
+                "Este producto no tiene offerId, contentLanguage y feedLabel.",
+                { type: "warning" }
+            );
+            return;
+        }
+        const key = this.googleMerchantProductKey(product);
+        const selected = { ...this.state.selectedGoogleMerchantProducts };
+        if (selected[key]) {
+            delete selected[key];
+        } else {
+            selected[key] = this.googleMerchantDeletePayload(product);
+        }
+        this.state.selectedGoogleMerchantProducts = selected;
+    }
+
+    toggleCurrentGoogleMerchantPage() {
+        const selected = { ...this.state.selectedGoogleMerchantProducts };
+        const shouldSelect = !this.allCurrentGoogleMerchantProductsSelected;
+        for (const product of this.selectableGoogleMerchantProducts) {
+            const key = this.googleMerchantProductKey(product);
+            if (shouldSelect) {
+                selected[key] = this.googleMerchantDeletePayload(product);
+            } else {
+                delete selected[key];
+            }
+        }
+        this.state.selectedGoogleMerchantProducts = selected;
+    }
+
+    clearGoogleMerchantSelection() {
+        this.state.selectedGoogleMerchantProducts = {};
+    }
+
+    openGoogleMerchantDeleteConfirmation() {
+        if (!this.selectedGoogleMerchantCount) {
+            this.notification.add("Selecciona al menos un producto.", {
+                type: "warning",
+            });
+            return;
+        }
+        this.state.confirmDeleteGoogleMerchant = true;
+    }
+
+    closeGoogleMerchantDeleteConfirmation() {
+        if (!this.state.deletingGoogleMerchantProducts) {
+            this.state.confirmDeleteGoogleMerchant = false;
+        }
+    }
+
+    async confirmDeleteGoogleMerchantProducts() {
+        if (!this.selectedGoogleMerchantCount) {
+            return;
+        }
+        this.state.deletingGoogleMerchantProducts = true;
+        try {
+            const result = await this.orm.call(
+                "lqa.google.merchant.actions.service",
+                "delete_selected_products",
+                [this.selectedGoogleMerchantProducts]
+            );
+            this.state.confirmDeleteGoogleMerchant = false;
+            this.clearGoogleMerchantSelection();
+            await this.loadProducts();
+            this.notification.add(
+                result.message ||
+                    result.error_message ||
+                    "La eliminacion selectiva finalizo.",
+                {
+                    type:
+                        result.status === "completed"
+                            ? "success"
+                            : result.status === "partial"
+                            ? "warning"
+                            : "danger",
+                }
+            );
+        } catch (error) {
+            this.notifyError(error, "No se pudieron eliminar los productos seleccionados.");
+        } finally {
+            this.state.deletingGoogleMerchantProducts = false;
+        }
+    }
+
+    productCardKey(product) {
+        return product?.card_key || product?.google_product_key || product?.id || product?.sku;
+    }
+
+    productCardClass(product) {
+        let className = "o_lqa_product_card";
+        if (this.isGoogleMerchantProductSelected(product)) {
+            className += " is-selected";
+        }
+        if (this.isGoogleMerchantDetail && !this.canDeleteGoogleMerchantProduct(product)) {
+            className += " is-not-selectable";
+        }
+        return className;
     }
 
     marketplaceName(value) {

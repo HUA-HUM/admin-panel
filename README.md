@@ -245,6 +245,7 @@ https://api.price.loquieroaca.com/internal/getProfit/channel/details/bulk
 https://api.products.loquieroaca.com/api/internal/import/{marketplace}/run
 https://api.products.loquieroaca.com/api/internal/marketplace-changes/refresh-published/{marketplace}
 https://api.products.loquieroaca.com/api/internal/google-merchant/products/delete-all
+https://api.products.loquieroaca.com/api/internal/google-merchant/products/{offerId}?contentLanguage={contentLanguage}&feedLabel={feedLabel}
 https://order.api.loquieroaca.com/orders/overview/last-24-hours
 https://order.api.loquieroaca.com/orders/overview/recent/{hours}
 https://order.api.loquieroaca.com/orders/overview/historical
