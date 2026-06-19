@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="lqa_admin_panel.GoogleMerchantActions">
+        <div class="o_lqa_google_actions">
+            <header class="o_lqa_google_actions__header">
+                <div>
+                    <p>Retailers / Marketplaces / Google Merchant</p>
+                    <h1>Acciones</h1>
+                    <span>Operaciones administrativas sobre el catálogo conectado a la web.</span>
+                </div>
+                <img
+                    src="/lqa_admin_panel/static/src/img/marketplace/google-merchant.png?v=1"
+                    alt="Google Merchant"
+                />
+            </header>
+
+            <section class="o_lqa_google_actions_danger">
+                <div class="o_lqa_google_actions_danger__icon">
+                    <i class="fa fa-trash-o"/>
+                </div>
+                <div class="o_lqa_google_actions_danger__content">
+                    <div class="o_lqa_google_actions_danger__head">
+                        <div>
+                            <small>Zona crítica</small>
+                            <h2>Eliminar todo el catálogo</h2>
+                        </div>
+                        <span>Google Merchant</span>
+                    </div>
+                    <p>
+                        Esta acción solicita la eliminación de todos los productos
+                        publicados en Google Merchant.
+                    </p>
+                    <label for="lqa-google-delete-confirmation">
+                        Escribí <strong>ELIMINAR TODO</strong> para confirmar
+                    </label>
+                    <div class="o_lqa_google_actions_danger__form">
+                        <input
+                            id="lqa-google-delete-confirmation"
+                            type="text"
+                            class="form-control"
+                            autocomplete="off"
+                            placeholder="ELIMINAR TODO"
+                            t-model="state.confirmation"
+                            t-att-disabled="state.executing"
+                            t-on-keydown="onConfirmationKeydown"
+                        />
+                        <button
+                            type="button"
+                            class="btn btn-danger"
+                            t-att-disabled="!canExecute"
+                            t-on-click="executeDeleteAll"
+                        >
+                            <i
+                                t-att-class="state.executing
+                                    ? 'fa fa-spinner fa-spin'
+                                    : 'fa fa-trash-o'"
+                            />
+                            <t t-esc="state.executing ? 'Eliminando...' : 'Eliminar catálogo'"/>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="o_lqa_google_actions_history">
+                <div class="o_lqa_google_actions_history__head">
+                    <div>
+                        <p>Auditoría</p>
+                        <h2>Historial de ejecuciones</h2>
+                    </div>
+                    <button
+                        type="button"
+                        class="btn btn-secondary"
+                        t-att-disabled="state.loadingHistory"
+                        t-on-click="loadHistory"
+                    >
+                        <i class="fa fa-refresh"/>
+                        Actualizar
+                    </button>
+                </div>
+
+                <div
+                    t-if="state.loadingHistory"
+                    class="o_lqa_google_actions_history__empty"
+                >
+                    Cargando historial...
+                </div>
+                <div
+                    t-elif="!state.history.length"
+                    class="o_lqa_google_actions_history__empty"
+                >
+                    No hay ejecuciones registradas.
+                </div>
+                <div t-else="" class="o_lqa_google_actions_history__list">
+                    <article
+                        class="o_lqa_google_actions_run"
+                        t-foreach="state.history"
+                        t-as="run"
+                        t-key="run.id"
+                    >
+                        <div class="o_lqa_google_actions_run__main">
+                            <span
+                                t-att-class="'o_lqa_google_actions_run__status is-' + run.status"
+                            >
+                                <i
+                                    t-att-class="run.status === 'completed'
+                                        ? 'fa fa-check'
+                                        : run.status === 'failed'
+                                            ? 'fa fa-times'
+                                            : 'fa fa-clock-o'"
+                                />
+                            </span>
+                            <div>
+                                <small t-esc="formatDateTime(run.triggered_at)"/>
+                                <h3>Eliminación total del catálogo</h3>
+                                <p t-esc="run.message || run.error_message || 'Sin detalle adicional.'"/>
+                            </div>
+                        </div>
+                        <div class="o_lqa_google_actions_run__meta">
+                            <span t-esc="run.user_name || 'Usuario'"/>
+                            <strong
+                                t-att-class="'is-' + run.status"
+                                t-esc="statusLabel(run.status)"
+                            />
+                            <button
+                                t-if="run.response_json"
+                                type="button"
+                                t-att-title="state.expandedResponses[run.id]
+                                    ? 'Ocultar respuesta'
+                                    : 'Ver respuesta'"
+                                t-att-aria-label="state.expandedResponses[run.id]
+                                    ? 'Ocultar respuesta'
+                                    : 'Ver respuesta'"
+                                t-on-click="() => this.toggleResponse(run)"
+                            >
+                                <i
+                                    t-att-class="state.expandedResponses[run.id]
+                                        ? 'fa fa-chevron-up'
+                                        : 'fa fa-code'"
+                                />
+                            </button>
+                        </div>
+                        <pre
+                            t-if="state.expandedResponses[run.id] &amp;&amp; run.response_json"
+                            t-esc="run.response_json"
+                        />
+                    </article>
+                </div>
+            </section>
+        </div>
+    </t>
+</templates>

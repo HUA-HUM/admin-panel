@@ -43,6 +43,9 @@ Base de panel comercial construida sobre Odoo + Docker.
     - Busqueda del estado de un seller SKU en todos los marketplaces.
     - Listado general paginado con precio, stock, estado e IDs por canal.
   - Pantalla por marketplace con tabs `Products`, `Imports` y `Status`.
+  - Seccion `Google Merchant / Acciones` para administradores:
+    - Eliminacion total del catalogo mediante confirmacion escrita.
+    - Historial persistente con usuario, estado y respuesta de Products API.
   - Products consulta productos paginados por marketplace, SKU y estado.
   - Imports permite disparar importaciones asincronicas con confirmacion e historial.
   - Status muestra la distribucion visual de estados de publicaciones.
@@ -241,6 +244,7 @@ https://api.madre.loquieroaca.com/api/publication-jobs/pending
 https://api.price.loquieroaca.com/internal/getProfit/channel/details/bulk
 https://api.products.loquieroaca.com/api/internal/import/{marketplace}/run
 https://api.products.loquieroaca.com/api/internal/marketplace-changes/refresh-published/{marketplace}
+https://api.products.loquieroaca.com/api/internal/google-merchant/products/delete-all
 https://order.api.loquieroaca.com/orders/overview/last-24-hours
 https://order.api.loquieroaca.com/orders/overview/recent/{hours}
 https://order.api.loquieroaca.com/orders/overview/historical

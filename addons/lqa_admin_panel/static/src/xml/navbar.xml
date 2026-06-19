@@ -138,6 +138,8 @@
                                                     ? 'fa fa-th'
                                                     : child.name === 'Marketplaces'
                                                         ? 'fa fa-shopping-cart'
+                                                        : child.name === 'Google Merchant'
+                                                            ? 'fa fa-google'
                                                         : child.name === 'Publicador'
                                                             ? 'fa fa-cloud-upload'
                                                         : 'fa fa-folder-o'"
@@ -196,9 +198,11 @@
                                                                 ? 'fa fa-folder-open-o'
                                                                 : grandchild.name === 'Publicar'
                                                                     ? 'fa fa-cloud-upload'
-                                                                    : grandchild.name === 'Seguimiento'
-                                                                        ? 'fa fa-list-alt'
-                                                            : 'fa fa-shopping-cart'"
+                                                            : grandchild.name === 'Seguimiento'
+                                                                ? 'fa fa-list-alt'
+                                                                : grandchild.name === 'Acciones'
+                                                                    ? 'fa fa-trash-o'
+                                                        : 'fa fa-shopping-cart'"
                                             />
                                             <span t-esc="grandchild.name"/>
                                         </button>
