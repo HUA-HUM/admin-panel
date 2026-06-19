@@ -2,42 +2,33 @@
 <templates xml:space="preserve">
     <t t-name="lqa_admin_panel.Dashboard">
         <div class="o_lqa_dashboard">
-            <div class="o_lqa_dashboard__header">
+            <header class="o_lqa_dashboard__header">
                 <div>
-                    <p class="o_lqa_dashboard__eyebrow">Panel Comercial</p>
-                    <h1>Operaciones comerciales</h1>
-                    <p class="o_lqa_dashboard__subtitle">
-                        Modulos internos para MercadoLibre, Automeli y nuevas funcionalidades comerciales.
+                    <p class="o_lqa_dashboard__eyebrow">
+                        <t t-esc="state.selectedModuleCode ? 'Panel Comercial / Dashboard' : 'Panel Dashboard'"/>
                     </p>
+                    <h1 t-esc="dashboardTitle"/>
+                    <p class="o_lqa_dashboard__subtitle" t-esc="dashboardSubtitle"/>
                 </div>
                 <div class="o_lqa_dashboard__status">
-                    <span t-att-class="state.apiConfigured ? 'is-ready' : 'is-pending'"/>
+                    <span
+                        t-att-class="state.apiConfigured
+                            ? 'o_lqa_dashboard__status_icon is-ready'
+                            : 'o_lqa_dashboard__status_icon is-pending'"
+                    >
+                        <i
+                            t-att-class="state.apiConfigured
+                                ? 'fa fa-check'
+                                : 'fa fa-exclamation'"
+                        />
+                    </span>
                     <div>
+                        <small>Entorno</small>
                         <strong t-esc="state.environment"/>
-                        <small t-esc="state.apiConfigured ? 'API configurada' : 'API pendiente'"/>
+                        <small t-esc="state.apiConfigured ? 'Servicios configurados' : 'Configuración pendiente'"/>
                     </div>
                 </div>
-            </div>
-
-            <div class="o_lqa_dashboard__nav" t-if="state.navigationModules.length > 1">
-                <button
-                    type="button"
-                    t-att-class="!state.selectedModuleCode ? 'is-active' : ''"
-                    t-on-click="() => this.loadDashboard(false)"
-                >
-                    Todos
-                </button>
-                <button
-                    type="button"
-                    t-foreach="state.navigationModules"
-                    t-as="module"
-                    t-key="module.code"
-                    t-att-class="state.selectedModuleCode === module.code ? 'is-active' : ''"
-                    t-on-click="() => this.openModule(module)"
-                >
-                    <t t-esc="module.name"/>
-                </button>
-            </div>
+            </header>
 
             <div class="o_lqa_dashboard__loading" t-if="state.loading">
                 <span class="o_lqa_inline_spinner" aria-hidden="true"/>
@@ -45,113 +36,130 @@
             </div>
 
             <t t-else="">
-                <section
-                    t-if="!state.selectedModuleCode"
-                    class="o_lqa_dashboard_favorites"
-                >
-                    <div class="o_lqa_dashboard_favorites__head">
-                        <div>
-                            <p>Accesos directos</p>
-                            <h2>Favoritos</h2>
+                <t t-if="!state.selectedModuleCode">
+                    <section class="o_lqa_dashboard_summary">
+                        <div class="o_lqa_dashboard_summary__item">
+                            <span class="is-favorites">
+                                <i class="fa fa-star"/>
+                            </span>
+                            <div>
+                                <small>Favoritos</small>
+                                <strong t-esc="state.favorites.length"/>
+                                <p>Accesos personales</p>
+                            </div>
                         </div>
-                        <span t-if="state.favorites.length">
-                            <t t-esc="state.favorites.length"/>
-                            secciones
-                        </span>
-                    </div>
-                    <div
-                        t-if="!state.favorites.length"
-                        class="o_lqa_dashboard_favorites__empty"
-                    >
-                        <i class="fa fa-star-o"/>
-                        <div>
+                        <div class="o_lqa_dashboard_summary__item">
+                            <span class="is-sections">
+                                <i class="fa fa-th-large"/>
+                            </span>
+                            <div>
+                                <small>Herramientas</small>
+                                <strong t-esc="availableSectionsCount"/>
+                                <p>Secciones disponibles</p>
+                            </div>
+                        </div>
+                        <div class="o_lqa_dashboard_summary__item">
+                            <span t-att-class="state.apiConfigured ? 'is-status is-ready' : 'is-status'">
+                                <i t-att-class="state.apiConfigured ? 'fa fa-check' : 'fa fa-clock-o'"/>
+                            </span>
+                            <div>
+                                <small>Estado operativo</small>
+                                <strong t-esc="state.apiConfigured ? 'Listo' : 'Pendiente'"/>
+                                <p t-esc="state.environment"/>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="o_lqa_dashboard_favorites">
+                        <div class="o_lqa_dashboard_favorites__head">
+                            <div>
+                                <p>Espacio personal</p>
+                                <h2>Accesos favoritos</h2>
+                            </div>
+                            <span>
+                                <i class="fa fa-star"/>
+                                <t t-esc="state.favorites.length"/>
+                            </span>
+                        </div>
+                        <div
+                            t-if="!state.favorites.length"
+                            class="o_lqa_dashboard_favorites__empty"
+                        >
+                            <span>
+                                <i class="fa fa-star-o"/>
+                            </span>
                             <strong>No hay secciones favoritas</strong>
                         </div>
-                    </div>
-                    <div t-else="" class="o_lqa_dashboard_favorites__grid">
-                        <button
-                            type="button"
-                            t-foreach="state.favorites"
-                            t-as="favorite"
-                            t-key="favorite.menu_id"
-                            t-on-click="() => this.openFavorite(favorite)"
-                        >
-                            <i t-att-class="favoriteIcon(favorite)"/>
-                            <span>
-                                <strong t-esc="favorite.name"/>
-                                <small t-esc="favorite.path || 'Panel Comercial'"/>
-                            </span>
-                            <i class="fa fa-chevron-right"/>
-                        </button>
-                    </div>
-                </section>
+                        <div t-else="" class="o_lqa_dashboard_favorites__grid">
+                            <button
+                                type="button"
+                                t-foreach="state.favorites"
+                                t-as="favorite"
+                                t-key="favorite.menu_id"
+                                t-on-click="() => this.openFavorite(favorite)"
+                            >
+                                <span class="o_lqa_dashboard_favorite_icon">
+                                    <i t-att-class="favoriteIcon(favorite)"/>
+                                </span>
+                                <span>
+                                    <small t-esc="favorite.path || 'Panel Comercial'"/>
+                                    <strong t-esc="favorite.name"/>
+                                </span>
+                                <i class="fa fa-arrow-right"/>
+                            </button>
+                        </div>
+                    </section>
+                </t>
 
-                <div class="o_lqa_dashboard__grid">
+                <div
+                    t-if="state.selectedModuleCode"
+                    class="o_lqa_dashboard__grid"
+                >
                     <section
                         class="o_lqa_module"
                         t-foreach="state.modules"
                         t-as="module"
                         t-key="module.code"
                     >
-                    <div t-att-class="'o_lqa_module__brand is-' + module.code">
-                        <img
-                            t-if="module.code === 'automeli'"
-                            src="/lqa_admin_panel/static/src/img/automeli-logo.png?v=2"
-                            alt="Automeli"
-                        />
-                        <img
-                            t-elif="module.code === 'mercadolibre'"
-                            src="/lqa_admin_panel/static/src/img/mercadolibre-logo.png?v=2"
-                            alt="Mercado Libre"
-                        />
-                    </div>
-                    <div class="o_lqa_module__body">
-                        <div class="o_lqa_module__title">
-                            <div>
-                                <p t-esc="module.code"/>
-                                <h2 t-esc="module.name"/>
+                        <div class="o_lqa_module__body">
+                            <div class="o_lqa_module__title">
+                                <div>
+                                    <p>Resumen</p>
+                                    <h2 t-esc="module.name"/>
+                                </div>
                             </div>
+                            <p class="o_lqa_module__description" t-esc="module.description"/>
+
+                            <div class="o_lqa_metrics" t-if="module.metrics.length">
+                                <div
+                                    class="o_lqa_metric"
+                                    t-foreach="module.metrics"
+                                    t-as="metric"
+                                    t-key="metric.label"
+                                >
+                                    <strong t-esc="metric.value"/>
+                                    <span t-esc="metric.label"/>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="o_lqa_sections">
                             <button
                                 type="button"
-                                class="btn btn-secondary"
-                                t-if="!state.selectedModuleCode"
-                                t-on-click="() => this.openModule(module)"
+                                class="o_lqa_section"
+                                t-foreach="module.sections"
+                                t-as="section"
+                                t-key="section.code"
+                                t-on-click="() => this.openSection(section)"
                             >
-                                Abrir
+                                <div>
+                                    <span t-att-class="'o_lqa_section__state is-' + section.status"/>
+                                    <strong t-esc="section.name"/>
+                                    <p t-esc="section.description"/>
+                                </div>
+                                <small t-if="section.badge" t-esc="section.badge"/>
                             </button>
                         </div>
-                        <p class="o_lqa_module__description" t-esc="module.description"/>
-
-                        <div class="o_lqa_metrics" t-if="module.metrics.length">
-                            <div
-                                class="o_lqa_metric"
-                                t-foreach="module.metrics"
-                                t-as="metric"
-                                t-key="metric.label"
-                            >
-                                <strong t-esc="metric.value"/>
-                                <span t-esc="metric.label"/>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="o_lqa_sections">
-                        <button
-                            type="button"
-                            class="o_lqa_section"
-                            t-foreach="module.sections"
-                            t-as="section"
-                            t-key="section.code"
-                            t-on-click="() => this.openSection(section)"
-                        >
-                            <div>
-                                <span t-att-class="'o_lqa_section__state is-' + section.status"/>
-                                <strong t-esc="section.name"/>
-                                <p t-esc="section.description"/>
-                            </div>
-                            <small t-if="section.badge" t-esc="section.badge"/>
-                        </button>
-                    </div>
                     </section>
                 </div>
             </t>

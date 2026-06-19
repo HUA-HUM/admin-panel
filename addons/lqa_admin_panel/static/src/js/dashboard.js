@@ -19,7 +19,6 @@ export class LqaAdminDashboard extends Component {
             environment: "",
             apiConfigured: false,
             modules: [],
-            navigationModules: [],
             selectedModuleCode: params.module_code || false,
             favorites: [],
         });
@@ -42,7 +41,6 @@ export class LqaAdminDashboard extends Component {
             this.state.environment = data.environment;
             this.state.apiConfigured = data.api_configured;
             this.state.modules = data.modules;
-            this.state.navigationModules = data.navigation_modules;
             this.state.selectedModuleCode = data.selected_module_code;
             this.state.favorites = data.favorites || [];
         } catch (error) {
@@ -55,12 +53,28 @@ export class LqaAdminDashboard extends Component {
         }
     }
 
-    async openModule(module) {
-        if (module.action_id) {
-            await this.openAction(module.action_id);
-            return;
-        }
-        await this.loadDashboard(module.code);
+    get selectedModule() {
+        return this.state.modules.find(
+            (module) => module.code === this.state.selectedModuleCode
+        );
+    }
+
+    get availableSectionsCount() {
+        return this.state.modules.reduce(
+            (total, module) => total + (module.sections || []).length,
+            0
+        );
+    }
+
+    get dashboardTitle() {
+        return this.selectedModule?.name || "Panel principal";
+    }
+
+    get dashboardSubtitle() {
+        return (
+            this.selectedModule?.description ||
+            "Vista general de la operación comercial."
+        );
     }
 
     openSection(section) {
@@ -117,6 +131,12 @@ export class LqaAdminDashboard extends Component {
         }
         if (name.includes("promocion")) {
             return "fa fa-bullhorn";
+        }
+        if (name.includes("eliminador")) {
+            return "fa fa-trash-o";
+        }
+        if (name.includes("acciones")) {
+            return "fa fa-bolt";
         }
         return "fa fa-star";
     }

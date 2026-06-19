@@ -17,10 +17,6 @@ class LqaDashboardService(models.AbstractModel):
             domain.append(("code", "=", selected_module_code))
 
         modules = self.env["lqa.panel.module"].search(domain, order="sequence, name")
-        all_modules = self.env["lqa.panel.module"].search(
-            [("active", "=", True)], order="sequence, name"
-        )
-
         return {
             "environment": params.get_param(
                 "lqa_admin_panel.api_environment", "development"
@@ -28,10 +24,6 @@ class LqaDashboardService(models.AbstractModel):
             "api_configured": bool(params.get_param("lqa_admin_panel.api_base_url")),
             "selected_module_code": selected_module_code or False,
             "modules": [self._serialize_module(module) for module in modules],
-            "navigation_modules": [
-                self._serialize_module(module, include_sections=False)
-                for module in all_modules
-            ],
             "favorites": self._serialize_favorite_menus(),
         }
 
