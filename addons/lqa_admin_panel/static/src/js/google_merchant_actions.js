@@ -13,6 +13,7 @@ export class LqaGoogleMerchantActions extends Component {
         this.notification = useService("notification");
         this.orm = useService("orm");
         this.state = useState({
+            activePanel: "publisher",
             confirmation: "",
             publishForm: {
                 limit: "5",
@@ -36,6 +37,14 @@ export class LqaGoogleMerchantActions extends Component {
             this.state.confirmation.trim().toUpperCase() === CONFIRMATION_TEXT &&
             !this.state.executing
         );
+    }
+
+    setPanel(panel) {
+        this.state.activePanel = panel;
+    }
+
+    isPanel(panel) {
+        return this.state.activePanel === panel;
     }
 
     get canPublish() {

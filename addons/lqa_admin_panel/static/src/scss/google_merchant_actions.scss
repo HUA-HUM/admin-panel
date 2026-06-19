@@ -12,6 +12,7 @@
 }
 
 .o_lqa_google_actions__header,
+.o_lqa_google_actions_tabs,
 .o_lqa_google_actions_publish,
 .o_lqa_google_actions_danger,
 .o_lqa_google_actions_history {
@@ -55,6 +56,33 @@
         width: 150px;
         height: 54px;
         object-fit: contain;
+    }
+}
+
+.o_lqa_google_actions_tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 16px;
+
+    button {
+        display: inline-flex;
+        min-height: 44px;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        border: 1px solid #d8e0ea;
+        border-radius: 8px;
+        background: #fff;
+        color: #425166;
+        font-weight: 800;
+    }
+
+    button.is-active {
+        border-color: #2563eb;
+        background: #eff6ff;
+        color: #1d4ed8;
+        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
     }
 }
 
@@ -266,7 +294,7 @@
 }
 
 .o_lqa_google_actions_history {
-    margin-top: 24px;
+    min-height: 260px;
 }
 
 .o_lqa_google_actions_history__head {
@@ -460,6 +488,10 @@
     .o_lqa_google_actions_run__meta {
         align-items: stretch;
         flex-direction: column;
+    }
+
+    .o_lqa_google_actions_tabs {
+        grid-template-columns: 1fr;
     }
 
     .o_lqa_google_actions__header img {

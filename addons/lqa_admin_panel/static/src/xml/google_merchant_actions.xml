@@ -14,7 +14,34 @@
                 />
             </header>
 
-            <section class="o_lqa_google_actions_publish">
+            <nav class="o_lqa_google_actions_tabs" aria-label="Secciones Google Merchant">
+                <button
+                    type="button"
+                    t-att-class="isPanel('publisher') ? 'is-active' : ''"
+                    t-on-click="() => this.setPanel('publisher')"
+                >
+                    <i class="fa fa-cloud-upload"/>
+                    Publicador
+                </button>
+                <button
+                    type="button"
+                    t-att-class="isPanel('deleter') ? 'is-active' : ''"
+                    t-on-click="() => this.setPanel('deleter')"
+                >
+                    <i class="fa fa-trash-o"/>
+                    Eliminador
+                </button>
+                <button
+                    type="button"
+                    t-att-class="isPanel('updater') ? 'is-active' : ''"
+                    t-on-click="() => this.setPanel('updater')"
+                >
+                    <i class="fa fa-refresh"/>
+                    Actualizador
+                </button>
+            </nav>
+
+            <section t-if="isPanel('publisher')" class="o_lqa_google_actions_publish">
                 <div class="o_lqa_google_actions_publish__icon">
                     <i class="fa fa-cloud-upload"/>
                 </div>
@@ -77,7 +104,7 @@
                 </div>
             </section>
 
-            <section class="o_lqa_google_actions_danger">
+            <section t-if="isPanel('deleter')" class="o_lqa_google_actions_danger">
                 <div class="o_lqa_google_actions_danger__icon">
                     <i class="fa fa-trash-o"/>
                 </div>
@@ -124,11 +151,11 @@
                 </div>
             </section>
 
-            <section class="o_lqa_google_actions_history">
+            <section t-if="isPanel('updater')" class="o_lqa_google_actions_history">
                 <div class="o_lqa_google_actions_history__head">
                     <div>
-                        <p>Auditoría</p>
-                        <h2>Historial de ejecuciones</h2>
+                        <p>Actualizador</p>
+                        <h2>Historial y estado</h2>
                     </div>
                     <button
                         type="button"
@@ -137,7 +164,7 @@
                         t-on-click="loadHistory"
                     >
                         <i class="fa fa-refresh"/>
-                        Actualizar
+                        Actualizar historial
                     </button>
                 </div>
 
