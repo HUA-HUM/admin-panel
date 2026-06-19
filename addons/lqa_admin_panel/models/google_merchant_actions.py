@@ -82,7 +82,7 @@ class LqaGoogleMerchantActionsService(models.AbstractModel):
 
     @api.model
     def delete_all_products(self, confirmation):
-        self._check_admin_access()
+        self._check_access()
         if self._clean(confirmation).upper() != self.CONFIRMATION_TEXT:
             raise UserError(
                 _("Escribi %s para confirmar la eliminacion total.")
@@ -150,7 +150,7 @@ class LqaGoogleMerchantActionsService(models.AbstractModel):
 
     @api.model
     def get_history(self, limit=30):
-        self._check_admin_access()
+        self._check_access()
         limit = min(max(self._as_int(limit, 30), 1), 100)
         runs = self.env["lqa.google.merchant.action.run"].sudo().search(
             [],
@@ -159,10 +159,12 @@ class LqaGoogleMerchantActionsService(models.AbstractModel):
         )
         return [run.to_panel_dict() for run in runs]
 
-    def _check_admin_access(self):
-        if not self.env.user.has_group("lqa_admin_panel.group_lqa_admin"):
+    def _check_access(self):
+        if not self.env.user.has_group(
+            "lqa_admin_panel.group_lqa_commercial_user"
+        ):
             raise AccessError(
-                _("Solo administradores del panel pueden eliminar el catalogo.")
+                _("No tenes permisos para ejecutar acciones de Google Merchant.")
             )
 
     def _products_base_url(self):

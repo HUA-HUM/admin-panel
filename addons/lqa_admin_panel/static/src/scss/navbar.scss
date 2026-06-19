@@ -83,6 +83,7 @@ $lqa-navbar-height: 48px;
 .o_lqa_sidebar__home,
 .o_lqa_sidebar__group-toggle,
 .o_lqa_sidebar__child-toggle,
+.o_lqa_sidebar__grandchild-toggle,
 .o_lqa_sidebar__single,
 .o_lqa_sidebar__menu-link {
     display: flex;
@@ -109,6 +110,7 @@ $lqa-navbar-height: 48px;
 
     > .o_lqa_sidebar__group-toggle,
     > .o_lqa_sidebar__child-toggle,
+    > .o_lqa_sidebar__grandchild-toggle,
     > .o_lqa_sidebar__single,
     > .o_lqa_sidebar__menu-link {
         min-width: 0;
@@ -258,6 +260,35 @@ $lqa-navbar-height: 48px;
     }
 }
 
+.o_lqa_sidebar__grandchild-toggle {
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 32px;
+    padding: 0 8px;
+    color: #97a6ba;
+    font-size: 12px;
+    font-weight: 500;
+
+    > span {
+        display: flex;
+        align-items: center;
+        min-width: 0;
+        gap: 8px;
+    }
+
+    > span > i {
+        width: 14px;
+        color: #718096;
+        text-align: center;
+    }
+
+    > i {
+        width: auto;
+        color: #718096;
+        font-size: 9px;
+    }
+}
+
 .o_lqa_sidebar__grandchildren {
     display: grid;
     gap: 2px;
@@ -274,6 +305,36 @@ $lqa-navbar-height: 48px;
         min-width: 28px;
         height: 28px;
         min-height: 28px;
+        padding: 0;
+    }
+}
+
+.o_lqa_sidebar__greatgrandchildren {
+    display: grid;
+    gap: 2px;
+    margin: 2px 0 6px 16px;
+    padding-left: 8px;
+    border-left: 1px solid #344158;
+
+    .o_lqa_sidebar__menu-link {
+        min-height: 30px;
+        padding: 0 7px;
+        color: #8798ae;
+        font-size: 11px;
+        font-weight: 500;
+    }
+
+    .o_lqa_sidebar__menu-link > i {
+        width: 13px;
+        color: #66778e;
+        text-align: center;
+    }
+
+    .o_lqa_sidebar__favorite {
+        width: 26px;
+        min-width: 26px;
+        height: 26px;
+        min-height: 26px;
         padding: 0;
     }
 }

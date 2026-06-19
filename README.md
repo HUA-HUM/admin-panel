@@ -43,7 +43,7 @@ Base de panel comercial construida sobre Odoo + Docker.
     - Busqueda del estado de un seller SKU en todos los marketplaces.
     - Listado general paginado con precio, stock, estado e IDs por canal.
   - Pantalla por marketplace con tabs `Products`, `Imports` y `Status`.
-  - Seccion `Google Merchant / Acciones` para administradores:
+  - Seccion `Google Merchant / Acciones`:
     - Eliminacion total del catalogo mediante confirmacion escrita.
     - Historial persistente con usuario, estado y respuesta de Products API.
   - Products consulta productos paginados por marketplace, SKU y estado.

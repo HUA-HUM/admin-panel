@@ -305,7 +305,7 @@
         parent="menu_lqa_retailers_google_merchant"
         action="action_lqa_google_merchant_actions"
         sequence="20"
-        groups="lqa_admin_panel.group_lqa_admin"
+        groups="lqa_admin_panel.group_lqa_commercial_user"
     />
 
     <menuitem

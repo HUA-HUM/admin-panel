@@ -178,51 +178,117 @@
                                         t-foreach="child.childrenTree"
                                         t-as="grandchild"
                                         t-key="grandchild.id"
-                                        class="o_lqa_sidebar__menu-row"
+                                        class="o_lqa_sidebar__grandchild"
                                     >
-                                        <button
-                                            type="button"
-                                            class="o_lqa_sidebar__menu-link"
-                                            t-on-click="() => this.lqaSelectMenu(grandchild)"
-                                        >
-                                            <i
-                                                t-att-class="grandchild.name === 'Selecciones'
-                                                    ? 'fa fa-folder-open-o'
-                                                    : grandchild.name === 'Productos'
-                                                        ? 'fa fa-th'
-                                                        : grandchild.name === 'Todos los marketplaces'
-                                                            ? 'fa fa-th-large'
-                                                            : grandchild.name === 'Catalogo'
-                                                                ? 'fa fa-th'
-                                                            : grandchild.name === 'Carpetas'
-                                                                ? 'fa fa-folder-open-o'
-                                                                : grandchild.name === 'Publicar'
-                                                                    ? 'fa fa-cloud-upload'
-                                                            : grandchild.name === 'Seguimiento'
-                                                                ? 'fa fa-list-alt'
-                                                                : grandchild.name === 'Acciones'
-                                                                    ? 'fa fa-trash-o'
-                                                        : 'fa fa-shopping-cart'"
-                                            />
-                                            <span t-esc="grandchild.name"/>
-                                        </button>
-                                        <button
-                                            t-if="lqaCanFavorite(grandchild)"
-                                            type="button"
-                                            t-att-class="lqaIsFavorite(grandchild)
-                                                ? 'o_lqa_sidebar__favorite is-favorite'
-                                                : 'o_lqa_sidebar__favorite'"
-                                            t-att-title="lqaFavoriteTitle(grandchild)"
-                                            t-att-aria-label="lqaFavoriteTitle(grandchild)"
-                                            t-att-disabled="lqaNavigation.favoritePending[grandchild.id]"
-                                            t-on-click="(event) => this.lqaToggleFavorite(grandchild, event)"
-                                        >
-                                            <i
+                                        <div class="o_lqa_sidebar__menu-row">
+                                            <button
+                                                t-if="grandchild.childrenTree.length"
+                                                type="button"
+                                                class="o_lqa_sidebar__grandchild-toggle"
+                                                t-on-click="() => this.lqaToggleSection(grandchild)"
+                                            >
+                                                <span>
+                                                    <i
+                                                        t-att-class="grandchild.name === 'Google Merchant'
+                                                            ? 'fa fa-google'
+                                                            : 'fa fa-folder-o'"
+                                                    />
+                                                    <t t-esc="grandchild.name"/>
+                                                </span>
+                                                <i
+                                                    t-att-class="lqaIsExpanded(grandchild)
+                                                        ? 'fa fa-chevron-up'
+                                                        : 'fa fa-chevron-down'"
+                                                />
+                                            </button>
+                                            <button
+                                                t-if="!grandchild.childrenTree.length"
+                                                type="button"
+                                                class="o_lqa_sidebar__menu-link"
+                                                t-on-click="() => this.lqaSelectMenu(grandchild)"
+                                            >
+                                                <i
+                                                    t-att-class="grandchild.name === 'Selecciones'
+                                                        ? 'fa fa-folder-open-o'
+                                                        : grandchild.name === 'Productos'
+                                                            ? 'fa fa-th'
+                                                            : grandchild.name === 'Todos los marketplaces'
+                                                                ? 'fa fa-th-large'
+                                                                : grandchild.name === 'Catalogo'
+                                                                    ? 'fa fa-th'
+                                                                : grandchild.name === 'Carpetas'
+                                                                    ? 'fa fa-folder-open-o'
+                                                                    : grandchild.name === 'Publicar'
+                                                                        ? 'fa fa-cloud-upload'
+                                                                : grandchild.name === 'Seguimiento'
+                                                                    ? 'fa fa-list-alt'
+                                                                    : grandchild.name === 'Acciones'
+                                                                        ? 'fa fa-trash-o'
+                                                            : 'fa fa-shopping-cart'"
+                                                />
+                                                <span t-esc="grandchild.name"/>
+                                            </button>
+                                            <button
+                                                t-if="lqaCanFavorite(grandchild)"
+                                                type="button"
                                                 t-att-class="lqaIsFavorite(grandchild)
-                                                    ? 'fa fa-star'
-                                                    : 'fa fa-star-o'"
-                                            />
-                                        </button>
+                                                    ? 'o_lqa_sidebar__favorite is-favorite'
+                                                    : 'o_lqa_sidebar__favorite'"
+                                                t-att-title="lqaFavoriteTitle(grandchild)"
+                                                t-att-aria-label="lqaFavoriteTitle(grandchild)"
+                                                t-att-disabled="lqaNavigation.favoritePending[grandchild.id]"
+                                                t-on-click="(event) => this.lqaToggleFavorite(grandchild, event)"
+                                            >
+                                                <i
+                                                    t-att-class="lqaIsFavorite(grandchild)
+                                                        ? 'fa fa-star'
+                                                        : 'fa fa-star-o'"
+                                                />
+                                            </button>
+                                        </div>
+                                        <div
+                                            t-if="grandchild.childrenTree.length and lqaIsExpanded(grandchild)"
+                                            class="o_lqa_sidebar__greatgrandchildren"
+                                        >
+                                            <div
+                                                t-foreach="grandchild.childrenTree"
+                                                t-as="greatgrandchild"
+                                                t-key="greatgrandchild.id"
+                                                class="o_lqa_sidebar__menu-row"
+                                            >
+                                                <button
+                                                    type="button"
+                                                    class="o_lqa_sidebar__menu-link"
+                                                    t-on-click="() => this.lqaSelectMenu(greatgrandchild)"
+                                                >
+                                                    <i
+                                                        t-att-class="greatgrandchild.name === 'Acciones'
+                                                            ? 'fa fa-trash-o'
+                                                            : greatgrandchild.name === 'Productos'
+                                                                ? 'fa fa-th'
+                                                                : 'fa fa-circle-o'"
+                                                    />
+                                                    <span t-esc="greatgrandchild.name"/>
+                                                </button>
+                                                <button
+                                                    t-if="lqaCanFavorite(greatgrandchild)"
+                                                    type="button"
+                                                    t-att-class="lqaIsFavorite(greatgrandchild)
+                                                        ? 'o_lqa_sidebar__favorite is-favorite'
+                                                        : 'o_lqa_sidebar__favorite'"
+                                                    t-att-title="lqaFavoriteTitle(greatgrandchild)"
+                                                    t-att-aria-label="lqaFavoriteTitle(greatgrandchild)"
+                                                    t-att-disabled="lqaNavigation.favoritePending[greatgrandchild.id]"
+                                                    t-on-click="(event) => this.lqaToggleFavorite(greatgrandchild, event)"
+                                                >
+                                                    <i
+                                                        t-att-class="lqaIsFavorite(greatgrandchild)
+                                                            ? 'fa fa-star'
+                                                            : 'fa fa-star-o'"
+                                                    />
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                                 <div
