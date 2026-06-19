@@ -146,6 +146,28 @@ $lqa-navbar-height: 48px;
     }
 }
 
+@media (hover: hover) and (pointer: fine) {
+    .o_lqa_sidebar__menu-row > .o_lqa_sidebar__favorite {
+        opacity: 0;
+        pointer-events: none;
+        transition:
+            opacity 120ms ease,
+            background-color 120ms ease,
+            color 120ms ease;
+    }
+
+    .o_lqa_sidebar__menu-row:hover > .o_lqa_sidebar__favorite,
+    .o_lqa_sidebar__menu-row:focus-within > .o_lqa_sidebar__favorite {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .o_lqa_sidebar__menu-row:hover > .o_lqa_sidebar__favorite:disabled,
+    .o_lqa_sidebar__menu-row:focus-within > .o_lqa_sidebar__favorite:disabled {
+        opacity: 0.45;
+    }
+}
+
 .o_lqa_sidebar__home {
     gap: 11px;
     margin-bottom: 16px;

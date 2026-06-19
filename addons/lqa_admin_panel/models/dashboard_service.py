@@ -11,17 +11,12 @@ class LqaDashboardService(models.AbstractModel):
     @api.model
     def get_dashboard_state(self, selected_module_code=False):
         self._check_access()
-        params = self.env["ir.config_parameter"].sudo()
         domain = [("active", "=", True)]
         if selected_module_code:
             domain.append(("code", "=", selected_module_code))
 
         modules = self.env["lqa.panel.module"].search(domain, order="sequence, name")
         return {
-            "environment": params.get_param(
-                "lqa_admin_panel.api_environment", "development"
-            ),
-            "api_configured": bool(params.get_param("lqa_admin_panel.api_base_url")),
             "selected_module_code": selected_module_code or False,
             "modules": [self._serialize_module(module) for module in modules],
             "favorites": self._serialize_favorite_menus(),

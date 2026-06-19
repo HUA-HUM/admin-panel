@@ -16,8 +16,6 @@ export class LqaAdminDashboard extends Component {
 
         this.state = useState({
             loading: true,
-            environment: "",
-            apiConfigured: false,
             modules: [],
             selectedModuleCode: params.module_code || false,
             favorites: [],
@@ -38,8 +36,6 @@ export class LqaAdminDashboard extends Component {
             const data = await this.orm.call("lqa.dashboard.service", "get_dashboard_state", [
                 moduleCode,
             ]);
-            this.state.environment = data.environment;
-            this.state.apiConfigured = data.api_configured;
             this.state.modules = data.modules;
             this.state.selectedModuleCode = data.selected_module_code;
             this.state.favorites = data.favorites || [];
@@ -64,6 +60,10 @@ export class LqaAdminDashboard extends Component {
             (total, module) => total + (module.sections || []).length,
             0
         );
+    }
+
+    get activeModulesCount() {
+        return this.state.modules.length;
     }
 
     get dashboardTitle() {

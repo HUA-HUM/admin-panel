@@ -10,24 +10,6 @@
                     <h1 t-esc="dashboardTitle"/>
                     <p class="o_lqa_dashboard__subtitle" t-esc="dashboardSubtitle"/>
                 </div>
-                <div class="o_lqa_dashboard__status">
-                    <span
-                        t-att-class="state.apiConfigured
-                            ? 'o_lqa_dashboard__status_icon is-ready'
-                            : 'o_lqa_dashboard__status_icon is-pending'"
-                    >
-                        <i
-                            t-att-class="state.apiConfigured
-                                ? 'fa fa-check'
-                                : 'fa fa-exclamation'"
-                        />
-                    </span>
-                    <div>
-                        <small>Entorno</small>
-                        <strong t-esc="state.environment"/>
-                        <small t-esc="state.apiConfigured ? 'Servicios configurados' : 'Configuración pendiente'"/>
-                    </div>
-                </div>
             </header>
 
             <div class="o_lqa_dashboard__loading" t-if="state.loading">
@@ -59,13 +41,13 @@
                             </div>
                         </div>
                         <div class="o_lqa_dashboard_summary__item">
-                            <span t-att-class="state.apiConfigured ? 'is-status is-ready' : 'is-status'">
-                                <i t-att-class="state.apiConfigured ? 'fa fa-check' : 'fa fa-clock-o'"/>
+                            <span class="is-modules">
+                                <i class="fa fa-cubes"/>
                             </span>
                             <div>
-                                <small>Estado operativo</small>
-                                <strong t-esc="state.apiConfigured ? 'Listo' : 'Pendiente'"/>
-                                <p t-esc="state.environment"/>
+                                <small>Módulos</small>
+                                <strong t-esc="activeModulesCount"/>
+                                <p>Áreas activas</p>
                             </div>
                         </div>
                     </section>

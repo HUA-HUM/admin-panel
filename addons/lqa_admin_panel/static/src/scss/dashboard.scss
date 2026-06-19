@@ -21,7 +21,6 @@
 .o_lqa_dashboard__header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: 24px;
     padding-bottom: 22px;
     border-bottom: 1px solid #dce3ec;
@@ -50,52 +49,6 @@
     margin: 8px 0 0;
     color: #66758a;
     font-size: 14px;
-}
-
-.o_lqa_dashboard__status {
-    display: grid;
-    min-width: 218px;
-    grid-template-columns: 38px minmax(0, 1fr);
-    align-items: center;
-    gap: 11px;
-    padding: 10px 12px;
-    border: 1px solid #d7dee8;
-    border-radius: 8px;
-    background: #fff;
-
-    strong,
-    small {
-        display: block;
-        line-height: 1.2;
-    }
-
-    strong {
-        margin: 2px 0;
-        color: #253244;
-        font-size: 13px;
-        text-transform: capitalize;
-    }
-
-    small {
-        color: #738197;
-        font-size: 10px;
-    }
-}
-
-.o_lqa_dashboard__status_icon {
-    display: inline-flex;
-    width: 38px;
-    height: 38px;
-    align-items: center;
-    justify-content: center;
-    border-radius: 8px;
-    background: #fff6df;
-    color: #b46a00;
-
-    &.is-ready {
-        background: #e8f8f0;
-        color: #087950;
-    }
 }
 
 .o_lqa_dashboard__loading {
@@ -155,14 +108,9 @@
         color: #2563b8;
     }
 
-    > span.is-status {
-        background: #fff6df;
-        color: #b46a00;
-    }
-
-    > span.is-status.is-ready {
-        background: #e8f8f0;
-        color: #087950;
+    > span.is-modules {
+        background: #edf0f8;
+        color: #536078;
     }
 
     small,
@@ -515,9 +463,6 @@
         }
     }
 
-    .o_lqa_dashboard__status {
-        width: 100%;
-    }
 }
 
 @media (prefers-reduced-motion: reduce) {
