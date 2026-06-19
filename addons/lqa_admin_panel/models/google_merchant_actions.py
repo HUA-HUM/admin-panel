@@ -1,6 +1,8 @@
 import json
 import os
 
+import requests
+
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError
 
@@ -19,6 +21,7 @@ class LqaGoogleMerchantActionRun(models.Model):
     )
     action_type = fields.Selection(
         [
+            ("publish_all", "Carga masiva de productos"),
             ("delete_all", "Eliminar catalogo completo"),
             ("delete_selected", "Eliminar productos seleccionados"),
         ],
@@ -80,9 +83,95 @@ class LqaGoogleMerchantActionsService(models.AbstractModel):
     _description = "Servicio de acciones de Google Merchant"
 
     DEFAULT_PRODUCTS_API_URL = "https://api.products.loquieroaca.com"
+    PUBLISH_ALL_PATH = "/api/internal/google-merchant/products/publish-all"
     DELETE_ALL_PATH = "/api/internal/google-merchant/products/delete-all"
     CONFIRMATION_TEXT = "ELIMINAR TODO"
     DEFAULT_TIMEOUT_SECONDS = 180
+    DEFAULT_TRIGGER_TIMEOUT_SECONDS = 8
+
+    @api.model
+    def publish_all_products(self, options=None):
+        self._check_access()
+        options = options if isinstance(options, dict) else {}
+        payload = {
+            "limit": min(max(self._as_int(options.get("limit"), 5), 1), 1000),
+            "offset": max(self._as_int(options.get("offset"), 0), 0),
+            "maxPages": min(max(self._as_int(options.get("maxPages"), 1), 1), 1000),
+        }
+        run = self.env["lqa.google.merchant.action.run"].sudo().create(
+            {
+                "user_id": self.env.user.id,
+                "action_type": "publish_all",
+                "status": "processing",
+                "message": _("Disparando carga masiva en Products API."),
+                "response_json": json.dumps(
+                    {"request": payload},
+                    ensure_ascii=False,
+                    default=str,
+                ),
+            }
+        )
+        try:
+            response = self._trigger_products_job(self.PUBLISH_ALL_PATH, payload)
+            response_payload = response if isinstance(response, (dict, list)) else {}
+            failed = bool(
+                isinstance(response_payload, dict)
+                and (
+                    response_payload.get("success") is False
+                    or self._clean(
+                        response_payload.get("status") or response_payload.get("state")
+                    ).upper()
+                    in {"ERROR", "FAILED", "FAILURE"}
+                )
+            )
+            run.write(
+                {
+                    "status": "failed" if failed else "processing",
+                    "message": ""
+                    if failed
+                    else _(
+                        "Carga masiva enviada. Products API continua procesando en segundo plano."
+                    ),
+                    "error_message": self._response_message(response_payload)
+                    if failed
+                    else "",
+                    "response_json": json.dumps(
+                        {
+                            "request": payload,
+                            "response": response_payload,
+                        },
+                        ensure_ascii=False,
+                        default=str,
+                    ),
+                    "finished_at": fields.Datetime.now() if failed else False,
+                }
+            )
+        except requests.ReadTimeout:
+            run.write(
+                {
+                    "status": "processing",
+                    "message": _(
+                        "Carga masiva enviada. Products API no respondio enseguida, queda procesando en segundo plano."
+                    ),
+                    "response_json": json.dumps(
+                        {
+                            "request": payload,
+                            "note": "Read timeout after trigger; treated as background processing.",
+                        },
+                        ensure_ascii=False,
+                        default=str,
+                    ),
+                }
+            )
+        except UserError as error:
+            run.write(
+                {
+                    "status": "failed",
+                    "error_message": str(error),
+                    "finished_at": fields.Datetime.now(),
+                }
+            )
+        return run.to_panel_dict()
 
     @api.model
     def delete_all_products(self, confirmation):
@@ -191,6 +280,31 @@ class LqaGoogleMerchantActionsService(models.AbstractModel):
             or self.DEFAULT_PRODUCTS_API_URL
         ).strip()
 
+    def _trigger_products_job(self, path, payload):
+        url = self._join_url(self._products_base_url(), path)
+        try:
+            response = requests.post(
+                url,
+                headers={
+                    "Accept": "application/json",
+                    "Content-Type": "application/json",
+                },
+                json=payload,
+                timeout=(5, self._trigger_timeout()),
+            )
+            response.raise_for_status()
+        except requests.ReadTimeout:
+            raise
+        except requests.RequestException as error:
+            raise UserError(_("No se pudo conectar con Products API: %s") % error) from error
+
+        if not response.content:
+            return {}
+        try:
+            return response.json()
+        except ValueError:
+            return {"raw_response": response.text}
+
     def _timeout(self):
         value = (
             self.env["ir.config_parameter"]
@@ -201,6 +315,27 @@ class LqaGoogleMerchantActionsService(models.AbstractModel):
             )
         )
         return min(max(self._as_int(value, self.DEFAULT_TIMEOUT_SECONDS), 30), 300)
+
+    def _trigger_timeout(self):
+        value = (
+            self.env["ir.config_parameter"]
+            .sudo()
+            .get_param(
+                "lqa_admin_panel.google_merchant_trigger_timeout_seconds",
+                self.DEFAULT_TRIGGER_TIMEOUT_SECONDS,
+            )
+        )
+        return min(max(self._as_int(value, self.DEFAULT_TRIGGER_TIMEOUT_SECONDS), 1), 30)
+
+    def _response_message(self, payload):
+        if not isinstance(payload, dict):
+            return ""
+        return self._clean(
+            payload.get("message")
+            or payload.get("detail")
+            or payload.get("description")
+            or payload.get("error")
+        )
 
     @staticmethod
     def _clean(value):

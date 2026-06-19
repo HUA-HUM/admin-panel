@@ -14,6 +14,12 @@ export class LqaGoogleMerchantActions extends Component {
         this.orm = useService("orm");
         this.state = useState({
             confirmation: "",
+            publishForm: {
+                limit: "5",
+                offset: "0",
+                maxPages: "1",
+            },
+            publishing: false,
             executing: false,
             loadingHistory: true,
             history: [],
@@ -30,6 +36,56 @@ export class LqaGoogleMerchantActions extends Component {
             this.state.confirmation.trim().toUpperCase() === CONFIRMATION_TEXT &&
             !this.state.executing
         );
+    }
+
+    get canPublish() {
+        return (
+            Number(this.state.publishForm.limit) > 0 &&
+            Number(this.state.publishForm.offset) >= 0 &&
+            Number(this.state.publishForm.maxPages) > 0 &&
+            !this.state.publishing
+        );
+    }
+
+    async executePublishAll() {
+        if (!this.canPublish) {
+            this.notification.add("Revisa limit, offset y maxPages.", {
+                type: "warning",
+            });
+            return;
+        }
+        this.state.publishing = true;
+        try {
+            const result = await this.orm.call(
+                "lqa.google.merchant.actions.service",
+                "publish_all_products",
+                [
+                    {
+                        limit: this.state.publishForm.limit,
+                        offset: this.state.publishForm.offset,
+                        maxPages: this.state.publishForm.maxPages,
+                    },
+                ]
+            );
+            this.notification.add(
+                result.message ||
+                    result.error_message ||
+                    "La carga masiva fue enviada.",
+                {
+                    type:
+                        result.status === "failed"
+                            ? "danger"
+                            : result.status === "partial"
+                            ? "warning"
+                            : "success",
+                }
+            );
+        } catch (error) {
+            this.notifyError(error, "No se pudo iniciar la carga masiva.");
+        } finally {
+            await this.loadHistory();
+            this.state.publishing = false;
+        }
     }
 
     async executeDeleteAll() {
@@ -102,6 +158,7 @@ export class LqaGoogleMerchantActions extends Component {
     actionLabel(value) {
         return (
             {
+                publish_all: "Carga masiva de productos",
                 delete_all: "Eliminación total del catálogo",
                 delete_selected: "Eliminación de productos seleccionados",
             }[String(value || "").toLowerCase()] || "Acción Google Merchant"
@@ -110,6 +167,19 @@ export class LqaGoogleMerchantActions extends Component {
 
     actionDetail(run) {
         const response = run.response || {};
+        if (run.action_type === "publish_all") {
+            const request = response.request || {};
+            const parts = [
+                request.limit ? `limit ${request.limit}` : "",
+                request.offset !== undefined ? `offset ${request.offset}` : "",
+                request.maxPages ? `maxPages ${request.maxPages}` : "",
+            ].filter(Boolean);
+            return (
+                run.message ||
+                run.error_message ||
+                (parts.length ? `Solicitud enviada: ${parts.join(", ")}.` : "")
+            );
+        }
         if (run.action_type === "delete_selected") {
             const deletedCount = Number(response.deleted_count || 0);
             const failedCount = Number(response.failed_count || 0);
