@@ -905,6 +905,25 @@
     }
 }
 
+.o_lqa_retailers_modal__field {
+    display: grid;
+    gap: 7px;
+    margin-top: 14px;
+
+    span {
+        color: #405064;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    input {
+        min-height: 40px;
+        border-color: #d6dee8;
+        border-radius: 7px;
+        font-weight: 800;
+    }
+}
+
 .o_lqa_retailers_modal__actions {
     display: flex;
     justify-content: flex-end;

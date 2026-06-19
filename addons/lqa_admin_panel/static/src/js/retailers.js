@@ -43,6 +43,8 @@ const ACTION_MARKETPLACES = MARKETPLACES.filter((marketplace) =>
     ["fravega", "megatone", "oncity"].includes(marketplace.id)
 );
 
+const GOOGLE_MERCHANT_DELETE_CONFIRMATION = "ELIMINAR TODO";
+
 const emptyOrdersOverview = () => ({
     mode: "last24",
     range: { from: "", to: "" },
@@ -89,6 +91,7 @@ export class LqaRetailers extends Component {
             confirmRefresh: false,
             confirmDeleteGoogleMerchant: false,
             deletingGoogleMerchantProducts: false,
+            googleMerchantDeleteConfirmation: "",
             dashboardOrders: emptyOrdersOverview(),
             dashboardError: "",
             refreshForm: {
@@ -100,7 +103,6 @@ export class LqaRetailers extends Component {
             status: { total: 0, statuses: [] },
             productFilters: defaultProductFilters(),
             importFilters: defaultImportFilters(),
-            selectedGoogleMerchantProducts: {},
         });
 
         onMounted(() => {
@@ -166,33 +168,12 @@ export class LqaRetailers extends Component {
         return (this.state.dashboardOrders.errors || []).length;
     }
 
-    get selectableGoogleMerchantProducts() {
-        if (!this.isGoogleMerchantDetail) {
-            return [];
-        }
-        return (this.state.products.items || []).filter((product) =>
-            this.canDeleteGoogleMerchantProduct(product)
-        );
-    }
-
-    get selectedGoogleMerchantProducts() {
-        return Object.values(this.state.selectedGoogleMerchantProducts || {}).filter(Boolean);
-    }
-
-    get selectedGoogleMerchantCount() {
-        return this.selectedGoogleMerchantProducts.length;
-    }
-
-    get allCurrentGoogleMerchantProductsSelected() {
-        const products = this.selectableGoogleMerchantProducts;
+    get canDeleteGoogleMerchantCatalog() {
         return (
-            Boolean(products.length) &&
-            products.every((product) => this.isGoogleMerchantProductSelected(product))
+            this.state.googleMerchantDeleteConfirmation.trim().toUpperCase() ===
+                GOOGLE_MERCHANT_DELETE_CONFIRMATION &&
+            !this.state.deletingGoogleMerchantProducts
         );
-    }
-
-    get deletePreviewGoogleMerchantProducts() {
-        return this.selectedGoogleMerchantProducts.slice(0, 6);
     }
 
     get statusOptions() {
@@ -229,6 +210,7 @@ export class LqaRetailers extends Component {
         this.state.confirmImport = false;
         this.state.confirmRefresh = false;
         this.state.confirmDeleteGoogleMerchant = false;
+        this.state.googleMerchantDeleteConfirmation = "";
         if (marketplaceId) {
             this.resetMarketplaceDetail();
         }
@@ -268,7 +250,6 @@ export class LqaRetailers extends Component {
         this.state.products = { items: [], summary: {}, pagination: {} };
         this.state.imports = { items: [], pagination: {} };
         this.state.status = { total: 0, statuses: [] };
-        this.clearGoogleMerchantSelection();
     }
 
     openMarketplace(marketplace) {
@@ -283,7 +264,7 @@ export class LqaRetailers extends Component {
         this.state.marketplaceId = "";
         this.state.confirmImport = false;
         this.state.confirmDeleteGoogleMerchant = false;
-        this.clearGoogleMerchantSelection();
+        this.state.googleMerchantDeleteConfirmation = "";
         if (this.importPollingTimer) {
             clearTimeout(this.importPollingTimer);
         }
@@ -318,9 +299,6 @@ export class LqaRetailers extends Component {
     async loadProducts() {
         if (!this.state.marketplaceId) {
             return;
-        }
-        if (!this.isGoogleMerchantDetail) {
-            this.clearGoogleMerchantSelection();
         }
         this.state.loadingProducts = true;
         try {
@@ -488,106 +466,46 @@ export class LqaRetailers extends Component {
         }
     }
 
-    googleMerchantProductKey(product) {
-        return product?.google_product_key || product?.card_key || "";
-    }
-
-    canDeleteGoogleMerchantProduct(product) {
-        return Boolean(
-            product?.offer_id &&
-            product?.content_language &&
-            product?.feed_label &&
-            this.googleMerchantProductKey(product)
-        );
-    }
-
-    isGoogleMerchantProductSelected(product) {
-        const key = this.googleMerchantProductKey(product);
-        return Boolean(key && this.state.selectedGoogleMerchantProducts[key]);
-    }
-
-    googleMerchantDeletePayload(product) {
-        return {
-            key: this.googleMerchantProductKey(product),
-            offerId: product.offer_id,
-            contentLanguage: product.content_language,
-            feedLabel: product.feed_label,
-            sellerSku: product.sku,
-            title: product.title,
-            dataSource: product.data_source,
-        };
-    }
-
-    toggleGoogleMerchantProduct(product) {
-        if (!this.canDeleteGoogleMerchantProduct(product)) {
-            this.notification.add(
-                "Este producto no tiene offerId, contentLanguage y feedLabel.",
-                { type: "warning" }
-            );
-            return;
-        }
-        const key = this.googleMerchantProductKey(product);
-        const selected = { ...this.state.selectedGoogleMerchantProducts };
-        if (selected[key]) {
-            delete selected[key];
-        } else {
-            selected[key] = this.googleMerchantDeletePayload(product);
-        }
-        this.state.selectedGoogleMerchantProducts = selected;
-    }
-
-    toggleCurrentGoogleMerchantPage() {
-        const selected = { ...this.state.selectedGoogleMerchantProducts };
-        const shouldSelect = !this.allCurrentGoogleMerchantProductsSelected;
-        for (const product of this.selectableGoogleMerchantProducts) {
-            const key = this.googleMerchantProductKey(product);
-            if (shouldSelect) {
-                selected[key] = this.googleMerchantDeletePayload(product);
-            } else {
-                delete selected[key];
-            }
-        }
-        this.state.selectedGoogleMerchantProducts = selected;
-    }
-
-    clearGoogleMerchantSelection() {
-        this.state.selectedGoogleMerchantProducts = {};
-    }
-
     openGoogleMerchantDeleteConfirmation() {
-        if (!this.selectedGoogleMerchantCount) {
-            this.notification.add("Selecciona al menos un producto.", {
-                type: "warning",
-            });
-            return;
-        }
+        this.state.googleMerchantDeleteConfirmation = "";
         this.state.confirmDeleteGoogleMerchant = true;
     }
 
     closeGoogleMerchantDeleteConfirmation() {
         if (!this.state.deletingGoogleMerchantProducts) {
             this.state.confirmDeleteGoogleMerchant = false;
+            this.state.googleMerchantDeleteConfirmation = "";
         }
     }
 
-    async confirmDeleteGoogleMerchantProducts() {
-        if (!this.selectedGoogleMerchantCount) {
+    onGoogleMerchantDeleteKeydown(event) {
+        if (event.key === "Enter") {
+            this.confirmDeleteGoogleMerchantCatalog();
+        }
+    }
+
+    async confirmDeleteGoogleMerchantCatalog() {
+        if (!this.canDeleteGoogleMerchantCatalog) {
+            this.notification.add(
+                `Escribi ${GOOGLE_MERCHANT_DELETE_CONFIRMATION} para confirmar.`,
+                { type: "warning" }
+            );
             return;
         }
         this.state.deletingGoogleMerchantProducts = true;
         try {
             const result = await this.orm.call(
                 "lqa.google.merchant.actions.service",
-                "delete_selected_products",
-                [this.selectedGoogleMerchantProducts]
+                "delete_all_products",
+                [this.state.googleMerchantDeleteConfirmation]
             );
             this.state.confirmDeleteGoogleMerchant = false;
-            this.clearGoogleMerchantSelection();
+            this.state.googleMerchantDeleteConfirmation = "";
             await this.loadProducts();
             this.notification.add(
                 result.message ||
                     result.error_message ||
-                    "La eliminacion selectiva finalizo.",
+                    "La eliminacion total finalizo.",
                 {
                     type:
                         result.status === "completed"
@@ -598,7 +516,7 @@ export class LqaRetailers extends Component {
                 }
             );
         } catch (error) {
-            this.notifyError(error, "No se pudieron eliminar los productos seleccionados.");
+            this.notifyError(error, "No se pudo eliminar el catalogo.");
         } finally {
             this.state.deletingGoogleMerchantProducts = false;
         }
@@ -609,14 +527,7 @@ export class LqaRetailers extends Component {
     }
 
     productCardClass(product) {
-        let className = "o_lqa_product_card";
-        if (this.isGoogleMerchantProductSelected(product)) {
-            className += " is-selected";
-        }
-        if (this.isGoogleMerchantDetail && !this.canDeleteGoogleMerchantProduct(product)) {
-            className += " is-not-selectable";
-        }
-        return className;
+        return "o_lqa_product_card";
     }
 
     marketplaceName(value) {
