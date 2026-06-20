@@ -613,20 +613,62 @@ class LqaRetailersService(models.AbstractModel):
             if isinstance(raw_payload.get("productAttributes"), dict)
             else {}
         )
-        raw_images = raw_payload.get("images") if isinstance(raw_payload.get("images"), list) else []
-        image = (
-            item.get("image")
-            or item.get("imageUrl")
-            or item.get("thumbnail")
-            or item.get("picture")
-            or item.get("pictureUrl")
-            or item.get("mainImage")
-            or product_attributes.get("imageLink")
-            or product_attributes.get("image_link")
-            or raw_payload.get("image")
-            or raw_payload.get("imageUrl")
-            or (raw_images[0] if raw_images else "")
-            or ""
+        item_attributes = (
+            item.get("attributes") if isinstance(item.get("attributes"), dict) else {}
+        )
+        raw_attributes = (
+            raw_payload.get("attributes")
+            if isinstance(raw_payload.get("attributes"), dict)
+            else {}
+        )
+        raw_product = (
+            raw_payload.get("product")
+            if isinstance(raw_payload.get("product"), dict)
+            else {}
+        )
+        raw_product_attributes = {}
+        if isinstance(raw_product.get("productAttributes"), dict):
+            raw_product_attributes = raw_product["productAttributes"]
+        elif isinstance(raw_product.get("attributes"), dict):
+            raw_product_attributes = raw_product["attributes"]
+        image = self._first_product_image(
+            item.get("image"),
+            item.get("imageUrl"),
+            item.get("image_url"),
+            item.get("thumbnail"),
+            item.get("thumbnailUrl"),
+            item.get("thumbnail_url"),
+            item.get("picture"),
+            item.get("pictureUrl"),
+            item.get("picture_url"),
+            item.get("mainImage"),
+            item.get("main_image"),
+            item.get("imageLink"),
+            item.get("image_link"),
+            item.get("images"),
+            item.get("additionalImageLinks"),
+            item.get("additional_image_links"),
+            item_attributes,
+            product_attributes,
+            raw_attributes,
+            raw_product,
+            raw_product_attributes,
+            raw_payload.get("image"),
+            raw_payload.get("imageUrl"),
+            raw_payload.get("image_url"),
+            raw_payload.get("thumbnail"),
+            raw_payload.get("thumbnailUrl"),
+            raw_payload.get("thumbnail_url"),
+            raw_payload.get("picture"),
+            raw_payload.get("pictureUrl"),
+            raw_payload.get("picture_url"),
+            raw_payload.get("mainImage"),
+            raw_payload.get("main_image"),
+            raw_payload.get("imageLink"),
+            raw_payload.get("image_link"),
+            raw_payload.get("images"),
+            raw_payload.get("additionalImageLinks"),
+            raw_payload.get("additional_image_links"),
         )
         marketplace = item.get("marketplace") or raw_payload.get("marketplace") or marketplace_id or ""
         price = (
@@ -776,6 +818,87 @@ class LqaRetailersService(models.AbstractModel):
             "offer_id": self._clean(parts[2]),
         }
 
+    def _first_product_image(self, *values):
+        for value in values:
+            image = self._extract_product_image_value(value)
+            if image:
+                return image
+        return ""
+
+    def _extract_product_image_value(self, value, allow_generic_url=False):
+        if isinstance(value, (list, tuple)):
+            for item in value:
+                image = self._extract_product_image_value(
+                    item,
+                    allow_generic_url=True,
+                )
+                if image:
+                    return image
+            return ""
+
+        if isinstance(value, dict):
+            image_keys = (
+                "image",
+                "imageUrl",
+                "image_url",
+                "thumbnail",
+                "thumbnailUrl",
+                "thumbnail_url",
+                "picture",
+                "pictureUrl",
+                "picture_url",
+                "mainImage",
+                "main_image",
+                "imageLink",
+                "image_link",
+            )
+            for key in image_keys:
+                image = self._extract_product_image_value(
+                    value.get(key),
+                    allow_generic_url=True,
+                )
+                if image:
+                    return image
+
+            list_keys = (
+                "images",
+                "additionalImageLinks",
+                "additional_image_links",
+                "additionalImageLink",
+                "additional_image_link",
+                "media",
+                "pictures",
+            )
+            for key in list_keys:
+                image = self._extract_product_image_value(
+                    value.get(key),
+                    allow_generic_url=True,
+                )
+                if image:
+                    return image
+
+            container_keys = (
+                "attributes",
+                "productAttributes",
+                "product_attributes",
+                "product",
+                "rawPayload",
+                "raw_payload",
+            )
+            for key in container_keys:
+                image = self._extract_product_image_value(value.get(key))
+                if image:
+                    return image
+
+            if allow_generic_url:
+                for key in ("url", "src", "path", "value"):
+                    image = self._extract_product_image_value(value.get(key))
+                    if image:
+                        return image
+            return ""
+
+        return self._clean(value)
+
     def _normalize_marketplace_catalog_item(self, item):
         item = item if isinstance(item, dict) else {}
         raw_items = item.get("items") if isinstance(item.get("items"), list) else []
@@ -872,13 +995,7 @@ class LqaRetailersService(models.AbstractModel):
 
     def _normalize_product_image(self, marketplace_id, value):
         if isinstance(value, dict):
-            value = (
-                value.get("url")
-                or value.get("image")
-                or value.get("imageUrl")
-                or value.get("src")
-                or value.get("path")
-            )
+            value = self._extract_product_image_value(value, allow_generic_url=True)
         image = self._clean(value)
         if not image:
             return ""

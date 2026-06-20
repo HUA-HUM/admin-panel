@@ -293,7 +293,7 @@
                         >
                             <div class="o_lqa_product_card__media">
                                 <img t-if="product.image" t-att-src="product.image" t-att-alt="product.title"/>
-                                <span t-else="" t-esc="product.sku || 'SKU'"/>
+                                <span t-else="">Sin imagen</span>
                             </div>
                             <div class="o_lqa_product_card__body">
                                 <div class="o_lqa_product_card__top">
