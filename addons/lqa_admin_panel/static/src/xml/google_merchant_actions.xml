@@ -33,11 +33,11 @@
                 </button>
                 <button
                     type="button"
-                    t-att-class="isPanel('updater') ? 'is-active' : ''"
-                    t-on-click="() => this.setPanel('updater')"
+                    t-att-class="isPanel('runs') ? 'is-active' : ''"
+                    t-on-click="() => this.setPanel('runs')"
                 >
-                    <i class="fa fa-refresh"/>
-                    Actualizador
+                    <i class="fa fa-list-alt"/>
+                    Registros de ejecución
                 </button>
             </nav>
 
@@ -54,7 +54,8 @@
                         <span>Products API</span>
                     </div>
                     <p>
-                        Dispara la carga masiva en Products API y deja el proceso corriendo en backend.
+                        Dispara la publicación de todo el catálogo en Products API y deja el proceso corriendo en backend.
+                        El backend continúa iterando páginas desde el offset indicado hasta que no haya más resultados.
                     </p>
                     <div class="o_lqa_google_actions_publish__form">
                         <label>
@@ -74,16 +75,6 @@
                                 min="0"
                                 class="form-control"
                                 t-model="state.publishForm.offset"
-                                t-att-disabled="state.publishing"
-                            />
-                        </label>
-                        <label>
-                            <span>Max pages</span>
-                            <input
-                                type="number"
-                                min="1"
-                                class="form-control"
-                                t-model="state.publishForm.maxPages"
                                 t-att-disabled="state.publishing"
                             />
                         </label>
@@ -151,11 +142,11 @@
                 </div>
             </section>
 
-            <section t-if="isPanel('updater')" class="o_lqa_google_actions_history">
+            <section t-if="isPanel('runs')" class="o_lqa_google_actions_history">
                 <div class="o_lqa_google_actions_history__head">
                     <div>
-                        <p>Actualizador</p>
-                        <h2>Historial y estado</h2>
+                        <p>Registros de ejecución</p>
+                        <h2>Historial de acciones</h2>
                     </div>
                     <button
                         type="button"
@@ -164,7 +155,7 @@
                         t-on-click="loadHistory"
                     >
                         <i class="fa fa-refresh"/>
-                        Actualizar historial
+                        Refrescar registros
                     </button>
                 </div>
 

@@ -94,9 +94,8 @@ class LqaGoogleMerchantActionsService(models.AbstractModel):
         self._check_access()
         options = options if isinstance(options, dict) else {}
         payload = {
-            "limit": min(max(self._as_int(options.get("limit"), 5), 1), 1000),
+            "limit": min(max(self._as_int(options.get("limit"), 50), 1), 1000),
             "offset": max(self._as_int(options.get("offset"), 0), 0),
-            "maxPages": min(max(self._as_int(options.get("maxPages"), 1), 1), 1000),
         }
         run = self.env["lqa.google.merchant.action.run"].sudo().create(
             {

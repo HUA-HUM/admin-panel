@@ -16,9 +16,8 @@ export class LqaGoogleMerchantActions extends Component {
             activePanel: "publisher",
             confirmation: "",
             publishForm: {
-                limit: "5",
+                limit: "50",
                 offset: "0",
-                maxPages: "1",
             },
             publishing: false,
             executing: false,
@@ -51,14 +50,13 @@ export class LqaGoogleMerchantActions extends Component {
         return (
             Number(this.state.publishForm.limit) > 0 &&
             Number(this.state.publishForm.offset) >= 0 &&
-            Number(this.state.publishForm.maxPages) > 0 &&
             !this.state.publishing
         );
     }
 
     async executePublishAll() {
         if (!this.canPublish) {
-            this.notification.add("Revisa limit, offset y maxPages.", {
+            this.notification.add("Revisa limit y offset.", {
                 type: "warning",
             });
             return;
@@ -72,7 +70,6 @@ export class LqaGoogleMerchantActions extends Component {
                     {
                         limit: this.state.publishForm.limit,
                         offset: this.state.publishForm.offset,
-                        maxPages: this.state.publishForm.maxPages,
                     },
                 ]
             );
@@ -181,7 +178,6 @@ export class LqaGoogleMerchantActions extends Component {
             const parts = [
                 request.limit ? `limit ${request.limit}` : "",
                 request.offset !== undefined ? `offset ${request.offset}` : "",
-                request.maxPages ? `maxPages ${request.maxPages}` : "",
             ].filter(Boolean);
             return (
                 run.message ||
