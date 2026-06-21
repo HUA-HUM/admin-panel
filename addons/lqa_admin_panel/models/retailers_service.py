@@ -622,6 +622,8 @@ class LqaRetailersService(models.AbstractModel):
     def _normalize_product(self, item, marketplace_id=""):
         item = item if isinstance(item, dict) else {}
         raw_payload = self._as_dict(item.get("raw_payload") or item.get("rawPayload"))
+        request_payload = self._as_dict(raw_payload.get("request"))
+        response_payload = self._as_dict(raw_payload.get("response"))
         product_attributes = (
             raw_payload.get("productAttributes")
             if isinstance(raw_payload.get("productAttributes"), dict)
@@ -633,6 +635,16 @@ class LqaRetailersService(models.AbstractModel):
         raw_attributes = (
             raw_payload.get("attributes")
             if isinstance(raw_payload.get("attributes"), dict)
+            else {}
+        )
+        request_attributes = (
+            request_payload.get("productAttributes")
+            if isinstance(request_payload.get("productAttributes"), dict)
+            else request_payload
+        )
+        response_attributes = (
+            response_payload.get("productAttributes")
+            if isinstance(response_payload.get("productAttributes"), dict)
             else {}
         )
         raw_product = (
@@ -675,6 +687,10 @@ class LqaRetailersService(models.AbstractModel):
             item_attributes,
             product_attributes,
             raw_attributes,
+            request_attributes,
+            response_attributes,
+            request_payload,
+            response_payload,
             raw_product,
             raw_product_attributes,
             offer,
@@ -695,6 +711,8 @@ class LqaRetailersService(models.AbstractModel):
             raw_payload.get("images"),
             raw_payload.get("additionalImageLinks"),
             raw_payload.get("additional_image_links"),
+            raw_payload.get("additionalImageUrls"),
+            raw_payload.get("additional_image_urls"),
         )
         marketplace = item.get("marketplace") or raw_payload.get("marketplace") or marketplace_id or ""
         price = (
@@ -725,6 +743,19 @@ class LqaRetailersService(models.AbstractModel):
                 numeric_micros / 1000000
                 if numeric_micros is not None
                 else product_attributes["price"].get("amount")
+            )
+        elif price in (None, "", 0, "0", "0.00") and isinstance(
+            response_attributes.get("price"), dict
+        ):
+            amount_micros = (
+                response_attributes["price"].get("amountMicros")
+                or response_attributes["price"].get("amount_micros")
+            )
+            numeric_micros = self._as_float(amount_micros, None)
+            price = (
+                numeric_micros / 1000000
+                if numeric_micros is not None
+                else response_attributes["price"].get("amount")
             )
         stock = (
             item.get("stock")
@@ -775,6 +806,10 @@ class LqaRetailersService(models.AbstractModel):
             or product_attributes.get("title")
             or product_attributes.get("headline")
             or raw_attributes.get("title")
+            or request_attributes.get("title")
+            or response_attributes.get("title")
+            or request_payload.get("title")
+            or response_payload.get("title")
             or raw_product_attributes.get("title")
             or raw_product.get("title")
             or raw_product.get("name")
@@ -795,6 +830,16 @@ class LqaRetailersService(models.AbstractModel):
             or product_attributes.get("canonicalLink")
             or product_attributes.get("mobileLink")
             or raw_attributes.get("link")
+            or request_attributes.get("link")
+            or request_attributes.get("productUrl")
+            or request_attributes.get("product_url")
+            or request_payload.get("productUrl")
+            or request_payload.get("product_url")
+            or request_payload.get("link")
+            or response_attributes.get("link")
+            or response_attributes.get("canonicalLink")
+            or response_attributes.get("mobileLink")
+            or response_payload.get("link")
             or raw_product_attributes.get("link")
             or raw_product_attributes.get("canonicalLink")
             or raw_product_attributes.get("mobileLink")
@@ -912,6 +957,8 @@ class LqaRetailersService(models.AbstractModel):
                 "image_links",
                 "additionalImageLink",
                 "additional_image_link",
+                "additionalImageUrl",
+                "additional_image_url",
             )
             for key in image_keys:
                 image = self._extract_product_image_value(
@@ -927,6 +974,10 @@ class LqaRetailersService(models.AbstractModel):
                 "additional_image_links",
                 "additionalImageLink",
                 "additional_image_link",
+                "additionalImageUrls",
+                "additional_image_urls",
+                "additionalImageUrl",
+                "additional_image_url",
                 "media",
                 "pictures",
             )
