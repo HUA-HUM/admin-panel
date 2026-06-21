@@ -304,6 +304,16 @@
                                     <small t-esc="product.external_id"/>
                                 </div>
                                 <h3 t-esc="product.title"/>
+                                <a
+                                    t-if="product.publication_url"
+                                    class="o_lqa_product_card__quick_link"
+                                    t-att-href="product.publication_url"
+                                    target="_blank"
+                                    rel="noreferrer"
+                                >
+                                    <i class="fa fa-external-link"/>
+                                    Ver producto
+                                </a>
                                 <dl>
                                     <div>
                                         <dt>Seller SKU</dt>

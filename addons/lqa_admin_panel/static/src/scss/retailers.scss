@@ -743,6 +743,28 @@
     }
 }
 
+.o_lqa_product_card__quick_link {
+    display: inline-flex;
+    min-height: 30px;
+    align-items: center;
+    gap: 6px;
+    margin: -2px 0 12px;
+    padding: 0 10px;
+    border: 1px solid #d9e1ec;
+    border-radius: 7px;
+    background: #fff;
+    color: #314158;
+    font-size: 12px;
+    font-weight: 800;
+    text-decoration: none;
+
+    &:hover {
+        border-color: #ff9ca3;
+        color: #be123c;
+        text-decoration: none;
+    }
+}
+
 .o_lqa_product_card__top {
     display: flex;
     align-items: center;

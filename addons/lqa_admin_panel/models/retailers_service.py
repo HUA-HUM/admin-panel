@@ -605,9 +605,23 @@ class LqaRetailersService(models.AbstractModel):
             return self._join_url(value, "/orders" if value.endswith("/api") else "/api/orders")
         return self._join_url(value, "/orders")
 
+    def _as_dict(self, value):
+        if isinstance(value, dict):
+            return value
+        if isinstance(value, str):
+            value = value.strip()
+            if not value:
+                return {}
+            try:
+                parsed = json.loads(value)
+            except ValueError:
+                return {}
+            return parsed if isinstance(parsed, dict) else {}
+        return {}
+
     def _normalize_product(self, item, marketplace_id=""):
         item = item if isinstance(item, dict) else {}
-        raw_payload = item.get("raw_payload") if isinstance(item.get("raw_payload"), dict) else {}
+        raw_payload = self._as_dict(item.get("raw_payload") or item.get("rawPayload"))
         product_attributes = (
             raw_payload.get("productAttributes")
             if isinstance(raw_payload.get("productAttributes"), dict)
@@ -626,11 +640,21 @@ class LqaRetailersService(models.AbstractModel):
             if isinstance(raw_payload.get("product"), dict)
             else {}
         )
+        raw_product = self._as_dict(raw_product)
         raw_product_attributes = {}
         if isinstance(raw_product.get("productAttributes"), dict):
             raw_product_attributes = raw_product["productAttributes"]
         elif isinstance(raw_product.get("attributes"), dict):
             raw_product_attributes = raw_product["attributes"]
+        offer = self._as_dict(
+            item.get("offer")
+            or raw_payload.get("offer")
+            or item.get("googleOffer")
+            or raw_payload.get("googleOffer")
+        )
+        offer_attributes = self._as_dict(
+            offer.get("productAttributes") or offer.get("attributes")
+        )
         image = self._first_product_image(
             item.get("image"),
             item.get("imageUrl"),
@@ -653,6 +677,8 @@ class LqaRetailersService(models.AbstractModel):
             raw_attributes,
             raw_product,
             raw_product_attributes,
+            offer,
+            offer_attributes,
             raw_payload.get("image"),
             raw_payload.get("imageUrl"),
             raw_payload.get("image_url"),
@@ -740,6 +766,52 @@ class LqaRetailersService(models.AbstractModel):
             if offer_id and content_language and feed_label
             else ""
         )
+        title = self._clean(
+            item.get("title")
+            or item.get("productTitle")
+            or item.get("product_title")
+            or item.get("name")
+            or item.get("productName")
+            or product_attributes.get("title")
+            or product_attributes.get("headline")
+            or raw_attributes.get("title")
+            or raw_product_attributes.get("title")
+            or raw_product.get("title")
+            or raw_product.get("name")
+            or offer_attributes.get("title")
+            or offer.get("title")
+            or raw_payload.get("title")
+            or raw_payload.get("productTitle")
+        )
+        publication_url = self._normalize_product_url(
+            item.get("publication_url")
+            or item.get("publicationUrl")
+            or item.get("publicationURL")
+            or item.get("productUrl")
+            or item.get("product_url")
+            or item.get("link")
+            or item.get("url")
+            or product_attributes.get("link")
+            or product_attributes.get("canonicalLink")
+            or product_attributes.get("mobileLink")
+            or raw_attributes.get("link")
+            or raw_product_attributes.get("link")
+            or raw_product_attributes.get("canonicalLink")
+            or raw_product_attributes.get("mobileLink")
+            or raw_product.get("link")
+            or raw_product.get("url")
+            or offer_attributes.get("link")
+            or offer_attributes.get("canonicalLink")
+            or offer_attributes.get("mobileLink")
+            or offer.get("link")
+            or offer.get("url")
+            or raw_payload.get("LinkPublicacion")
+            or raw_payload.get("linkPublicacion")
+            or raw_payload.get("publicationUrl")
+            or raw_payload.get("productUrl")
+            or raw_payload.get("link")
+            or raw_payload.get("url")
+        )
         item_id = (
             item.get("_id")
             or item.get("id")
@@ -753,14 +825,7 @@ class LqaRetailersService(models.AbstractModel):
             "card_key": google_product_key or item_id,
             "sku": item.get("sku") or item.get("seller_sku") or item.get("sellerSku") or raw_payload.get("sellerSku") or "",
             "market_sku": item.get("market_sku") or item.get("marketSku") or raw_payload.get("marketSku") or "",
-            "title": (
-                item.get("title")
-                or item.get("name")
-                or item.get("productName")
-                or product_attributes.get("title")
-                or raw_payload.get("title")
-                or "Sin titulo"
-            ),
+            "title": title or "Sin titulo",
             "image": self._normalize_product_image(marketplace, image),
             "price": self._as_float(price, None),
             "stock": self._as_int(stock, 0),
@@ -774,15 +839,7 @@ class LqaRetailersService(models.AbstractModel):
                 or raw_payload.get("publicationId")
                 or ""
             ),
-            "publication_url": (
-                item.get("publication_url")
-                or item.get("publicationUrl")
-                or item.get("link")
-                or product_attributes.get("link")
-                or raw_payload.get("LinkPublicacion")
-                or raw_payload.get("linkPublicacion")
-                or ""
-            ),
+            "publication_url": publication_url,
             "last_detected_at": (
                 item.get("lastDetectedAt")
                 or item.get("last_detection_at")
@@ -851,6 +908,10 @@ class LqaRetailersService(models.AbstractModel):
                 "main_image",
                 "imageLink",
                 "image_link",
+                "imageLinks",
+                "image_links",
+                "additionalImageLink",
+                "additional_image_link",
             )
             for key in image_keys:
                 image = self._extract_product_image_value(
@@ -898,6 +959,42 @@ class LqaRetailersService(models.AbstractModel):
             return ""
 
         return self._clean(value)
+
+    def _normalize_product_url(self, value):
+        if isinstance(value, dict):
+            for key in (
+                "link",
+                "url",
+                "href",
+                "productUrl",
+                "product_url",
+                "publicationUrl",
+                "publication_url",
+                "canonicalLink",
+                "mobileLink",
+            ):
+                url = self._normalize_product_url(value.get(key))
+                if url:
+                    return url
+            return ""
+        if isinstance(value, (list, tuple)):
+            for item in value:
+                url = self._normalize_product_url(item)
+                if url:
+                    return url
+            return ""
+        url = self._clean(value)
+        if not url:
+            return ""
+        if url.startswith("//"):
+            return f"https:{url}"
+        if url.startswith(("http://", "https://")):
+            return url
+        if url.startswith("www."):
+            return f"https://{url}"
+        if url.startswith("/"):
+            return url
+        return ""
 
     def _normalize_marketplace_catalog_item(self, item):
         item = item if isinstance(item, dict) else {}
