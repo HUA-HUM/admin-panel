@@ -19,8 +19,19 @@ export class LqaGoogleMerchantActions extends Component {
                 limit: "50",
                 offset: "0",
             },
+            manualDelete: {
+                sku: "",
+                contentLanguage: "es",
+                feedLabel: "AR",
+            },
+            deleteFile: {
+                filename: "",
+                content: "",
+            },
             publishing: false,
             executing: false,
+            deletingOne: false,
+            deletingFile: false,
             loadingHistory: true,
             history: [],
             expandedResponses: {},
@@ -51,6 +62,23 @@ export class LqaGoogleMerchantActions extends Component {
             Number(this.state.publishForm.limit) > 0 &&
             Number(this.state.publishForm.offset) >= 0 &&
             !this.state.publishing
+        );
+    }
+
+    get canDeleteOne() {
+        return Boolean(
+            this.state.manualDelete.sku.trim() &&
+                this.state.manualDelete.contentLanguage.trim() &&
+                this.state.manualDelete.feedLabel.trim() &&
+                !this.state.deletingOne
+        );
+    }
+
+    get canDeleteFile() {
+        return Boolean(
+            this.state.deleteFile.filename &&
+                this.state.deleteFile.content &&
+                !this.state.deletingFile
         );
     }
 
@@ -94,6 +122,79 @@ export class LqaGoogleMerchantActions extends Component {
         }
     }
 
+    async executeDeleteOne() {
+        if (!this.canDeleteOne) {
+            this.notification.add("Completá SKU, idioma y etiqueta de feed.", {
+                type: "warning",
+            });
+            return;
+        }
+        this.state.deletingOne = true;
+        try {
+            const result = await this.orm.call(
+                "lqa.google.merchant.actions.service",
+                "delete_selected_products",
+                [
+                    [
+                        {
+                            sku: this.state.manualDelete.sku,
+                            contentLanguage: this.state.manualDelete.contentLanguage,
+                            feedLabel: this.state.manualDelete.feedLabel,
+                        },
+                    ],
+                ]
+            );
+            this.state.manualDelete.sku = "";
+            this.notification.add(
+                result.message ||
+                    result.error_message ||
+                    "La eliminación fue registrada.",
+                {
+                    type:
+                        result.status === "failed"
+                            ? "danger"
+                            : result.status === "partial"
+                            ? "warning"
+                            : "success",
+                }
+            );
+        } catch (error) {
+            this.notifyError(error, "No se pudo eliminar el producto.");
+        } finally {
+            await this.loadHistory();
+            this.state.deletingOne = false;
+        }
+    }
+
+    async executeDeleteFile() {
+        if (!this.canDeleteFile) {
+            this.notification.add("Seleccioná un archivo CSV o XLSX.", {
+                type: "warning",
+            });
+            return;
+        }
+        this.state.deletingFile = true;
+        try {
+            const result = await this.orm.call(
+                "lqa.google.merchant.actions.service",
+                "delete_products_from_file",
+                [this.state.deleteFile.filename, this.state.deleteFile.content]
+            );
+            this.state.deleteFile.filename = "";
+            this.state.deleteFile.content = "";
+            this.notification.add(
+                result.message ||
+                    `Quedaron en cola ${result.requested_count || 0} productos.`,
+                { type: "success" }
+            );
+        } catch (error) {
+            this.notifyError(error, "No se pudo importar el archivo.");
+        } finally {
+            await this.loadHistory();
+            this.state.deletingFile = false;
+        }
+    }
+
     async executeDeleteAll() {
         if (!this.canExecute) {
             this.notification.add(
@@ -122,6 +223,29 @@ export class LqaGoogleMerchantActions extends Component {
             await this.loadHistory();
             this.state.executing = false;
         }
+    }
+
+    onDeleteFileChange(event) {
+        const file = event.target.files && event.target.files[0];
+        if (!file) {
+            this.state.deleteFile.filename = "";
+            this.state.deleteFile.content = "";
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+            const result = String(reader.result || "");
+            this.state.deleteFile.filename = file.name;
+            this.state.deleteFile.content = result.includes(",")
+                ? result.split(",").pop()
+                : result;
+        };
+        reader.onerror = () => {
+            this.state.deleteFile.filename = "";
+            this.state.deleteFile.content = "";
+            this.notification.add("No se pudo leer el archivo.", { type: "danger" });
+        };
+        reader.readAsDataURL(file);
     }
 
     onConfirmationKeydown(event) {
@@ -166,7 +290,7 @@ export class LqaGoogleMerchantActions extends Component {
             {
                 publish_all: "Carga masiva de productos",
                 delete_all: "Eliminación total del catálogo",
-                delete_selected: "Eliminación de productos seleccionados",
+                delete_selected: "Eliminación de productos Google Merchant",
             }[String(value || "").toLowerCase()] || "Acción Google Merchant"
         );
     }
@@ -186,10 +310,20 @@ export class LqaGoogleMerchantActions extends Component {
             );
         }
         if (run.action_type === "delete_selected") {
-            const deletedCount = Number(response.deleted_count || 0);
-            const failedCount = Number(response.failed_count || 0);
-            if (deletedCount || failedCount) {
-                return `${deletedCount} eliminados, ${failedCount} con error.`;
+            const requestedCount = Number(
+                run.requested_count || response.requested_count || 0
+            );
+            const deletedCount = Number(
+                run.deleted_count || response.deleted_count || 0
+            );
+            const failedCount = Number(
+                run.failed_count || response.failed_count || 0
+            );
+            const pendingCount = Number(
+                run.pending_count || response.pending_count || 0
+            );
+            if (requestedCount || deletedCount || failedCount || pendingCount) {
+                return `${deletedCount} eliminados, ${failedCount} con error, ${pendingCount} en cola de ${requestedCount}.`;
             }
         }
         return run.message || run.error_message || "Sin detalle adicional.";

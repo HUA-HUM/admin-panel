@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="ir_cron_lqa_google_merchant_delete_runs" model="ir.cron">
+        <field name="name">LQA Google Merchant Delete Runs</field>
+        <field name="model_id" ref="model_lqa_google_merchant_action_run"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_process_pending_delete_runs()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">minutes</field>
+        <field name="active">True</field>
+    </record>
+</odoo>

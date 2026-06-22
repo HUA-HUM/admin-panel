@@ -15,6 +15,7 @@ access_lqa_retailers_publication_run_user,lqa.retailers.publication.run user,mod
 access_lqa_retailers_pricing_job_user,lqa.retailers.pricing.job user,model_lqa_retailers_pricing_job,lqa_admin_panel.group_lqa_commercial_user,1,0,0,0
 access_lqa_retailers_pricing_item_user,lqa.retailers.pricing.item user,model_lqa_retailers_pricing_item,lqa_admin_panel.group_lqa_commercial_user,1,0,0,0
 access_lqa_google_merchant_action_run_user,lqa.google.merchant.action.run user,model_lqa_google_merchant_action_run,lqa_admin_panel.group_lqa_commercial_user,1,0,0,0
+access_lqa_google_merchant_action_line_user,lqa.google.merchant.action.line user,model_lqa_google_merchant_action_line,lqa_admin_panel.group_lqa_commercial_user,1,0,0,0
 access_lqa_panel_module_admin,lqa.panel.module admin,model_lqa_panel_module,lqa_admin_panel.group_lqa_admin,1,1,1,1
 access_lqa_panel_section_admin,lqa.panel.section admin,model_lqa_panel_section,lqa_admin_panel.group_lqa_admin,1,1,1,1
 access_lqa_automeli_catalog_item_admin,lqa.automeli.catalog.item admin,model_lqa_automeli_catalog_item,lqa_admin_panel.group_lqa_admin,1,1,1,1
@@ -31,3 +32,4 @@ access_lqa_retailers_publication_run_admin,lqa.retailers.publication.run admin,m
 access_lqa_retailers_pricing_job_admin,lqa.retailers.pricing.job admin,model_lqa_retailers_pricing_job,lqa_admin_panel.group_lqa_admin,1,1,1,1
 access_lqa_retailers_pricing_item_admin,lqa.retailers.pricing.item admin,model_lqa_retailers_pricing_item,lqa_admin_panel.group_lqa_admin,1,1,1,1
 access_lqa_google_merchant_action_run_admin,lqa.google.merchant.action.run admin,model_lqa_google_merchant_action_run,lqa_admin_panel.group_lqa_admin,1,1,1,1
+access_lqa_google_merchant_action_line_admin,lqa.google.merchant.action.line admin,model_lqa_google_merchant_action_line,lqa_admin_panel.group_lqa_admin,1,1,1,1

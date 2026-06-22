@@ -1,6 +1,6 @@
 {
     "name": "LQA Admin Panel",
-    "version": "18.0.1.0.9",
+    "version": "18.0.1.0.10",
     "category": "Sales",
     "summary": "Panel comercial para MercadoLibre y Automeli",
     "author": "Lo Quiero Aca",
@@ -11,6 +11,7 @@
         "security/ir.model.access.csv",
         "data/mercadolibre_pricing_cron.xml",
         "data/retailers_pricing_cron.xml",
+        "data/google_merchant_actions_cron.xml",
         "views/panel_menu_views.xml",
         "views/panel_module_views.xml",
         "views/automeli_catalog_views.xml",

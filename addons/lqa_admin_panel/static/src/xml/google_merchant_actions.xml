@@ -102,42 +102,142 @@
                 <div class="o_lqa_google_actions_danger__content">
                     <div class="o_lqa_google_actions_danger__head">
                         <div>
-                            <small>Zona crítica</small>
-                            <h2>Eliminar todo el catálogo</h2>
+                            <small>Eliminador</small>
+                            <h2>Eliminar productos</h2>
                         </div>
                         <span>Google Merchant</span>
                     </div>
                     <p>
-                        Esta acción solicita la eliminación de todos los productos
-                        publicados en Google Merchant.
+                        Elimina productos puntuales usando SKU / ID de producto,
+                        idioma de contenido y etiqueta de feed.
                     </p>
-                    <label for="lqa-google-delete-confirmation">
-                        Escribí <strong>ELIMINAR TODO</strong> para confirmar
-                    </label>
-                    <div class="o_lqa_google_actions_danger__form">
-                        <input
-                            id="lqa-google-delete-confirmation"
-                            type="text"
-                            class="form-control"
-                            autocomplete="off"
-                            placeholder="ELIMINAR TODO"
-                            t-model="state.confirmation"
-                            t-att-disabled="state.executing"
-                            t-on-keydown="onConfirmationKeydown"
-                        />
-                        <button
-                            type="button"
-                            class="btn btn-danger"
-                            t-att-disabled="!canExecute"
-                            t-on-click="executeDeleteAll"
-                        >
-                            <i
-                                t-att-class="state.executing
-                                    ? 'fa fa-spinner fa-spin'
-                                    : 'fa fa-trash-o'"
-                            />
-                            <t t-esc="state.executing ? 'Eliminando...' : 'Eliminar catálogo'"/>
-                        </button>
+
+                    <div class="o_lqa_google_actions_delete_grid">
+                        <article class="o_lqa_google_actions_delete_card">
+                            <div>
+                                <small>Manual</small>
+                                <h3>Eliminar un producto</h3>
+                                <p>Usa el endpoint individual de Marketplace API.</p>
+                            </div>
+                            <div class="o_lqa_google_actions_delete_form">
+                                <label>
+                                    <span>SKU / ID producto</span>
+                                    <input
+                                        type="text"
+                                        class="form-control"
+                                        placeholder="10059552187926859793"
+                                        t-model="state.manualDelete.sku"
+                                        t-att-disabled="state.deletingOne"
+                                    />
+                                </label>
+                                <label>
+                                    <span>Idioma</span>
+                                    <input
+                                        type="text"
+                                        class="form-control"
+                                        placeholder="es"
+                                        t-model="state.manualDelete.contentLanguage"
+                                        t-att-disabled="state.deletingOne"
+                                    />
+                                </label>
+                                <label>
+                                    <span>Feed label</span>
+                                    <input
+                                        type="text"
+                                        class="form-control"
+                                        placeholder="AR"
+                                        t-model="state.manualDelete.feedLabel"
+                                        t-att-disabled="state.deletingOne"
+                                    />
+                                </label>
+                                <button
+                                    type="button"
+                                    class="btn btn-danger"
+                                    t-att-disabled="!canDeleteOne"
+                                    t-on-click="executeDeleteOne"
+                                >
+                                    <i
+                                        t-att-class="state.deletingOne
+                                            ? 'fa fa-spinner fa-spin'
+                                            : 'fa fa-trash-o'"
+                                    />
+                                    <t t-esc="state.deletingOne ? 'Eliminando...' : 'Eliminar producto'"/>
+                                </button>
+                            </div>
+                        </article>
+
+                        <article class="o_lqa_google_actions_delete_card">
+                            <div>
+                                <small>Archivo</small>
+                                <h3>Eliminar por CSV o XLSX</h3>
+                                <p>
+                                    Acepta columnas como ID de producto, Etiqueta de feed e Idioma.
+                                    Tambien sirve sku, feedLabel y contentLanguage.
+                                </p>
+                            </div>
+                            <div class="o_lqa_google_actions_file_box">
+                                <input
+                                    type="file"
+                                    accept=".csv,.xlsx"
+                                    t-att-disabled="state.deletingFile"
+                                    t-on-change="onDeleteFileChange"
+                                />
+                                <span t-if="state.deleteFile.filename" t-esc="state.deleteFile.filename"/>
+                                <span t-else="">Selecciona un archivo CSV o XLSX</span>
+                                <button
+                                    type="button"
+                                    class="btn btn-danger"
+                                    t-att-disabled="!canDeleteFile"
+                                    t-on-click="executeDeleteFile"
+                                >
+                                    <i
+                                        t-att-class="state.deletingFile
+                                            ? 'fa fa-spinner fa-spin'
+                                            : 'fa fa-list'"
+                                    />
+                                    <t t-esc="state.deletingFile ? 'Encolando...' : 'Encolar eliminación'"/>
+                                </button>
+                            </div>
+                        </article>
+
+                        <article class="o_lqa_google_actions_delete_card is-critical">
+                            <div>
+                                <small>Zona crítica</small>
+                                <h3>Eliminar todo el catálogo</h3>
+                                <p>
+                                    Esta acción solicita la eliminación de todos los productos
+                                    publicados en Google Merchant.
+                                </p>
+                            </div>
+                            <label for="lqa-google-delete-confirmation">
+                                Escribí <strong>ELIMINAR TODO</strong> para confirmar
+                            </label>
+                            <div class="o_lqa_google_actions_danger__form">
+                                <input
+                                    id="lqa-google-delete-confirmation"
+                                    type="text"
+                                    class="form-control"
+                                    autocomplete="off"
+                                    placeholder="ELIMINAR TODO"
+                                    t-model="state.confirmation"
+                                    t-att-disabled="state.executing"
+                                    t-on-keydown="onConfirmationKeydown"
+                                />
+                                <button
+                                    type="button"
+                                    class="btn btn-danger"
+                                    t-att-disabled="!canExecute"
+                                    t-on-click="executeDeleteAll"
+                                >
+                                    <i
+                                        t-att-class="state.executing
+                                            ? 'fa fa-spinner fa-spin'
+                                            : 'fa fa-trash-o'"
+                                    />
+                                    <t t-esc="state.executing ? 'Eliminando...' : 'Eliminar catálogo'"/>
+                                </button>
+                            </div>
+                        </article>
                     </div>
                 </div>
             </section>
