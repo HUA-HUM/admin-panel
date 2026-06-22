@@ -32,6 +32,7 @@ export class LqaGoogleMerchantActions extends Component {
             executing: false,
             deletingOne: false,
             deletingFile: false,
+            downloadingCatalog: false,
             loadingHistory: true,
             history: [],
             expandedResponses: {},
@@ -47,6 +48,10 @@ export class LqaGoogleMerchantActions extends Component {
             this.state.confirmation.trim().toUpperCase() === CONFIRMATION_TEXT &&
             !this.state.executing
         );
+    }
+
+    get canDownloadCatalog() {
+        return !this.state.downloadingCatalog;
     }
 
     setPanel(panel) {
@@ -195,6 +200,26 @@ export class LqaGoogleMerchantActions extends Component {
         }
     }
 
+    async downloadDeleteCatalog() {
+        this.state.downloadingCatalog = true;
+        try {
+            const result = await this.orm.call(
+                "lqa.google.merchant.actions.service",
+                "download_delete_catalog_xlsx",
+                []
+            );
+            this.downloadBase64File(result.filename, result.content, result.mimetype);
+            this.notification.add(
+                `Catálogo descargado: ${result.total || 0} productos.`,
+                { type: "success" }
+            );
+        } catch (error) {
+            this.notifyError(error, "No se pudo descargar el catálogo.");
+        } finally {
+            this.state.downloadingCatalog = false;
+        }
+    }
+
     async executeDeleteAll() {
         if (!this.canExecute) {
             this.notification.add(
@@ -246,6 +271,23 @@ export class LqaGoogleMerchantActions extends Component {
             this.notification.add("No se pudo leer el archivo.", { type: "danger" });
         };
         reader.readAsDataURL(file);
+    }
+
+    downloadBase64File(filename, content, mimetype) {
+        const binary = window.atob(content || "");
+        const bytes = new Uint8Array(binary.length);
+        for (let index = 0; index < binary.length; index++) {
+            bytes[index] = binary.charCodeAt(index);
+        }
+        const blob = new Blob([bytes], { type: mimetype });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = filename || "google-merchant-catalogo-eliminador.xlsx";
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        URL.revokeObjectURL(url);
     }
 
     onConfirmationKeydown(event) {

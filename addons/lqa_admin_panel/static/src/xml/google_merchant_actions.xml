@@ -175,6 +175,25 @@
                                     Tambien sirve sku, feedLabel y contentLanguage.
                                 </p>
                             </div>
+                            <div class="o_lqa_google_actions_download_box">
+                                <div>
+                                    <strong>Catálogo listo para eliminar</strong>
+                                    <span>Descarga un XLSX con ID de producto, feed label e idioma.</span>
+                                </div>
+                                <button
+                                    type="button"
+                                    class="btn btn-secondary"
+                                    t-att-disabled="!canDownloadCatalog"
+                                    t-on-click="downloadDeleteCatalog"
+                                >
+                                    <i
+                                        t-att-class="state.downloadingCatalog
+                                            ? 'fa fa-spinner fa-spin'
+                                            : 'fa fa-download'"
+                                    />
+                                    <t t-esc="state.downloadingCatalog ? 'Descargando...' : 'Descargar catálogo XLSX'"/>
+                                </button>
+                            </div>
                             <div class="o_lqa_google_actions_file_box">
                                 <input
                                     type="file"

@@ -10,6 +10,7 @@ from urllib.parse import quote
 from xml.etree import ElementTree
 
 import requests
+import xlsxwriter
 
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError
@@ -174,10 +175,12 @@ class LqaGoogleMerchantActionsService(models.AbstractModel):
     _description = "Servicio de acciones de Google Merchant"
 
     DEFAULT_PRODUCTS_API_URL = "https://api.products.loquieroaca.com"
+    DEFAULT_MADRE_API_URL = "https://api.madre.loquieroaca.com"
     DEFAULT_MARKETPLACE_API_URL = "https://api.marketplace.loquieroaca.com"
     PUBLISH_ALL_PATH = "/api/internal/google-merchant/products/publish-all"
     DELETE_ALL_PATH = "/api/internal/google-merchant/products/delete-all"
     DELETE_ONE_PATH = "/internal/google-merchant/products/{sku}"
+    GOOGLE_CATALOG_PATH = "/api/internal/marketplace/products/items/all"
     CONFIRMATION_TEXT = "ELIMINAR TODO"
     DEFAULT_TIMEOUT_SECONDS = 180
     DEFAULT_TRIGGER_TIMEOUT_SECONDS = 8
@@ -376,6 +379,23 @@ class LqaGoogleMerchantActionsService(models.AbstractModel):
         return run.to_panel_dict()
 
     @api.model
+    def download_delete_catalog_xlsx(self):
+        self._check_access()
+        rows = self._google_catalog_delete_rows()
+        if not rows:
+            raise UserError(_("No encontre productos de Google Merchant para descargar."))
+        content = self._build_delete_catalog_xlsx(rows)
+        return {
+            "filename": "google-merchant-catalogo-eliminador.xlsx",
+            "content": base64.b64encode(content).decode("ascii"),
+            "mimetype": (
+                "application/vnd.openxmlformats-officedocument."
+                "spreadsheetml.sheet"
+            ),
+            "total": len(rows),
+        }
+
+    @api.model
     def process_delete_run(self, run_id, line_limit=50):
         run = (
             self.env["lqa.google.merchant.action.run"]
@@ -455,6 +475,17 @@ class LqaGoogleMerchantActionsService(models.AbstractModel):
             )
             or os.environ.get("NEXT_PUBLIC_PRODUCTS_API_URL")
             or self.DEFAULT_PRODUCTS_API_URL
+        ).strip()
+
+    def _madre_base_url(self):
+        params = self.env["ir.config_parameter"].sudo()
+        return (
+            params.get_param(
+                "lqa_admin_panel.retailers_madre_api_url",
+                "",
+            )
+            or os.environ.get("NEXT_PUBLIC_MADRE_API_URL")
+            or self.DEFAULT_MADRE_API_URL
         ).strip()
 
     def _marketplace_base_url(self):
@@ -572,6 +603,122 @@ class LqaGoogleMerchantActionsService(models.AbstractModel):
         )
         self._update_delete_run(run)
         return run
+
+    def _google_catalog_delete_rows(self):
+        rows = []
+        seen = set()
+        offset = 0
+        limit = 500
+        max_rows = 100000
+        retailers_service = self.env["lqa.retailers.service"].sudo()
+        while True:
+            response = self.env["lqa.api.client"].request_absolute_json(
+                "GET",
+                self._join_url(self._madre_base_url(), self.GOOGLE_CATALOG_PATH),
+                params={
+                    "marketplace": "google-merchant",
+                    "offset": offset,
+                    "limit": limit,
+                },
+                timeout=self._timeout(),
+            )
+            payload = response if isinstance(response, dict) else {}
+            items = self._response_items(response)
+            for item in items:
+                product = retailers_service._normalize_product(
+                    item,
+                    "google-merchant",
+                )
+                sku, content_language, feed_label = self._delete_identity_from_product(
+                    product
+                )
+                if not sku:
+                    continue
+                key = (sku.lower(), content_language.lower(), feed_label.upper())
+                if key in seen:
+                    continue
+                seen.add(key)
+                rows.append(
+                    {
+                        "sku": sku,
+                        "content_language": content_language,
+                        "feed_label": feed_label,
+                    }
+                )
+                if len(rows) >= max_rows:
+                    return rows
+
+            has_next = bool(payload.get("hasNext"))
+            next_offset = payload.get("nextOffset")
+            if not has_next or not items:
+                break
+            offset = (
+                self._as_int(next_offset, offset + limit)
+                if next_offset is not None
+                else offset + limit
+            )
+        return rows
+
+    def _delete_identity_from_product(self, product):
+        product = product if isinstance(product, dict) else {}
+        sku = self._clean(
+            product.get("offer_id")
+            or product.get("google_product_key")
+            or product.get("external_id")
+            or product.get("sku")
+            or product.get("id")
+        )
+        content_language = self._clean(product.get("content_language") or "es")
+        feed_label = self._clean(product.get("feed_label") or "AR")
+        sku, content_language, feed_label = self._split_product_input_id(
+            sku,
+            content_language,
+            feed_label,
+        )
+        return sku, content_language, feed_label
+
+    def _build_delete_catalog_xlsx(self, rows):
+        output = io.BytesIO()
+        workbook = xlsxwriter.Workbook(
+            output,
+            {
+                "in_memory": True,
+                "strings_to_formulas": False,
+                "strings_to_urls": False,
+            },
+        )
+        worksheet = workbook.add_worksheet("Google Merchant")
+        header = workbook.add_format(
+            {
+                "bold": True,
+                "font_color": "#FFFFFF",
+                "bg_color": "#FF4F5A",
+                "border": 1,
+                "align": "center",
+            }
+        )
+        text = workbook.add_format({"num_format": "@"})
+        columns = (
+            ("ID de producto", "sku", 26),
+            ("Etiqueta de feed", "feed_label", 18),
+            ("Idioma", "content_language", 12),
+        )
+        for index, (label, _key, width) in enumerate(columns):
+            worksheet.write(0, index, label, header)
+            worksheet.set_column(index, index, width, text)
+        for row_index, row in enumerate(rows, start=1):
+            worksheet.write_string(row_index, 0, row.get("sku") or "", text)
+            worksheet.write_string(row_index, 1, row.get("feed_label") or "AR", text)
+            worksheet.write_string(
+                row_index,
+                2,
+                row.get("content_language") or "es",
+                text,
+            )
+        worksheet.autofilter(0, 0, len(rows), len(columns) - 1)
+        worksheet.freeze_panes(1, 0)
+        workbook.close()
+        return output.getvalue()
 
     def _update_delete_run(self, run):
         run = run.sudo()
@@ -779,6 +926,21 @@ class LqaGoogleMerchantActionsService(models.AbstractModel):
         except csv.Error:
             dialect = csv.excel_tab if "\t" in sample else csv.excel
         return list(csv.reader(io.StringIO(text), dialect))
+
+    def _response_items(self, response):
+        if isinstance(response, list):
+            return response
+        if not isinstance(response, dict):
+            return []
+        for key in ("items", "products", "data", "results"):
+            value = response.get(key)
+            if isinstance(value, list):
+                return value
+            if isinstance(value, dict):
+                nested = self._response_items(value)
+                if nested:
+                    return nested
+        return []
 
     def _read_xlsx_rows(self, content):
         try:

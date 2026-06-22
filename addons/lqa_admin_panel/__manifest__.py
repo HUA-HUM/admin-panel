@@ -1,6 +1,6 @@
 {
     "name": "LQA Admin Panel",
-    "version": "18.0.1.0.10",
+    "version": "18.0.1.0.11",
     "category": "Sales",
     "summary": "Panel comercial para MercadoLibre y Automeli",
     "author": "Lo Quiero Aca",

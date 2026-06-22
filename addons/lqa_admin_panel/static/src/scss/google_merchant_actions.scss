@@ -353,6 +353,47 @@
     }
 }
 
+.o_lqa_google_actions_download_box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid #dbeafe;
+    border-radius: 8px;
+    background: #eff6ff;
+
+    div {
+        display: grid;
+        gap: 2px;
+    }
+
+    strong {
+        color: #1e3a8a;
+        font-size: 13px;
+        font-weight: 800;
+    }
+
+    span {
+        color: #475569;
+        font-size: 12px;
+    }
+
+    .btn {
+        min-width: 190px;
+        min-height: 38px;
+        border-color: #bfdbfe;
+        border-radius: 7px;
+        background: #fff;
+        color: #1d4ed8;
+        font-weight: 800;
+    }
+
+    i {
+        margin-right: 6px;
+    }
+}
+
 .o_lqa_google_actions_file_box {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
@@ -641,6 +682,15 @@
 
     .o_lqa_google_actions_file_box {
         grid-template-columns: 1fr;
+    }
+
+    .o_lqa_google_actions_download_box {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .o_lqa_google_actions_download_box .btn {
+        width: 100%;
     }
 
     .o_lqa_google_actions_file_box .btn,
