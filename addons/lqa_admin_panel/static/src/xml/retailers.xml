@@ -291,6 +291,21 @@
                             t-as="product"
                             t-key="productCardKey(product)"
                         >
+                            <button
+                                t-if="isGoogleMerchantDetail"
+                                type="button"
+                                class="o_lqa_product_card__delete"
+                                t-att-disabled="!googleMerchantProductSku(product) || isDeletingGoogleMerchantProduct(product)"
+                                t-att-title="'Eliminar ' + (googleMerchantProductSku(product) || 'producto')"
+                                t-att-aria-label="'Eliminar ' + (googleMerchantProductSku(product) || 'producto')"
+                                t-on-click="() => this.openGoogleMerchantProductDelete(product)"
+                            >
+                                <i
+                                    t-att-class="isDeletingGoogleMerchantProduct(product)
+                                        ? 'fa fa-spinner fa-spin'
+                                        : 'fa fa-trash-o'"
+                                />
+                            </button>
                             <div class="o_lqa_product_card__media">
                                 <img t-if="product.image" t-att-src="product.image" t-att-alt="product.title"/>
                                 <span t-else="">Sin imagen</span>
@@ -540,6 +555,54 @@
                             t-on-click="confirmRefreshPublished"
                         >
                             Confirmar actualizacion
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="o_lqa_modal_backdrop" t-if="state.googleMerchantProductToDelete">
+                <div class="o_lqa_retailers_modal">
+                    <h2>Eliminar producto</h2>
+                    <p>
+                        Vas a eliminar este producto de
+                        <strong>Google Merchant</strong>.
+                    </p>
+                    <dl class="o_lqa_retailers_delete_product_detail">
+                        <div>
+                            <dt>SKU / Offer ID</dt>
+                            <dd t-esc="googleMerchantProductSku(state.googleMerchantProductToDelete)"/>
+                        </div>
+                        <div>
+                            <dt>Idioma</dt>
+                            <dd t-esc="state.googleMerchantProductToDelete.content_language || 'es'"/>
+                        </div>
+                        <div>
+                            <dt>Feed label</dt>
+                            <dd t-esc="state.googleMerchantProductToDelete.feed_label || 'AR'"/>
+                        </div>
+                    </dl>
+                    <div class="o_lqa_retailers_modal__actions">
+                        <button
+                            type="button"
+                            class="btn btn-secondary"
+                            t-att-disabled="state.deletingGoogleMerchantProductKey"
+                            t-on-click="closeGoogleMerchantProductDelete"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="button"
+                            class="btn btn-danger"
+                            t-att-disabled="!canDeleteGoogleMerchantProduct"
+                            t-on-click="confirmDeleteGoogleMerchantProduct"
+                        >
+                            <i
+                                t-att-class="state.deletingGoogleMerchantProductKey
+                                    ? 'fa fa-spinner fa-spin'
+                                    : 'fa fa-trash-o'"
+                            />
+                            <t t-if="state.deletingGoogleMerchantProductKey">Eliminando...</t>
+                            <t t-else="">Eliminar producto</t>
                         </button>
                     </div>
                 </div>

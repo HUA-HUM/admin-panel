@@ -899,7 +899,11 @@ class LqaGoogleMerchantActionsService(models.AbstractModel):
         return normalized
 
     def _split_product_input_id(self, sku, content_language, feed_label):
-        parts = [self._clean(part) for part in self._clean(sku).split("~")]
+        sku = self._clean(sku)
+        if "/products/" in sku:
+            sku = sku.rsplit("/products/", 1)[-1]
+
+        parts = [self._clean(part) for part in sku.split("~")]
         if len(parts) >= 3:
             content_language = parts[0] or content_language
             feed_label = parts[1] or feed_label

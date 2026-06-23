@@ -91,6 +91,8 @@ export class LqaRetailers extends Component {
             confirmRefresh: false,
             confirmDeleteGoogleMerchant: false,
             deletingGoogleMerchantProducts: false,
+            deletingGoogleMerchantProductKey: "",
+            googleMerchantProductToDelete: null,
             googleMerchantDeleteConfirmation: "",
             dashboardOrders: emptyOrdersOverview(),
             dashboardError: "",
@@ -127,6 +129,13 @@ export class LqaRetailers extends Component {
     get selectedRefreshMarketplace() {
         return this.state.actionMarketplaces.find(
             (item) => item.id === this.state.refreshForm.marketplace
+        );
+    }
+
+    get canDeleteGoogleMerchantProduct() {
+        return (
+            Boolean(this.state.googleMerchantProductToDelete) &&
+            !this.state.deletingGoogleMerchantProductKey
         );
     }
 
@@ -520,6 +529,89 @@ export class LqaRetailers extends Component {
         } finally {
             this.state.deletingGoogleMerchantProducts = false;
         }
+    }
+
+    openGoogleMerchantProductDelete(product) {
+        if (!this.googleMerchantProductSku(product)) {
+            this.notification.add(
+                "No encontre el SKU / offer ID para eliminar este producto.",
+                { type: "warning" }
+            );
+            return;
+        }
+        this.state.googleMerchantProductToDelete = product;
+    }
+
+    closeGoogleMerchantProductDelete() {
+        if (!this.state.deletingGoogleMerchantProductKey) {
+            this.state.googleMerchantProductToDelete = null;
+        }
+    }
+
+    async confirmDeleteGoogleMerchantProduct() {
+        const product = this.state.googleMerchantProductToDelete;
+        const sku = this.googleMerchantProductSku(product);
+        if (!product || !sku) {
+            this.notification.add(
+                "No encontre el SKU / offer ID para eliminar este producto.",
+                { type: "warning" }
+            );
+            return;
+        }
+        const productKey = this.productCardKey(product);
+        this.state.deletingGoogleMerchantProductKey = productKey;
+        try {
+            const result = await this.orm.call(
+                "lqa.google.merchant.actions.service",
+                "delete_selected_products",
+                [
+                    [
+                        {
+                            sku,
+                            contentLanguage:
+                                product.content_language || product.contentLanguage || "es",
+                            feedLabel: product.feed_label || product.feedLabel || "AR",
+                        },
+                    ],
+                ]
+            );
+            this.state.googleMerchantProductToDelete = null;
+            await this.loadProducts();
+            this.notification.add(
+                result.message ||
+                    result.error_message ||
+                    `Producto ${sku} eliminado de Google Merchant.`,
+                {
+                    type:
+                        result.status === "failed"
+                            ? "danger"
+                            : result.status === "partial"
+                            ? "warning"
+                            : "success",
+                }
+            );
+        } catch (error) {
+            this.notifyError(error, "No se pudo eliminar el producto.");
+        } finally {
+            this.state.deletingGoogleMerchantProductKey = "";
+        }
+    }
+
+    googleMerchantProductSku(product) {
+        return String(
+            product?.offer_id ||
+                product?.google_product_key ||
+                product?.external_id ||
+                product?.sku ||
+                ""
+        ).trim();
+    }
+
+    isDeletingGoogleMerchantProduct(product) {
+        return (
+            this.state.deletingGoogleMerchantProductKey &&
+            this.state.deletingGoogleMerchantProductKey === this.productCardKey(product)
+        );
     }
 
     productCardKey(product) {

@@ -653,6 +653,35 @@
     }
 }
 
+.o_lqa_product_card__delete {
+    position: absolute;
+    z-index: 3;
+    top: 10px;
+    right: 10px;
+    display: inline-flex;
+    width: 34px;
+    height: 34px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.96);
+    color: #dc2626;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+
+    &:hover:not(:disabled) {
+        border-color: #dc3545;
+        background: #dc3545;
+        color: #fff;
+    }
+
+    &:disabled {
+        opacity: 0.65;
+        cursor: not-allowed;
+        box-shadow: none;
+    }
+}
+
 .o_lqa_product_card__media {
     display: flex;
     height: 150px;
@@ -954,6 +983,41 @@
     justify-content: flex-end;
     gap: 10px;
     margin-top: 16px;
+}
+
+.o_lqa_retailers_delete_product_detail {
+    display: grid;
+    gap: 8px;
+    margin: 14px 0 0;
+    padding: 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #f8fafc;
+
+    div {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    dt {
+        color: #7a8899;
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+
+    dd {
+        margin: 0;
+        color: #263243;
+        font-weight: 800;
+        overflow-wrap: anywhere;
+        text-align: right;
+    }
+}
+
+.o_lqa_retailers_modal__actions i {
+    margin-right: 6px;
 }
 
 .o_lqa_retailers_delete_preview {
