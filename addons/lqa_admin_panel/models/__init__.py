@@ -4,6 +4,7 @@ from . import automeli_catalog_item
 from . import automeli_selection
 from . import dashboard_service
 from . import google_merchant_actions
+from . import google_merchant_analytics
 from . import mercadolibre_catalog_service
 from . import mercadolibre_deletion
 from . import mercadolibre_pricing

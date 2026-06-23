@@ -45,6 +45,11 @@
         <field name="tag">lqa_admin_panel.google_merchant_actions</field>
     </record>
 
+    <record id="action_lqa_google_merchant_analytics" model="ir.actions.client">
+        <field name="name">Analitycs Google Merchant</field>
+        <field name="tag">lqa_admin_panel.google_merchant_analytics</field>
+    </record>
+
     <record id="action_lqa_retailers_fravega" model="ir.actions.client">
         <field name="name">Fravega</field>
         <field name="tag">lqa_admin_panel.retailers</field>
@@ -305,6 +310,15 @@
         parent="menu_lqa_retailers_google_merchant"
         action="action_lqa_google_merchant_actions"
         sequence="20"
+        groups="lqa_admin_panel.group_lqa_commercial_user"
+    />
+
+    <menuitem
+        id="menu_lqa_retailers_google_merchant_analytics"
+        name="Analitycs"
+        parent="menu_lqa_retailers_google_merchant"
+        action="action_lqa_google_merchant_analytics"
+        sequence="30"
         groups="lqa_admin_panel.group_lqa_commercial_user"
     />
 

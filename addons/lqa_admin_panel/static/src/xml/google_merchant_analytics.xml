@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="lqa_admin_panel.GoogleMerchantAnalytics">
+        <div class="o_lqa_google_analytics">
+            <header class="o_lqa_google_analytics__header">
+                <div>
+                    <p>Retailers / Marketplaces / Google Merchant</p>
+                    <h1>Analitycs</h1>
+                    <span>Consulta y guarda performance por SKU para analizar clicks e impresiones.</span>
+                </div>
+                <img
+                    src="/lqa_admin_panel/static/src/img/marketplace/google-merchant.png?v=1"
+                    alt="Google Merchant"
+                />
+            </header>
+
+            <section class="o_lqa_google_analytics_query">
+                <div class="o_lqa_google_analytics_query__copy">
+                    <small>Consulta por SKU</small>
+                    <h2>Performance de producto</h2>
+                    <p>Busca un SKU en un rango de fechas. Cada consulta queda guardada en el historial para comparar resultados.</p>
+                </div>
+                <div class="o_lqa_google_analytics_query__form">
+                    <label>
+                        <span>SKU</span>
+                        <input
+                            type="text"
+                            class="form-control"
+                            placeholder="B0009JN7WK"
+                            t-model="state.form.sku"
+                            t-att-disabled="state.loadingQuery"
+                        />
+                    </label>
+                    <label>
+                        <span>Desde</span>
+                        <input
+                            type="date"
+                            class="form-control"
+                            t-model="state.form.from"
+                            t-att-disabled="state.loadingQuery"
+                        />
+                    </label>
+                    <label>
+                        <span>Hasta</span>
+                        <input
+                            type="date"
+                            class="form-control"
+                            t-model="state.form.to"
+                            t-att-disabled="state.loadingQuery"
+                        />
+                    </label>
+                    <button
+                        type="button"
+                        class="btn btn-primary"
+                        t-att-disabled="!canQuery"
+                        t-on-click="queryPerformance"
+                    >
+                        <i
+                            t-att-class="state.loadingQuery
+                                ? 'fa fa-spinner fa-spin'
+                                : 'fa fa-search'"
+                        />
+                        <t t-esc="state.loadingQuery ? 'Consultando...' : 'Consultar'"/>
+                    </button>
+                </div>
+            </section>
+
+            <t t-set="record" t-value="selectedRecord"/>
+            <section t-if="record" class="o_lqa_google_analytics_result">
+                <div class="o_lqa_google_analytics_result__head">
+                    <div>
+                        <small t-esc="record.status === 'failed' ? 'Consulta con error' : 'Resultado guardado'"/>
+                        <h2 t-esc="record.sku"/>
+                        <span>
+                            <t t-esc="formatDate(record.from)"/>
+                            -
+                            <t t-esc="formatDate(record.to)"/>
+                        </span>
+                    </div>
+                    <strong
+                        t-att-class="'o_lqa_google_analytics_status is-' + record.status"
+                        t-esc="statusLabel(record.status)"
+                    />
+                </div>
+
+                <div t-if="record.status === 'failed'" class="o_lqa_google_analytics_error">
+                    <i class="fa fa-exclamation-triangle"/>
+                    <span t-esc="record.errorMessage || 'La consulta fallo.'"/>
+                </div>
+
+                <div class="o_lqa_google_analytics_kpis">
+                    <article>
+                        <small>Clicks</small>
+                        <strong t-esc="formatNumber(record.clicks)"/>
+                    </article>
+                    <article>
+                        <small>Impresiones</small>
+                        <strong t-esc="formatNumber(record.impressions)"/>
+                    </article>
+                    <article>
+                        <small>CTR</small>
+                        <strong t-esc="formatPercent(record.clickThroughRate)"/>
+                    </article>
+                    <article>
+                        <small>Filas API</small>
+                        <strong t-esc="formatNumber(record.rowsCount)"/>
+                    </article>
+                </div>
+
+                <div class="o_lqa_google_analytics_chart">
+                    <div class="o_lqa_google_analytics_chart__head">
+                        <div>
+                            <h3>Detalle por fila</h3>
+                            <span>Clicks e impresiones devueltos por la API.</span>
+                        </div>
+                    </div>
+                    <div
+                        t-if="!selectedRows.length"
+                        class="o_lqa_google_analytics_empty"
+                    >
+                        La API no devolvió filas para este rango.
+                    </div>
+                    <div t-else="" class="o_lqa_google_analytics_rows">
+                        <article
+                            t-foreach="selectedRows"
+                            t-as="row"
+                            t-key="rowDate(row) + '-' + rowClicks(row) + '-' + rowImpressions(row)"
+                        >
+                            <div class="o_lqa_google_analytics_row__label">
+                                <strong t-esc="rowDate(row)"/>
+                                <span>
+                                    <t t-esc="formatNumber(rowClicks(row))"/> clicks
+                                    ·
+                                    <t t-esc="formatNumber(rowImpressions(row))"/> impresiones
+                                    · CTR <t t-esc="formatPercent(rowCtr(row))"/>
+                                </span>
+                            </div>
+                            <div class="o_lqa_google_analytics_bars">
+                                <span
+                                    class="is-clicks"
+                                    t-att-style="'width: ' + barWidth(rowClicks(row))"
+                                />
+                                <span
+                                    class="is-impressions"
+                                    t-att-style="'width: ' + barWidth(rowImpressions(row))"
+                                />
+                            </div>
+                        </article>
+                    </div>
+                </div>
+            </section>
+
+            <section t-else="" class="o_lqa_google_analytics_empty is-large">
+                Todavía no hay consultas. Busca un SKU para generar el primer registro.
+            </section>
+
+            <section class="o_lqa_google_analytics_history">
+                <div class="o_lqa_google_analytics_history__head">
+                    <div>
+                        <p>Historial</p>
+                        <h2>Consultas guardadas</h2>
+                    </div>
+                    <button
+                        type="button"
+                        class="btn btn-secondary"
+                        t-att-disabled="state.loadingHistory"
+                        t-on-click="loadHistory"
+                    >
+                        <i class="fa fa-refresh"/>
+                        Refrescar
+                    </button>
+                </div>
+
+                <div
+                    t-if="state.loadingHistory"
+                    class="o_lqa_google_analytics_empty"
+                >
+                    Cargando consultas...
+                </div>
+                <div
+                    t-elif="!state.history.length"
+                    class="o_lqa_google_analytics_empty"
+                >
+                    No hay consultas guardadas.
+                </div>
+                <div t-else="" class="o_lqa_google_analytics_history__table">
+                    <article
+                        t-foreach="state.history"
+                        t-as="item"
+                        t-key="item.id"
+                        t-att-class="'o_lqa_google_analytics_record ' + (record &amp;&amp; record.id === item.id ? 'is-selected' : '')"
+                    >
+                        <button
+                            type="button"
+                            class="o_lqa_google_analytics_record__main"
+                            t-on-click="() => this.selectRecord(item)"
+                        >
+                            <span
+                                t-att-class="'o_lqa_google_analytics_record__status is-' + item.status"
+                            >
+                                <i
+                                    t-att-class="item.status === 'completed'
+                                        ? 'fa fa-check'
+                                        : 'fa fa-times'"
+                                />
+                            </span>
+                            <span>
+                                <strong t-esc="item.sku"/>
+                                <small>
+                                    <t t-esc="formatDate(item.from)"/>
+                                    -
+                                    <t t-esc="formatDate(item.to)"/>
+                                </small>
+                            </span>
+                        </button>
+                        <div class="o_lqa_google_analytics_record__metrics">
+                            <span>
+                                <small>Clicks</small>
+                                <strong t-esc="formatNumber(item.clicks)"/>
+                            </span>
+                            <span>
+                                <small>Impresiones</small>
+                                <strong t-esc="formatNumber(item.impressions)"/>
+                            </span>
+                            <span>
+                                <small>CTR</small>
+                                <strong t-esc="formatPercent(item.clickThroughRate)"/>
+                            </span>
+                        </div>
+                        <div class="o_lqa_google_analytics_record__meta">
+                            <span t-esc="item.userName || 'Usuario'"/>
+                            <small t-esc="formatDateTime(item.queriedAt)"/>
+                            <button
+                                t-if="item.responseJson"
+                                type="button"
+                                t-att-title="state.expandedResponses[item.id]
+                                    ? 'Ocultar respuesta'
+                                    : 'Ver respuesta'"
+                                t-att-aria-label="state.expandedResponses[item.id]
+                                    ? 'Ocultar respuesta'
+                                    : 'Ver respuesta'"
+                                t-on-click="() => this.toggleResponse(item)"
+                            >
+                                <i
+                                    t-att-class="state.expandedResponses[item.id]
+                                        ? 'fa fa-chevron-up'
+                                        : 'fa fa-code'"
+                                />
+                            </button>
+                        </div>
+                        <pre
+                            t-if="state.expandedResponses[item.id] &amp;&amp; item.responseJson"
+                            t-esc="item.responseJson"
+                        />
+                    </article>
+                </div>
+            </section>
+        </div>
+    </t>
+</templates>
