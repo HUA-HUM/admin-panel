@@ -170,6 +170,10 @@
         width: 100%;
         min-height: 36px;
     }
+
+    .o_lqa_automeli_filters__wide {
+        grid-column: span 2;
+    }
 }
 
 .o_lqa_automeli_filters__advanced {
@@ -484,7 +488,7 @@
 
 .o_lqa_automeli_products {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
     gap: 14px;
 }
 
@@ -540,6 +544,32 @@
     place-items: center;
 }
 
+.o_lqa_automeli_product__media {
+    display: flex;
+    height: 188px;
+    align-items: center;
+    justify-content: center;
+    border-bottom: 1px solid #e1e7ef;
+    background: #f8fafc;
+
+    img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+
+    span {
+        padding: 8px 10px;
+        border: 1px dashed #cbd5e1;
+        border-radius: 8px;
+        background: #fff;
+        color: #94a3b8;
+        font-size: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+}
+
 .o_lqa_automeli_status {
     padding: 4px 8px;
     border: 1px solid #d7dee7;
@@ -574,11 +604,24 @@
     padding: 14px;
 
     h2 {
-        margin: 4px 0 10px;
+        display: -webkit-box;
+        min-height: 44px;
+        overflow: hidden;
+        margin: 4px 0 4px;
         font-size: 17px;
         font-weight: 700;
         letter-spacing: 0;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
     }
+}
+
+.o_lqa_automeli_product__mla {
+    margin: 0 0 10px;
+    color: #40566c;
+    font-size: 12px;
+    font-weight: 800;
+    overflow-wrap: anywhere;
 }
 
 .o_lqa_automeli_product__sku {
@@ -637,6 +680,52 @@
     }
 }
 
+.o_lqa_automeli_product__details {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid #e1e7ef;
+
+    h3 {
+        margin: 0 0 8px;
+        color: #334e68;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0;
+        text-transform: uppercase;
+    }
+
+    dl {
+        display: grid;
+        gap: 6px;
+        margin: 0;
+    }
+
+    dl > div {
+        display: grid;
+        grid-template-columns: minmax(90px, 0.72fr) minmax(0, 1fr);
+        gap: 10px;
+        align-items: start;
+    }
+
+    dt {
+        color: #60758a;
+        font-size: 10px;
+        font-weight: 800;
+        line-height: 1.25;
+        text-transform: uppercase;
+    }
+
+    dd {
+        margin: 0;
+        color: #263243;
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1.3;
+        overflow-wrap: anywhere;
+        text-align: right;
+    }
+}
+
 .o_lqa_automeli_product__metrics {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -683,6 +772,54 @@
     b {
         color: #40566c;
         text-align: right;
+    }
+}
+
+.o_lqa_automeli_product__links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+
+    a {
+        display: inline-flex;
+        min-height: 32px;
+        align-items: center;
+        gap: 6px;
+        padding: 0 10px;
+        border: 1px solid #d7dee7;
+        border-radius: 7px;
+        background: #fff;
+        color: #2254a1;
+        font-size: 12px;
+        font-weight: 800;
+    }
+}
+
+.o_lqa_automeli_product__raw {
+    margin-top: 12px;
+    border: 1px solid #e1e7ef;
+    border-radius: 8px;
+    background: #f8fafc;
+
+    summary {
+        padding: 10px 12px;
+        color: #40566c;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 800;
+    }
+
+    pre {
+        max-height: 240px;
+        overflow: auto;
+        margin: 0;
+        padding: 12px;
+        border-top: 1px solid #e1e7ef;
+        background: #172033;
+        color: #dbe4f0;
+        font-size: 11px;
+        white-space: pre-wrap;
     }
 }
 
