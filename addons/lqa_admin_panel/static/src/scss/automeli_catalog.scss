@@ -279,7 +279,11 @@
     }
 
     .o_lqa_automeli_save_box {
-        grid-template-columns: 1fr auto auto;
+        grid-template-columns: 1fr auto auto auto;
+    }
+
+    .o_lqa_automeli_save_filter_btn {
+        white-space: nowrap;
     }
 
     label {

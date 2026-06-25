@@ -466,6 +466,18 @@
                         </button>
                         <button
                             type="button"
+                            class="btn btn-primary o_lqa_automeli_save_filter_btn"
+                            t-att-disabled="!state.selectedFolderId || !state.pagination.total || state.savingFilteredSelection"
+                            t-on-click="saveFilteredSelectionToFolder"
+                        >
+                            <t t-if="state.savingFilteredSelection">Guardando filtro...</t>
+                            <t t-else="">
+                                Guardar todo el filtro
+                                (<t t-esc="formatNumber(state.pagination.total || 0)"/>)
+                            </t>
+                        </button>
+                        <button
+                            type="button"
                             class="btn btn-secondary"
                             t-att-disabled="!selectedCount"
                             t-on-click="clearSelection"

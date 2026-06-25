@@ -35,6 +35,7 @@ export class LqaMercadolibreCatalog extends Component {
             loading: true,
             foldersLoading: true,
             savingSelection: false,
+            savingFilteredSelection: false,
             products: [],
             pagination: {},
             sort: {},
@@ -158,6 +159,49 @@ export class LqaMercadolibreCatalog extends Component {
             );
         } finally {
             this.state.savingSelection = false;
+        }
+    }
+
+    async saveFilteredSelectionToFolder() {
+        if (!this.state.selectedFolderId) {
+            this.notification.add("Crea o elegi una carpeta.", { type: "warning" });
+            return;
+        }
+        const total = Number(this.state.pagination.total || 0);
+        if (!total) {
+            this.notification.add("El filtro actual no tiene productos.", {
+                type: "warning",
+            });
+            return;
+        }
+        if (
+            !window.confirm(
+                `Vas a guardar todos los productos del filtro actual (${this.formatNumber(total)}) en la carpeta seleccionada.`
+            )
+        ) {
+            return;
+        }
+        this.state.savingFilteredSelection = true;
+        try {
+            const result = await this.orm.call(
+                "lqa.mercadolibre.catalog.service",
+                "save_filtered_products_to_folder",
+                [Number(this.state.selectedFolderId), { ...this.state.filters }]
+            );
+            await this.loadFolders();
+            await this.loadFolderProducts();
+            this.clearSelection();
+            this.notification.add(
+                `Filtro guardado: ${result.added} nuevos, ${result.updated} actualizados de ${result.matched || result.total}.`,
+                { type: "success" }
+            );
+        } catch (error) {
+            this.notification.add(
+                error?.data?.message || "No se pudo guardar todo el filtro.",
+                { type: "danger" }
+            );
+        } finally {
+            this.state.savingFilteredSelection = false;
         }
     }
 

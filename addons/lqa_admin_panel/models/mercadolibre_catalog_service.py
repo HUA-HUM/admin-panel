@@ -71,6 +71,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
         "available_quantity",
         "permalink",
     )
+    MAX_FILTER_SELECTION_ROWS = 10000
 
     @api.model
     def get_products(self, filters=None):
@@ -134,6 +135,27 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
         if not isinstance(products, list) or not products:
             raise UserError(_("Selecciona al menos un producto."))
 
+        result = self._save_product_batch(folder, products)
+        return {
+            "folder": self._folder_to_dict(folder),
+            **result,
+        }
+
+    @api.model
+    def save_filtered_products_to_folder(self, folder_id, filters=None):
+        self._check_access()
+        folder = self._get_folder(folder_id)
+        products, total = self._fetch_filtered_products(filters or {})
+        if not products:
+            raise UserError(_("El filtro actual no devolvio productos para guardar."))
+        result = self._save_product_batch(folder, products)
+        return {
+            "folder": self._folder_to_dict(folder),
+            "matched": total,
+            **result,
+        }
+
+    def _save_product_batch(self, folder, products):
         line_model = self.env["lqa.mercadolibre.selection.item"]
         added = 0
         updated = 0
@@ -154,11 +176,66 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
                 added += 1
 
         return {
-            "folder": self._folder_to_dict(folder),
             "added": added,
             "updated": updated,
             "total": added + updated,
         }
+
+    def _fetch_filtered_products(self, filters):
+        filters = dict(filters or {})
+        filters["offset"] = 0
+        filters["limit"] = 100
+        endpoint = (
+            self.env["ir.config_parameter"]
+            .sudo()
+            .get_param(
+                "lqa_admin_panel.mercadolibre_catalog_url",
+                self.DEFAULT_ENDPOINT,
+            )
+        )
+        if not endpoint:
+            raise UserError(_("Configura la URL del catalogo MercadoLibre."))
+        products = []
+        seen = set()
+        total = 0
+        while True:
+            params = self._prepare_params(filters)
+            response = self.env["lqa.api.client"].request_absolute_json(
+                "GET",
+                endpoint,
+                params=params,
+            )
+            pagination = response.get("pagination") or {}
+            total = self._as_int(pagination.get("total"), total or 0)
+            if total > self.MAX_FILTER_SELECTION_ROWS:
+                raise UserError(
+                    _(
+                        "El filtro devuelve %s productos. Refiná el filtro o baja el total a %s para guardar en carpeta."
+                    )
+                    % (total, self.MAX_FILTER_SELECTION_ROWS)
+                )
+            page_products = [
+                self._normalize_product(product)
+                for product in (response.get("products") or [])
+            ]
+            for product in page_products:
+                key = self._product_key(product)
+                if key and key not in seen:
+                    seen.add(key)
+                    products.append(product)
+            if not page_products:
+                break
+            if len(products) >= total and total:
+                break
+            offset = self._as_int(params.get("offset"), 0) + self._as_int(
+                params.get("limit"), 100
+            )
+            if offset <= self._as_int(params.get("offset"), 0):
+                break
+            filters["offset"] = offset
+            if len(products) >= self.MAX_FILTER_SELECTION_ROWS:
+                break
+        return products, total or len(products)
 
     @api.model
     def get_selection_products(self, folder_id, limit=200, offset=0):
