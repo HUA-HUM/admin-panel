@@ -358,12 +358,22 @@ export class LqaAutomeliCatalog extends Component {
     }
 
     productImage(product) {
-        return this.firstValue(product, [
-            "imageChangedUrl",
-            "image_changed_url",
+        const primaryImage = this.firstProductImageUrl(product, [
             "image",
+            "image_url",
+            "imageUrl",
             "thumbnail",
             "picture",
+        ]);
+        if (primaryImage) {
+            return primaryImage;
+        }
+        return this.firstProductImageUrl(product, [
+            "imageChangedUrl",
+            "image_changed_url",
+            "image_changed",
+            "alternateImage",
+            "alternate_image",
         ]);
     }
 
@@ -459,6 +469,30 @@ export class LqaAutomeliCatalog extends Component {
             }
         }
         return "";
+    }
+
+    firstProductImageUrl(product, keys) {
+        const source = product || {};
+        for (const key of keys) {
+            const value = source[key];
+            if (this.isProductImageUrl(value)) {
+                return String(value).trim();
+            }
+        }
+        return "";
+    }
+
+    isProductImageUrl(value) {
+        const url = String(value || "").trim();
+        if (!/^https?:\/\//i.test(url)) {
+            return false;
+        }
+        const lowerUrl = url.toLowerCase();
+        return !(
+            lowerUrl.includes("/utils/check") ||
+            lowerUrl.endsWith("/check.png") ||
+            lowerUrl.endsWith("/check.svg")
+        );
     }
 
     booleanLabel(value) {
