@@ -92,6 +92,39 @@
                             <field name="lqa_retailers_timeout_seconds"/>
                             <field name="lqa_retailers_orders_timeout_seconds"/>
                         </setting>
+                        <setting
+                            string="Teams - ordenes Retailers"
+                            help="Notifica en Microsoft Teams las ordenes nuevas de Fravega, Megatone y OnCity."
+                        >
+                            <field name="lqa_retailers_teams_notifications_enabled"/>
+                            <field
+                                name="lqa_retailers_teams_webhook_url"
+                                password="True"
+                                placeholder="https://..."
+                            />
+                            <field name="lqa_retailers_teams_orders_mode"/>
+                            <field
+                                name="lqa_retailers_teams_order_statuses"
+                                placeholder="PAID,CANCELLED"
+                            />
+                            <field name="lqa_retailers_teams_max_orders_per_message"/>
+                            <field name="lqa_retailers_teams_timeout_seconds"/>
+                            <field name="lqa_retailers_teams_retention_days"/>
+                            <div class="mt16">
+                                <button
+                                    name="action_lqa_test_teams_notification"
+                                    type="object"
+                                    string="Probar Teams"
+                                    class="btn-secondary"
+                                />
+                                <button
+                                    name="action_lqa_send_teams_orders_now"
+                                    type="object"
+                                    string="Enviar ordenes ahora"
+                                    class="btn-primary ms-2"
+                                />
+                            </div>
+                        </setting>
                     </block>
                 </app>
             </xpath>

@@ -1,4 +1,4 @@
-from odoo import fields, models
+from odoo import _, fields, models
 
 
 class ResConfigSettings(models.TransientModel):
@@ -211,8 +211,86 @@ class ResConfigSettings(models.TransientModel):
         default=90,
         config_parameter="lqa_admin_panel.retailers_orders_timeout_seconds",
     )
+    lqa_retailers_teams_notifications_enabled = fields.Boolean(
+        string="Activar notificaciones Teams",
+        config_parameter="lqa_admin_panel.retailers_teams_notifications_enabled",
+    )
+    lqa_retailers_teams_webhook_url = fields.Char(
+        string="Webhook Microsoft Teams",
+        config_parameter="lqa_admin_panel.retailers_teams_webhook_url",
+    )
+    lqa_retailers_teams_orders_mode = fields.Selection(
+        selection=[
+            ("last24", "Ultimas 24h"),
+            ("recent24", "Recent 24h"),
+            ("recent48", "Recent 48h"),
+            ("recent72", "Recent 72h"),
+        ],
+        string="Periodo Teams",
+        default="last24",
+        config_parameter="lqa_admin_panel.retailers_teams_orders_mode",
+    )
+    lqa_retailers_teams_order_statuses = fields.Char(
+        string="Estados a notificar",
+        default="",
+        config_parameter="lqa_admin_panel.retailers_teams_order_statuses",
+    )
+    lqa_retailers_teams_max_orders_per_message = fields.Integer(
+        string="Max ordenes por mensaje",
+        default=20,
+        config_parameter="lqa_admin_panel.retailers_teams_max_orders_per_message",
+    )
+    lqa_retailers_teams_timeout_seconds = fields.Integer(
+        string="Timeout Teams",
+        default=20,
+        config_parameter="lqa_admin_panel.retailers_teams_timeout_seconds",
+    )
+    lqa_retailers_teams_retention_days = fields.Integer(
+        string="Retencion log Teams",
+        default=45,
+        config_parameter="lqa_admin_panel.retailers_teams_retention_days",
+    )
     lqa_api_timeout_seconds = fields.Integer(
         string="Timeout API",
         default=20,
         config_parameter="lqa_admin_panel.api_timeout_seconds",
     )
+
+    def action_lqa_test_teams_notification(self):
+        self.ensure_one()
+        self.env["lqa.retailers.teams.notification"].sudo().send_test_notification()
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": _("Microsoft Teams"),
+                "message": _("Mensaje de prueba enviado a Teams."),
+                "type": "success",
+                "sticky": False,
+            },
+        }
+
+    def action_lqa_send_teams_orders_now(self):
+        self.ensure_one()
+        result = (
+            self.env["lqa.retailers.teams.notification"]
+            .sudo()
+            ._cron_notify_new_orders()
+        )
+        count = result.get("count", 0) if isinstance(result, dict) else 0
+        sent = bool(result.get("sent")) if isinstance(result, dict) else False
+        message = (
+            _("Se enviaron %s ordenes nuevas a Teams.") % count
+            if sent
+            else _("No habia ordenes nuevas para notificar.")
+        )
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": _("Microsoft Teams"),
+                "message": message,
+                "type": "success" if sent else "info",
+                "sticky": False,
+            },
+        }

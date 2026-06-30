@@ -16,4 +16,5 @@ from . import retailers_publication_run
 from . import retailers_publisher_service
 from . import retailers_pricing
 from . import retailers_service
+from . import retailers_teams_notification
 from . import user_management_service

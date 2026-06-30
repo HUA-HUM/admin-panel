@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="ir_cron_lqa_retailers_teams_order_notifications" model="ir.cron">
+        <field name="name">LQA Retailers Teams Order Notifications</field>
+        <field name="model_id" ref="model_lqa_retailers_teams_notification"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_notify_new_orders()</field>
+        <field name="interval_number">5</field>
+        <field name="interval_type">minutes</field>
+        <field name="active">True</field>
+    </record>
+</odoo>
