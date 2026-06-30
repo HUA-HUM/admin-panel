@@ -197,6 +197,11 @@ class ResConfigSettings(models.TransientModel):
         default="https://order.api.loquieroaca.com/orders",
         config_parameter="lqa_admin_panel.retailers_orders_proxy_url",
     )
+    lqa_retailers_marketplace_api_url = fields.Char(
+        string="URL Marketplace Retailers",
+        default="https://api.marketplace.loquieroaca.com",
+        config_parameter="lqa_admin_panel.retailers_marketplace_api_url",
+    )
     lqa_retailers_orders_api_token = fields.Char(
         string="Token Orders Retailers",
         config_parameter="lqa_admin_panel.retailers_orders_api_token",
