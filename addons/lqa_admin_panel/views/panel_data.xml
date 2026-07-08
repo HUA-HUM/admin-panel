@@ -99,6 +99,18 @@
         <field name="active">True</field>
     </record>
 
+    <record id="panel_section_administracion_clients" model="lqa.panel.section">
+        <field name="module_id" ref="panel_module_administracion"/>
+        <field name="name">Clientes</field>
+        <field name="code">clients</field>
+        <field name="description">Clientes con issues fiscales, alta por TLQV y consumidor final con DNI.</field>
+        <field name="badge">Nuevo</field>
+        <field name="status">available</field>
+        <field name="sequence">10</field>
+        <field name="action_xmlid">lqa_admin_panel.action_lqa_administracion_clients</field>
+        <field name="active">True</field>
+    </record>
+
     <record id="panel_section_administracion_arca_billing" model="lqa.panel.section">
         <field name="module_id" ref="panel_module_administracion"/>
         <field name="name">Facturacion ARCA</field>
@@ -106,7 +118,7 @@
         <field name="description">Gestion de comprobantes fiscales ARCA para ordenes de venta.</field>
         <field name="badge">Inicial</field>
         <field name="status">available</field>
-        <field name="sequence">10</field>
+        <field name="sequence">20</field>
         <field name="action_xmlid">lqa_admin_panel.action_lqa_administracion_arca_billing</field>
         <field name="active">True</field>
     </record>
@@ -318,6 +330,34 @@
                 'status': 'available',
                 'sequence': 40,
                 'action_xmlid': 'lqa_admin_panel.action_lqa_retailers_pricing',
+                'active': True,
+            }"
+        />
+    </function>
+
+    <function model="lqa.panel.section" name="write">
+        <value eval="[ref('panel_section_administracion_clients')]"/>
+        <value
+            eval="{
+                'description': 'Clientes con issues fiscales, alta por TLQV y consumidor final con DNI.',
+                'badge': 'Nuevo',
+                'status': 'available',
+                'sequence': 10,
+                'action_xmlid': 'lqa_admin_panel.action_lqa_administracion_clients',
+                'active': True,
+            }"
+        />
+    </function>
+
+    <function model="lqa.panel.section" name="write">
+        <value eval="[ref('panel_section_administracion_arca_billing')]"/>
+        <value
+            eval="{
+                'description': 'Gestion de comprobantes fiscales ARCA para ordenes de venta.',
+                'badge': 'Inicial',
+                'status': 'available',
+                'sequence': 20,
+                'action_xmlid': 'lqa_admin_panel.action_lqa_administracion_arca_billing',
                 'active': True,
             }"
         />

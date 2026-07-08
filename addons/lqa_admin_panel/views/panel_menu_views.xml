@@ -35,6 +35,12 @@
         <field name="params" eval="{'view': 'dashboard'}"/>
     </record>
 
+    <record id="action_lqa_administracion_clients" model="ir.actions.client">
+        <field name="name">Clientes</field>
+        <field name="tag">lqa_admin_panel.accounting</field>
+        <field name="params" eval="{'view': 'clients'}"/>
+    </record>
+
     <record id="action_lqa_administracion_arca_billing" model="ir.actions.client">
         <field name="name">Facturacion ARCA</field>
         <field name="tag">lqa_admin_panel.accounting</field>
@@ -462,6 +468,15 @@
         name="Contable"
         parent="menu_lqa_administracion"
         action="action_lqa_administracion_arca_billing"
+        sequence="30"
+        groups="lqa_admin_panel.group_lqa_commercial_user"
+    />
+
+    <menuitem
+        id="menu_lqa_administracion_clients"
+        name="Clientes"
+        parent="menu_lqa_administracion"
+        action="action_lqa_administracion_clients"
         sequence="20"
         groups="lqa_admin_panel.group_lqa_commercial_user"
     />

@@ -9,7 +9,7 @@
                     <span t-esc="pageSubtitle"/>
                 </div>
                 <button
-                    t-if="isArcaBilling"
+                    t-if="isWorkspace"
                     type="button"
                     class="o_lqa_accounting__ghost"
                     t-on-click="openDashboard"
@@ -26,18 +26,29 @@
                     <span>Administracion</span>
                 </article>
                 <article>
-                    <small>ARCA</small>
+                    <small>Clientes</small>
                     <strong>Clientes</strong>
-                    <span>Alta fiscal por TLQV</span>
+                    <span>Issues CUIT y consumidor final</span>
                 </article>
                 <article>
-                    <small>Xubio</small>
-                    <strong>Comprobantes</strong>
+                    <small>ARCA / Xubio</small>
+                    <strong>Facturacion</strong>
                     <span>Consulta y auditoria</span>
                 </article>
             </section>
 
             <section t-if="isDashboard" class="o_lqa_accounting__modules">
+                <button type="button" t-on-click="openClients">
+                    <span class="o_lqa_accounting__icon">
+                        <i class="fa fa-users"/>
+                    </span>
+                    <div>
+                        <small>Modulo de clientes</small>
+                        <strong>Clientes</strong>
+                        <p>Clientes con error de CUIT, alta por TLQV y consumidor final con DNI.</p>
+                    </div>
+                    <i class="fa fa-arrow-right"/>
+                </button>
                 <button type="button" t-on-click="openArcaBilling">
                     <span class="o_lqa_accounting__icon">
                         <i class="fa fa-file-text-o"/>
@@ -45,18 +56,19 @@
                     <div>
                         <small>Modulo contable</small>
                         <strong>Facturacion ARCA</strong>
-                        <p>Alta de clientes desde TLQV, issues fiscales y comprobantes Xubio.</p>
+                        <p>Consulta y auditoria de comprobantes sincronizados con Xubio.</p>
                     </div>
                     <i class="fa fa-arrow-right"/>
                 </button>
             </section>
 
-            <t t-if="isArcaBilling">
+            <t t-if="isWorkspace">
                 <section class="o_lqa_accounting__summary">
                     <article>
                         <small>Ultimo lote</small>
                         <strong t-esc="state.clients.selectedJob ? formatNumber(state.clients.selectedJob.inputCount) : '0'"/>
-                        <span t-esc="selectedJobSummary"/>
+                        <span t-if="isClients" t-esc="selectedJobSummary"/>
+                        <span t-if="isArcaBilling">Altas de clientes</span>
                     </article>
                     <article>
                         <small>Issues fiscales</small>
@@ -89,7 +101,7 @@
                     </button>
                 </nav>
 
-                <t t-if="state.activeTab === 'clients'">
+                <t t-if="isClients">
                     <section class="o_lqa_accounting__grid">
                         <article class="o_lqa_accounting__panel">
                             <div class="o_lqa_accounting__panel_head">
@@ -177,9 +189,28 @@
                         <div class="o_lqa_accounting__panel_head">
                             <div>
                                 <h2>Consumidor final con DNI</h2>
-                                <p>Busca clientes con error fiscal y crea el cliente en Xubio usando DNI.</p>
+                                <p>Crea consumidor final por TLQV o busca clientes que fallaron por CUIT.</p>
                             </div>
                             <span>Issues Madre</span>
+                        </div>
+                        <div class="o_lqa_accounting__inline_form">
+                            <label>
+                                Crear consumidor final por TLQV
+                                <input
+                                    type="text"
+                                    placeholder="TLQV-7734"
+                                    t-model="state.issueClients.manualTlqv"
+                                />
+                            </label>
+                            <button
+                                type="button"
+                                class="o_lqa_accounting__primary"
+                                t-att-disabled="state.issueClients.manualRunning ? true : undefined"
+                                t-on-click="createConsumerFinalManual"
+                            >
+                                <i t-att-class="state.issueClients.manualRunning ? 'fa fa-spinner fa-spin' : 'fa fa-user-plus'"/>
+                                Crear consumidor final
+                            </button>
                         </div>
                         <div class="o_lqa_accounting__filters">
                             <label>
@@ -359,7 +390,7 @@
                     </section>
                 </t>
 
-                <t t-if="state.activeTab === 'comprobantes'">
+                <t t-if="isArcaBilling">
                     <section class="o_lqa_accounting__panel">
                         <div class="o_lqa_accounting__panel_head">
                             <div>

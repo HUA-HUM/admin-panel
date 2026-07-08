@@ -148,6 +148,8 @@
                                                             ? 'fa fa-cloud-upload'
                                                         : child.name === 'Contable'
                                                             ? 'fa fa-calculator'
+                                                        : child.name === 'Clientes'
+                                                            ? 'fa fa-users'
                                                         : child.name === 'MercadoLibre'
                                                             ? 'fa fa-shopping-bag'
                                                         : child.name === 'Automeli'
@@ -333,6 +335,8 @@
                                                                                     ? 'fa fa-bolt'
                                                                                     : child.name === 'Facturacion ARCA'
                                                                                         ? 'fa fa-file-text-o'
+                                                                                    : child.name === 'Clientes'
+                                                                                        ? 'fa fa-users'
                                                                                     : 'fa fa-circle-o'"
                                         />
                                         <span t-esc="child.name"/>

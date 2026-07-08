@@ -157,9 +157,9 @@ class LqaDashboardService(models.AbstractModel):
             ]
         if code == "administracion":
             return [
-                {"label": "Area", "value": "Contable"},
-                {"label": "ARCA", "value": "Inicial"},
-                {"label": "Ordenes", "value": "A conectar"},
+                {"label": "Clientes", "value": "Issues CUIT"},
+                {"label": "Altas", "value": "TLQV / DNI"},
+                {"label": "Comprobantes", "value": "Xubio"},
             ]
         return []
 

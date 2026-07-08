@@ -41,7 +41,7 @@ export class LqaAccounting extends Component {
         this.orm = useService("orm");
         this.state = useState({
             view: params.view || "dashboard",
-            activeTab: "clients",
+            activeTab: params.view === "arca_billing" ? "comprobantes" : "clients",
             clients: {
                 fileName: "",
                 fileContent: "",
@@ -54,6 +54,8 @@ export class LqaAccounting extends Component {
             issueClients: {
                 loading: false,
                 creating: {},
+                manualTlqv: "",
+                manualRunning: false,
                 filters: {
                     tlqvCode: "",
                     buyerName: "",
@@ -82,7 +84,7 @@ export class LqaAccounting extends Component {
         });
 
         onWillStart(async () => {
-            if (this.isArcaBilling) {
+            if (this.isWorkspace) {
                 await this.loadArcaData();
             }
         });
@@ -96,11 +98,25 @@ export class LqaAccounting extends Component {
         return this.state.view === "arca_billing";
     }
 
+    get isClients() {
+        return this.state.view === "clients";
+    }
+
+    get isWorkspace() {
+        return this.isArcaBilling || this.isClients;
+    }
+
     get pageTitle() {
+        if (this.isClients) {
+            return "Clientes";
+        }
         return this.isArcaBilling ? "Facturacion ARCA" : "Administracion";
     }
 
     get pageSubtitle() {
+        if (this.isClients) {
+            return "Clientes fiscales, issues de CUIT y altas como consumidor final.";
+        }
         return this.isArcaBilling
             ? "Clientes fiscales y comprobantes de ventas."
             : "Area administrativa, contable y fiscal.";
@@ -128,19 +144,30 @@ export class LqaAccounting extends Component {
 
     async openArcaBilling() {
         this.state.view = "arca_billing";
+        this.state.activeTab = "comprobantes";
+        await this.loadArcaData();
+    }
+
+    async openClients() {
+        this.state.view = "clients";
+        this.state.activeTab = "clients";
         await this.loadArcaData();
     }
 
     async loadArcaData() {
-        await Promise.all([
-            this.loadClientJobs(),
-            this.searchClientIssues(),
-            this.searchComprobantes(),
-        ]);
+        if (this.isClients) {
+            await Promise.all([this.loadClientJobs(), this.searchClientIssues()]);
+            return;
+        }
+        if (this.isArcaBilling) {
+            await this.searchComprobantes();
+        }
     }
 
     setTab(tab) {
         this.state.activeTab = tab;
+        this.state.view = tab === "comprobantes" ? "arca_billing" : "clients";
+        this.loadArcaData();
     }
 
     async onClientFileChange(event) {
@@ -267,16 +294,39 @@ export class LqaAccounting extends Component {
 
     async createConsumerFinal(issue) {
         const tlqvCode = issue?.tlqvCode;
+        await this.createConsumerFinalFromTlqv(tlqvCode);
+    }
+
+    async createConsumerFinalManual() {
+        const tlqvCode = this.state.issueClients.manualTlqv;
         if (!tlqvCode) {
-            this.notification.add("El registro no tiene TLQV.", { type: "warning" });
+            this.notification.add("Ingresa un TLQV para crear consumidor final.", {
+                type: "warning",
+            });
             return;
+        }
+        this.state.issueClients.manualRunning = true;
+        try {
+            const created = await this.createConsumerFinalFromTlqv(tlqvCode);
+            if (created) {
+                this.state.issueClients.manualTlqv = "";
+            }
+        } finally {
+            this.state.issueClients.manualRunning = false;
+        }
+    }
+
+    async createConsumerFinalFromTlqv(tlqvCode) {
+        if (!tlqvCode) {
+            this.notification.add("Indica un TLQV valido.", { type: "warning" });
+            return false;
         }
         if (
             !window.confirm(
                 `Crear consumidor final en Xubio para ${tlqvCode}?`
             )
         ) {
-            return;
+            return false;
         }
         this.state.issueClients.creating[tlqvCode] = true;
         try {
@@ -293,8 +343,10 @@ export class LqaAccounting extends Component {
             this.notification.add("Consumidor final creado/procesado.", {
                 type: "success",
             });
+            return true;
         } catch (error) {
             this.notifyError(error, "No se pudo crear el consumidor final.");
+            return false;
         } finally {
             this.state.issueClients.creating[tlqvCode] = false;
         }
