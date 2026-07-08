@@ -85,6 +85,27 @@
     }
 }
 
+.o_lqa_accounting__small_primary {
+    display: inline-flex;
+    min-height: 32px;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 0 10px;
+    border: 1px solid #ff4f5a;
+    border-radius: 8px;
+    background: #ff4f5a;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
+    white-space: nowrap;
+
+    &:disabled {
+        border-color: #f7a3aa;
+        background: #f7a3aa;
+    }
+}
+
 .o_lqa_accounting__summary {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -259,6 +280,15 @@
         font-weight: 800;
         text-transform: uppercase;
         white-space: nowrap;
+    }
+
+    &.is-subtle {
+        border-top: 1px solid #e1e7ef;
+        background: #fbfcfe;
+
+        h2 {
+            font-size: 16px;
+        }
     }
 }
 

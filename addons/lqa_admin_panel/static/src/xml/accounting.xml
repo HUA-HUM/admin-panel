@@ -60,8 +60,8 @@
                     </article>
                     <article>
                         <small>Issues fiscales</small>
-                        <strong t-esc="state.clients.selectedJob ? formatNumber(state.clients.selectedJob.issueCount) : '0'"/>
-                        <span>CUIT/documentacion a revisar</span>
+                        <strong t-esc="formatNumber(state.issueClients.result.pagination.total)"/>
+                        <span>Clientes a revisar o convertir</span>
                     </article>
                     <article>
                         <small>Comprobantes</small>
@@ -77,7 +77,7 @@
                         t-on-click="() => this.setTab('clients')"
                     >
                         <i class="fa fa-users"/>
-                        Clientes TLQV
+                        Clientes
                     </button>
                     <button
                         type="button"
@@ -94,7 +94,7 @@
                         <article class="o_lqa_accounting__panel">
                             <div class="o_lqa_accounting__panel_head">
                                 <div>
-                                    <h2>Crear clientes desde TLQV</h2>
+                                    <h2>Crear cliente desde TLQV</h2>
                                     <p>Carga un CSV con codigos TLQV o pega una lista manual.</p>
                                 </div>
                                 <span>Invoice API</span>
@@ -171,6 +171,135 @@
                                 </div>
                             </div>
                         </article>
+                    </section>
+
+                    <section class="o_lqa_accounting__panel">
+                        <div class="o_lqa_accounting__panel_head">
+                            <div>
+                                <h2>Consumidor final con DNI</h2>
+                                <p>Busca clientes con error fiscal y crea el cliente en Xubio usando DNI.</p>
+                            </div>
+                            <span>Issues Madre</span>
+                        </div>
+                        <div class="o_lqa_accounting__filters">
+                            <label>
+                                TLQV
+                                <input type="text" placeholder="TLQV-14921" t-model="state.issueClients.filters.tlqvCode"/>
+                            </label>
+                            <label>
+                                Nombre comprador
+                                <input type="text" placeholder="ARTURO GUTIERREZ" t-model="state.issueClients.filters.buyerName"/>
+                            </label>
+                            <label>
+                                Email
+                                <input type="text" placeholder="mail@test.com" t-model="state.issueClients.filters.email"/>
+                            </label>
+                            <label>
+                                Documento digitos
+                                <input type="text" placeholder="20111111114" t-model="state.issueClients.filters.documentoNroDigits"/>
+                            </label>
+                            <label>
+                                Limite
+                                <select t-model="state.issueClients.filters.limit">
+                                    <option value="25">25</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                    <option value="200">200</option>
+                                </select>
+                            </label>
+                        </div>
+                        <div class="o_lqa_accounting__actions">
+                            <button type="button" class="o_lqa_accounting__ghost" t-on-click="clearClientIssueFilters">
+                                Limpiar
+                            </button>
+                            <button
+                                type="button"
+                                class="o_lqa_accounting__primary"
+                                t-att-disabled="state.issueClients.loading ? true : undefined"
+                                t-on-click="() => this.searchClientIssues()"
+                            >
+                                <i t-att-class="state.issueClients.loading ? 'fa fa-spinner fa-spin' : 'fa fa-search'"/>
+                                Buscar issues
+                            </button>
+                        </div>
+                        <div class="o_lqa_accounting__panel_head is-subtle">
+                            <div>
+                                <h2>Clientes con issue</h2>
+                                <p>
+                                    <t t-esc="formatNumber(state.issueClients.result.pagination.count)"/>
+                                    visibles de
+                                    <t t-esc="formatNumber(state.issueClients.result.pagination.total)"/>
+                                </p>
+                            </div>
+                            <div class="o_lqa_accounting__pagination">
+                                <button
+                                    type="button"
+                                    t-att-disabled="!state.issueClients.result.pagination.has_previous ? true : undefined"
+                                    t-on-click="previousClientIssuesPage"
+                                >
+                                    Anterior
+                                </button>
+                                <span>Pagina <t t-esc="state.issueClients.result.pagination.page"/></span>
+                                <button
+                                    type="button"
+                                    t-att-disabled="!state.issueClients.result.pagination.has_next ? true : undefined"
+                                    t-on-click="nextClientIssuesPage"
+                                >
+                                    Siguiente
+                                </button>
+                            </div>
+                        </div>
+                        <div t-if="state.issueClients.result.items.length" class="o_lqa_accounting__table_wrap">
+                            <table class="o_lqa_accounting__table">
+                                <thead>
+                                    <tr>
+                                        <th>TLQV</th>
+                                        <th>Comprador</th>
+                                        <th>Documento</th>
+                                        <th>Estado</th>
+                                        <th>Motivo</th>
+                                        <th>Mensaje</th>
+                                        <th>Ultima vez</th>
+                                        <th>Accion</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="state.issueClients.result.items" t-as="issue" t-key="issue.issueKey || issue.id || issue.tlqvCode">
+                                        <td><strong t-esc="issue.tlqvCode || '-'"/></td>
+                                        <td>
+                                            <strong t-esc="issue.buyerName || '-'"/>
+                                            <small t-esc="issue.email || ''"/>
+                                        </td>
+                                        <td>
+                                            <strong t-esc="issue.documentoNroDigits || issue.documentoNro || '-'"/>
+                                            <small t-esc="issue.documentoTipo || ''"/>
+                                        </td>
+                                        <td>
+                                            <span t-att-class="'o_lqa_accounting__pill ' + (issue.status === 'open' ? 'is-amber' : 'is-blue')" t-esc="issue.status || '-'"/>
+                                        </td>
+                                        <td t-esc="issue.reason || '-'"/>
+                                        <td class="o_lqa_accounting__message" t-esc="issue.message || '-'"/>
+                                        <td t-esc="formatDate(issue.lastSeenAt || issue.updatedAt)"/>
+                                        <td>
+                                            <button
+                                                type="button"
+                                                class="o_lqa_accounting__small_primary"
+                                                t-att-disabled="state.issueClients.creating[issue.tlqvCode] ? true : undefined"
+                                                t-on-click="() => this.createConsumerFinal(issue)"
+                                            >
+                                                <i t-att-class="state.issueClients.creating[issue.tlqvCode] ? 'fa fa-spinner fa-spin' : 'fa fa-user-plus'"/>
+                                                Crear CF
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div t-else="" class="o_lqa_accounting__empty is-compact">
+                            <i class="fa fa-id-card-o"/>
+                            <strong>Sin clientes con issue</strong>
+                            <span>Busca por TLQV, nombre, email o documento para crear consumidor final.</span>
+                        </div>
                     </section>
 
                     <section class="o_lqa_accounting__panel">

@@ -18,6 +18,20 @@ const emptyXubio = () => ({
     },
 });
 
+const emptyClientIssues = () => ({
+    items: [],
+    pagination: {
+        total: 0,
+        count: 0,
+        limit: 100,
+        offset: 0,
+        page: 1,
+        has_previous: false,
+        has_next: false,
+        next_offset: 100,
+    },
+});
+
 export class LqaAccounting extends Component {
     static template = "lqa_admin_panel.Accounting";
 
@@ -36,6 +50,19 @@ export class LqaAccounting extends Component {
                 loadingJobs: false,
                 jobs: [],
                 selectedJob: null,
+            },
+            issueClients: {
+                loading: false,
+                creating: {},
+                filters: {
+                    tlqvCode: "",
+                    buyerName: "",
+                    email: "",
+                    documentoNroDigits: "",
+                    limit: 100,
+                    offset: 0,
+                },
+                result: emptyClientIssues(),
             },
             xubio: {
                 loading: false,
@@ -88,7 +115,11 @@ export class LqaAccounting extends Component {
         if (!job) {
             return "Sin lote seleccionado";
         }
-        return `${this.formatNumber(job.inputCount)} TLQV procesados`;
+        const operation =
+            job.operationType === "consumer_final"
+                ? "consumidor final"
+                : "clientes TLQV";
+        return `${this.formatNumber(job.inputCount)} ${operation} procesados`;
     }
 
     async openDashboard() {
@@ -101,7 +132,11 @@ export class LqaAccounting extends Component {
     }
 
     async loadArcaData() {
-        await Promise.all([this.loadClientJobs(), this.searchComprobantes()]);
+        await Promise.all([
+            this.loadClientJobs(),
+            this.searchClientIssues(),
+            this.searchComprobantes(),
+        ]);
     }
 
     setTab(tab) {
@@ -180,6 +215,89 @@ export class LqaAccounting extends Component {
 
     selectJob(job) {
         this.state.clients.selectedJob = job;
+    }
+
+    async searchClientIssues(offset = 0) {
+        this.state.issueClients.loading = true;
+        this.state.issueClients.filters.offset = offset;
+        try {
+            this.state.issueClients.result = await this.orm.call(
+                "lqa.accounting.service",
+                "get_client_issue_clients",
+                [this.state.issueClients.filters]
+            );
+        } catch (error) {
+            this.state.issueClients.result = emptyClientIssues();
+            this.notifyError(error, "No se pudieron cargar clientes con issue.");
+        } finally {
+            this.state.issueClients.loading = false;
+        }
+    }
+
+    clearClientIssueFilters() {
+        Object.assign(this.state.issueClients.filters, {
+            tlqvCode: "",
+            buyerName: "",
+            email: "",
+            documentoNroDigits: "",
+            offset: 0,
+        });
+        this.searchClientIssues();
+    }
+
+    previousClientIssuesPage() {
+        const pagination = this.state.issueClients.result.pagination;
+        if (!pagination.has_previous) {
+            return;
+        }
+        const offset = Math.max(
+            Number(pagination.offset || 0) - Number(pagination.limit || 100),
+            0
+        );
+        this.searchClientIssues(offset);
+    }
+
+    nextClientIssuesPage() {
+        const pagination = this.state.issueClients.result.pagination;
+        if (!pagination.has_next) {
+            return;
+        }
+        this.searchClientIssues(Number(pagination.next_offset || 0));
+    }
+
+    async createConsumerFinal(issue) {
+        const tlqvCode = issue?.tlqvCode;
+        if (!tlqvCode) {
+            this.notification.add("El registro no tiene TLQV.", { type: "warning" });
+            return;
+        }
+        if (
+            !window.confirm(
+                `Crear consumidor final en Xubio para ${tlqvCode}?`
+            )
+        ) {
+            return;
+        }
+        this.state.issueClients.creating[tlqvCode] = true;
+        try {
+            const job = await this.orm.call(
+                "lqa.accounting.service",
+                "create_consumidor_final_from_issue",
+                [tlqvCode]
+            );
+            this.state.clients.selectedJob = job;
+            await Promise.all([
+                this.loadClientJobs(job.id),
+                this.searchClientIssues(this.state.issueClients.result.pagination.offset),
+            ]);
+            this.notification.add("Consumidor final creado/procesado.", {
+                type: "success",
+            });
+        } catch (error) {
+            this.notifyError(error, "No se pudo crear el consumidor final.");
+        } finally {
+            this.state.issueClients.creating[tlqvCode] = false;
+        }
     }
 
     async searchComprobantes(offset = 0) {

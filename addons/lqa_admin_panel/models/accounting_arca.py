@@ -36,6 +36,16 @@ class LqaAccountingTlqvClientJob(models.Model):
         index=True,
     )
     source_filename = fields.Char(readonly=True)
+    operation_type = fields.Selection(
+        selection=[
+            ("tlqv_client", "Cliente desde TLQV"),
+            ("consumer_final", "Consumidor final"),
+        ],
+        default="tlqv_client",
+        required=True,
+        readonly=True,
+        index=True,
+    )
     input_count = fields.Integer(readonly=True)
     success_count = fields.Integer(readonly=True)
     failed_count = fields.Integer(readonly=True)
@@ -125,6 +135,7 @@ class LqaAccountingService(models.AbstractModel):
             {
                 "name": self._job_name(filename, len(tlqv_codes)),
                 "user_id": self.env.user.id,
+                "operation_type": "tlqv_client",
                 "source_filename": self._clean(filename),
                 "input_count": len(tlqv_codes),
                 "started_at": fields.Datetime.now(),
@@ -163,6 +174,77 @@ class LqaAccountingService(models.AbstractModel):
             limit=limit,
         )
         return [self._job_to_dict(job, include_lines=True) for job in jobs]
+
+    @api.model
+    def get_client_issue_clients(self, filters=None):
+        self._check_access()
+        filters = filters or {}
+        limit = min(max(self._as_int(filters.get("limit"), 100), 1), 200)
+        offset = max(self._as_int(filters.get("offset"), 0), 0)
+        params = {"limit": limit, "offset": offset}
+        for key in ("tlqvCode", "buyerName", "email", "documentoNroDigits"):
+            value = self._clean(filters.get(key))
+            if value:
+                params[key] = value
+
+        response = self._request_json(
+            "GET",
+            self._join_url(
+                self._madre_base_url(),
+                "/api/internal/invoice/client-issues/clients",
+            ),
+            params=params,
+            headers=self._madre_headers(),
+            timeout=self._timeout(),
+        )
+        payload = response["payload"] if isinstance(response["payload"], dict) else {}
+        items = self._response_items(payload)
+        total = self._as_int(
+            payload.get("total")
+            or payload.get("count")
+            or payload.get("totalCount"),
+            len(items),
+        )
+        return {
+            "items": [self._normalize_client_issue(item) for item in items],
+            "pagination": {
+                "total": total,
+                "count": len(items),
+                "limit": limit,
+                "offset": offset,
+                "page": (offset // limit) + 1,
+                "has_previous": offset > 0,
+                "has_next": offset + limit < total,
+                "next_offset": offset + limit,
+            },
+            "raw": payload,
+        }
+
+    @api.model
+    def create_consumidor_final_from_issue(self, tlqv_code):
+        self._check_access()
+        tlqv_code = self._normalize_tlqv(tlqv_code)
+        if not tlqv_code:
+            raise UserError(_("Indica un codigo TLQV valido."))
+
+        job = self.env["lqa.accounting.tlqv.client.job"].sudo().create(
+            {
+                "name": _("Consumidor final - %s") % tlqv_code,
+                "user_id": self.env.user.id,
+                "operation_type": "consumer_final",
+                "input_count": 1,
+                "started_at": fields.Datetime.now(),
+            }
+        )
+        result = self._create_client_from_tlqv(
+            tlqv_code,
+            "/internal/tlqv-invoice/clientes/create-consumidor-final-from-issue",
+        )
+        result["sequence"] = 1
+        result["job_id"] = job.id
+        self.env["lqa.accounting.tlqv.client.line"].sudo().create(result)
+        self._finalize_job(job)
+        return self._job_to_dict(job, include_lines=True)
 
     @api.model
     def get_xubio_comprobantes(self, filters=None):
@@ -217,12 +299,13 @@ class LqaAccountingService(models.AbstractModel):
             "raw": payload,
         }
 
-    def _create_client_from_tlqv(self, tlqv_code):
+    def _create_client_from_tlqv(self, tlqv_code, endpoint_path=None):
         invoice_response = self._request_json(
             "POST",
             self._join_url(
                 self._invoice_base_url(),
-                "/internal/tlqv-invoice/clientes/create-from-tlqv",
+                endpoint_path
+                or "/internal/tlqv-invoice/clientes/create-from-tlqv",
             ),
             payload={"tlqvCode": tlqv_code},
             headers=self._invoice_headers(),
@@ -250,6 +333,31 @@ class LqaAccountingService(models.AbstractModel):
             "response_payload": self._json_dumps(payload),
             "issues_payload": self._json_dumps(issues_payload),
             "processed_at": fields.Datetime.now(),
+        }
+
+    def _normalize_client_issue(self, item):
+        item = item if isinstance(item, dict) else {}
+        messages = item.get("messages") if isinstance(item.get("messages"), list) else []
+        return {
+            "id": item.get("id"),
+            "issueKey": self._clean(item.get("issueKey")),
+            "tlqvCode": self._clean(item.get("tlqvCode")),
+            "reason": self._clean(item.get("reason")),
+            "source": self._clean(item.get("source")),
+            "status": self._clean(item.get("status")),
+            "severity": self._clean(item.get("severity")),
+            "saleNumber": self._clean(item.get("saleNumber")),
+            "buyerName": self._clean(item.get("buyerName")),
+            "email": self._clean(item.get("email")),
+            "documentoTipo": self._clean(item.get("documentoTipo")),
+            "documentoNro": self._clean(item.get("documentoNro")),
+            "documentoNroDigits": self._clean(item.get("documentoNroDigits")),
+            "message": self._clean(item.get("message") or ", ".join(messages)),
+            "occurrenceCount": self._as_int(item.get("occurrenceCount"), 0),
+            "firstSeenAt": self._clean(item.get("firstSeenAt")),
+            "lastSeenAt": self._clean(item.get("lastSeenAt")),
+            "createdAt": self._clean(item.get("createdAt")),
+            "updatedAt": self._clean(item.get("updatedAt")),
         }
 
     def _fetch_client_issues(self, tlqv_code):
@@ -456,6 +564,7 @@ class LqaAccountingService(models.AbstractModel):
             "name": job.name,
             "state": job.state,
             "user": job.user_id.name,
+            "operationType": job.operation_type,
             "sourceFilename": job.source_filename or "",
             "inputCount": job.input_count,
             "successCount": job.success_count,
