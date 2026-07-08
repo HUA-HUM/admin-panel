@@ -102,6 +102,12 @@ class LqaDashboardService(models.AbstractModel):
                 {"label": "Orders", "value": "24/48/72h"},
                 {"label": "Imports", "value": "Manual"},
             ]
+        if code == "administracion":
+            return [
+                {"label": "Area", "value": "Contable"},
+                {"label": "ARCA", "value": "Inicial"},
+                {"label": "Ordenes", "value": "A conectar"},
+            ]
         return []
 
     def _action_id_from_xmlid(self, xmlid):
@@ -217,7 +223,7 @@ class LqaDashboardService(models.AbstractModel):
         if not self.env.user.has_group(
             "lqa_admin_panel.group_lqa_commercial_user"
         ):
-            raise AccessError(_("No tenes permisos para acceder al panel comercial."))
+            raise AccessError(_("No tenes permisos para acceder al panel interno."))
 
     @staticmethod
     def _as_int(value):

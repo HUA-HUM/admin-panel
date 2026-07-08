@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="lqa_admin_panel.Accounting">
+        <div class="o_lqa_accounting">
+            <header class="o_lqa_accounting__header">
+                <div>
+                    <p>Administracion</p>
+                    <h1 t-esc="pageTitle"/>
+                    <span t-esc="pageSubtitle"/>
+                </div>
+                <button
+                    t-if="isArcaBilling"
+                    type="button"
+                    class="o_lqa_accounting__ghost"
+                    t-on-click="openDashboard"
+                >
+                    <i class="fa fa-arrow-left"/>
+                    Volver
+                </button>
+            </header>
+
+            <section t-if="isDashboard" class="o_lqa_accounting__summary">
+                <article>
+                    <small>Area</small>
+                    <strong>Contable</strong>
+                    <span>Administracion</span>
+                </article>
+                <article>
+                    <small>ARCA</small>
+                    <strong>Inicial</strong>
+                    <span>Facturacion fiscal</span>
+                </article>
+                <article>
+                    <small>Ordenes</small>
+                    <strong>A conectar</strong>
+                    <span>Ventas y comprobantes</span>
+                </article>
+            </section>
+
+            <section t-if="isDashboard" class="o_lqa_accounting__modules">
+                <button type="button" t-on-click="openArcaBilling">
+                    <span class="o_lqa_accounting__icon">
+                        <i class="fa fa-file-text-o"/>
+                    </span>
+                    <div>
+                        <small>Modulo contable</small>
+                        <strong>Facturacion ARCA</strong>
+                        <p>Gestion de comprobantes fiscales para ordenes de venta.</p>
+                    </div>
+                    <i class="fa fa-arrow-right"/>
+                </button>
+            </section>
+
+            <t t-if="isArcaBilling">
+                <section class="o_lqa_accounting__summary">
+                    <article>
+                        <small>Pendientes</small>
+                        <strong>0</strong>
+                        <span>Ordenes sin comprobante</span>
+                    </article>
+                    <article>
+                        <small>Emitidos</small>
+                        <strong>0</strong>
+                        <span>Comprobantes generados</span>
+                    </article>
+                    <article>
+                        <small>Con error</small>
+                        <strong>0</strong>
+                        <span>Requieren revision</span>
+                    </article>
+                </section>
+
+                <section class="o_lqa_accounting__panel">
+                    <div class="o_lqa_accounting__panel_head">
+                        <div>
+                            <h2>Ordenes de venta</h2>
+                            <p>Base preparada para cruzar ventas, estados fiscales y comprobantes ARCA.</p>
+                        </div>
+                        <span>API pendiente</span>
+                    </div>
+                    <div class="o_lqa_accounting__filters">
+                        <label>
+                            Marketplace
+                            <select disabled="disabled">
+                                <option>Todos</option>
+                            </select>
+                        </label>
+                        <label>
+                            Estado fiscal
+                            <select disabled="disabled">
+                                <option>Todos</option>
+                            </select>
+                        </label>
+                        <label>
+                            Desde
+                            <input type="date" disabled="disabled"/>
+                        </label>
+                        <label>
+                            Hasta
+                            <input type="date" disabled="disabled"/>
+                        </label>
+                    </div>
+                    <div class="o_lqa_accounting__empty">
+                        <i class="fa fa-file-text-o"/>
+                        <strong>Sin ordenes cargadas</strong>
+                        <span>Cuando conectemos la API, aca se van a listar las ventas para facturar.</span>
+                    </div>
+                </section>
+            </t>
+        </div>
+    </t>
+</templates>

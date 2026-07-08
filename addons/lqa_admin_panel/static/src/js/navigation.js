@@ -48,6 +48,7 @@ patch(NavBar.prototype, {
             currentApp?.xmlid === "lqa_admin_panel.menu_lqa_root" ||
             currentApp?.xmlID === "lqa_admin_panel.menu_lqa_root" ||
             currentApp?.name === "Panel Comercial" ||
+            currentApp?.name === "Panel Interno" ||
             (
                 this.lqaNavigation.panelRootMenuId &&
                 Number(currentApp?.id) ===

@@ -84,6 +84,8 @@
                                                 ? 'fa fa-cubes'
                                                 : section.name === 'Retailers'
                                                     ? 'fa fa-building-o'
+                                                    : section.name === 'Administracion'
+                                                        ? 'fa fa-calculator'
                                                     : 'fa fa-folder-o'"
                                     />
                                     <t t-esc="section.name"/>
@@ -136,12 +138,14 @@
                                             <i
                                                 t-att-class="child.name === 'Catalogo'
                                                     ? 'fa fa-th'
-                                                    : child.name === 'Marketplaces'
+                                                       : child.name === 'Marketplaces'
                                                         ? 'fa fa-shopping-cart'
                                                         : child.name === 'Google Merchant'
                                                             ? 'fa fa-google'
                                                         : child.name === 'Publicador'
                                                             ? 'fa fa-cloud-upload'
+                                                        : child.name === 'Contable'
+                                                            ? 'fa fa-calculator'
                                                         : 'fa fa-folder-o'"
                                             />
                                             <t t-esc="child.name"/>
@@ -319,6 +323,8 @@
                                                                                 ? 'fa fa-list-alt'
                                                                                 : child.name === 'Acciones masivas'
                                                                                     ? 'fa fa-bolt'
+                                                                                    : child.name === 'Facturacion ARCA'
+                                                                                        ? 'fa fa-file-text-o'
                                                                                     : 'fa fa-circle-o'"
                                         />
                                         <span t-esc="child.name"/>
@@ -378,7 +384,7 @@
                 </nav>
 
                 <div class="o_lqa_sidebar__footer">
-                    <span>Panel Comercial</span>
+                    <span>Panel Interno</span>
                     <small>Lo Quiero Aca</small>
                 </div>
             </aside>

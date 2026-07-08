@@ -24,6 +24,14 @@
         <field name="dashboard_action_xmlid">lqa_admin_panel.action_lqa_retailers_dashboard</field>
     </record>
 
+    <record id="panel_module_administracion" model="lqa.panel.module">
+        <field name="name">Administracion</field>
+        <field name="code">administracion</field>
+        <field name="description">Gestion administrativa, contable y fiscal de operaciones internas.</field>
+        <field name="sequence">70</field>
+        <field name="dashboard_action_xmlid">lqa_admin_panel.action_lqa_administracion_dashboard</field>
+    </record>
+
     <record id="panel_section_automeli_catalog" model="lqa.panel.section">
         <field name="module_id" ref="panel_module_automeli"/>
         <field name="name">Catalogo</field>
@@ -88,6 +96,18 @@
         <field name="status">available</field>
         <field name="sequence">10</field>
         <field name="action_xmlid">lqa_admin_panel.action_lqa_retailers_marketplaces</field>
+        <field name="active">True</field>
+    </record>
+
+    <record id="panel_section_administracion_arca_billing" model="lqa.panel.section">
+        <field name="module_id" ref="panel_module_administracion"/>
+        <field name="name">Facturacion ARCA</field>
+        <field name="code">arca_billing</field>
+        <field name="description">Gestion de comprobantes fiscales ARCA para ordenes de venta.</field>
+        <field name="badge">Inicial</field>
+        <field name="status">available</field>
+        <field name="sequence">10</field>
+        <field name="action_xmlid">lqa_admin_panel.action_lqa_administracion_arca_billing</field>
         <field name="active">True</field>
     </record>
 

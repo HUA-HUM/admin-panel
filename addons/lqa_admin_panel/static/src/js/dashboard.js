@@ -40,7 +40,7 @@ export class LqaAdminDashboard extends Component {
             this.state.selectedModuleCode = data.selected_module_code;
             this.state.favorites = data.favorites || [];
         } catch (error) {
-            this.notification.add("No se pudo cargar el dashboard comercial.", {
+            this.notification.add("No se pudo cargar el dashboard interno.", {
                 type: "danger",
             });
             throw error;
@@ -73,7 +73,7 @@ export class LqaAdminDashboard extends Component {
     get dashboardSubtitle() {
         return (
             this.selectedModule?.description ||
-            "Vista general de la operación comercial."
+            "Vista general de las areas internas."
         );
     }
 
@@ -137,6 +137,12 @@ export class LqaAdminDashboard extends Component {
         }
         if (name.includes("acciones")) {
             return "fa fa-bolt";
+        }
+        if (name.includes("facturacion") || name.includes("arca")) {
+            return "fa fa-file-text-o";
+        }
+        if (name.includes("contable") || name.includes("administracion")) {
+            return "fa fa-calculator";
         }
         return "fa fa-star";
     }
