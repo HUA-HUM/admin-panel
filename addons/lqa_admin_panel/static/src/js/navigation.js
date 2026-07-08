@@ -23,7 +23,26 @@ patch(NavBar.prototype, {
     },
 
     get lqaSidebarSections() {
+        const panelRoot = this.lqaPanelRootMenu();
+        if (panelRoot?.childrenTree?.length) {
+            return panelRoot.childrenTree;
+        }
+        if (panelRoot?.children?.length) {
+            return panelRoot.children;
+        }
         return this.currentAppSections;
+    },
+
+    lqaPanelRootMenu() {
+        const rootId = this.lqaNavigation.panelRootMenuId;
+        if (!rootId || !this.menuService?.getMenu) {
+            return null;
+        }
+        try {
+            return this.menuService.getMenu(rootId);
+        } catch {
+            return null;
+        }
     },
 
     lqaIsExpanded(section) {
@@ -79,7 +98,7 @@ patch(NavBar.prototype, {
             this.lqaSetFavoriteState(data);
         } catch (error) {
             this.lqaNavigation.favoriteMenuIds = {};
-            if (this.currentApp?.name === "Panel Comercial") {
+            if (["Panel Comercial", "Panel Interno"].includes(this.currentApp?.name)) {
                 this.lqaNavigation.panelRootMenuId = this.currentApp.id;
             }
             console.warn("No se pudieron cargar los favoritos del panel.", error);
