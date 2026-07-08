@@ -84,6 +84,8 @@
                                                 ? 'fa fa-cubes'
                                                 : section.name === 'Retailers'
                                                     ? 'fa fa-building-o'
+                                                    : section.name === 'Comercial'
+                                                        ? 'fa fa-briefcase'
                                                     : section.name === 'Administracion'
                                                         ? 'fa fa-calculator'
                                                     : 'fa fa-folder-o'"
@@ -146,6 +148,12 @@
                                                             ? 'fa fa-cloud-upload'
                                                         : child.name === 'Contable'
                                                             ? 'fa fa-calculator'
+                                                        : child.name === 'MercadoLibre'
+                                                            ? 'fa fa-shopping-bag'
+                                                        : child.name === 'Automeli'
+                                                            ? 'fa fa-cubes'
+                                                        : child.name === 'Retailers'
+                                                            ? 'fa fa-building-o'
                                                         : 'fa fa-folder-o'"
                                             />
                                             <t t-esc="child.name"/>

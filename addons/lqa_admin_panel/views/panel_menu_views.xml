@@ -23,6 +23,12 @@
         <field name="params" eval="{'view': 'dashboard'}"/>
     </record>
 
+    <record id="action_lqa_comercial_dashboard" model="ir.actions.client">
+        <field name="name">Comercial</field>
+        <field name="tag">lqa_admin_panel.dashboard</field>
+        <field name="params" eval="{'area_code': 'comercial'}"/>
+    </record>
+
     <record id="action_lqa_administracion_dashboard" model="ir.actions.client">
         <field name="name">Administracion</field>
         <field name="tag">lqa_admin_panel.accounting</field>
@@ -164,9 +170,18 @@
     />
 
     <menuitem
+        id="menu_lqa_comercial"
+        name="Comercial"
+        parent="menu_lqa_root"
+        action="action_lqa_comercial_dashboard"
+        sequence="10"
+        groups="lqa_admin_panel.group_lqa_commercial_user"
+    />
+
+    <menuitem
         id="menu_lqa_mercadolibre"
         name="MercadoLibre"
-        parent="menu_lqa_root"
+        parent="menu_lqa_comercial"
         action="action_lqa_mercadolibre_dashboard"
         sequence="10"
         groups="lqa_admin_panel.group_lqa_commercial_user"
@@ -238,7 +253,7 @@
     <menuitem
         id="menu_lqa_automeli"
         name="Automeli"
-        parent="menu_lqa_root"
+        parent="menu_lqa_comercial"
         action="action_lqa_automeli_dashboard"
         sequence="20"
         groups="lqa_admin_panel.group_lqa_commercial_user"
@@ -256,7 +271,7 @@
     <menuitem
         id="menu_lqa_retailers"
         name="Retailers"
-        parent="menu_lqa_root"
+        parent="menu_lqa_comercial"
         action="action_lqa_retailers_dashboard"
         sequence="30"
         groups="lqa_admin_panel.group_lqa_commercial_user"

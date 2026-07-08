@@ -8,16 +8,39 @@ class LqaDashboardService(models.AbstractModel):
     _name = "lqa.dashboard.service"
     _description = "Servicio para dashboards del panel comercial"
 
+    AREA_DEFINITIONS = {
+        "comercial": {
+            "name": "Comercial",
+            "description": (
+                "Operacion comercial: MercadoLibre, Automeli y canales Retailers."
+            ),
+            "module_codes": ("mercadolibre", "automeli", "retailers"),
+            "action_xmlid": "lqa_admin_panel.action_lqa_comercial_dashboard",
+        },
+        "administracion": {
+            "name": "Administracion",
+            "description": "Gestion contable, administrativa y fiscal.",
+            "module_codes": ("administracion",),
+            "action_xmlid": "lqa_admin_panel.action_lqa_administracion_dashboard",
+        },
+    }
+
     @api.model
-    def get_dashboard_state(self, selected_module_code=False):
+    def get_dashboard_state(self, selected_module_code=False, area_code=False):
         self._check_access()
         domain = [("active", "=", True)]
         if selected_module_code:
             domain.append(("code", "=", selected_module_code))
+            area_code = self._area_code_for_module(selected_module_code) or area_code
+        elif area_code:
+            module_codes = self.AREA_DEFINITIONS.get(area_code, {}).get("module_codes", ())
+            domain.append(("code", "in", module_codes or ("",)))
 
         modules = self.env["lqa.panel.module"].search(domain, order="sequence, name")
         return {
             "selected_module_code": selected_module_code or False,
+            "selected_area_code": area_code or False,
+            "areas": self._serialize_areas(),
             "modules": [self._serialize_module(module) for module in modules],
             "favorites": self._serialize_favorite_menus(),
         }
@@ -73,6 +96,36 @@ class LqaDashboardService(models.AbstractModel):
                 for section in module.section_ids.filtered("active").sorted("sequence")
             ]
         return data
+
+    def _serialize_areas(self):
+        return [
+            self._serialize_area(code, values)
+            for code, values in self.AREA_DEFINITIONS.items()
+        ]
+
+    def _serialize_area(self, code, values):
+        module_codes = values.get("module_codes", ())
+        modules = self.env["lqa.panel.module"].search(
+            [("active", "=", True), ("code", "in", module_codes)]
+        )
+        section_count = sum(
+            len(module.section_ids.filtered("active"))
+            for module in modules
+        )
+        return {
+            "code": code,
+            "name": values["name"],
+            "description": values["description"],
+            "action_id": self._action_id_from_xmlid(values.get("action_xmlid")),
+            "module_count": len(modules),
+            "section_count": section_count,
+        }
+
+    def _area_code_for_module(self, module_code):
+        for code, values in self.AREA_DEFINITIONS.items():
+            if module_code in values.get("module_codes", ()):
+                return code
+        return False
 
     def _module_metrics(self, code):
         if code == "automeli":

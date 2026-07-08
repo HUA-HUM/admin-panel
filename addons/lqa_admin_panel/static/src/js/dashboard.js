@@ -16,6 +16,8 @@ export class LqaAdminDashboard extends Component {
 
         this.state = useState({
             loading: true,
+            areas: [],
+            areaCode: params.area_code || false,
             modules: [],
             selectedModuleCode: params.module_code || false,
             favorites: [],
@@ -30,13 +32,19 @@ export class LqaAdminDashboard extends Component {
         });
     }
 
-    async loadDashboard(moduleCode = this.state.selectedModuleCode) {
+    async loadDashboard(
+        moduleCode = this.state.selectedModuleCode,
+        areaCode = this.state.areaCode
+    ) {
         this.state.loading = true;
         try {
             const data = await this.orm.call("lqa.dashboard.service", "get_dashboard_state", [
                 moduleCode,
+                areaCode,
             ]);
+            this.state.areas = data.areas || [];
             this.state.modules = data.modules;
+            this.state.areaCode = data.selected_area_code;
             this.state.selectedModuleCode = data.selected_module_code;
             this.state.favorites = data.favorites || [];
         } catch (error) {
@@ -55,7 +63,27 @@ export class LqaAdminDashboard extends Component {
         );
     }
 
+    get selectedArea() {
+        return this.state.areas.find(
+            (area) => area.code === this.state.areaCode
+        );
+    }
+
+    get isRootDashboard() {
+        return !this.state.areaCode && !this.state.selectedModuleCode;
+    }
+
+    get showsModules() {
+        return Boolean(this.state.areaCode || this.state.selectedModuleCode);
+    }
+
     get availableSectionsCount() {
+        if (this.isRootDashboard) {
+            return this.state.areas.reduce(
+                (total, area) => total + (area.section_count || 0),
+                0
+            );
+        }
         return this.state.modules.reduce(
             (total, module) => total + (module.sections || []).length,
             0
@@ -63,18 +91,54 @@ export class LqaAdminDashboard extends Component {
     }
 
     get activeModulesCount() {
+        if (this.isRootDashboard) {
+            return this.state.areas.length;
+        }
         return this.state.modules.length;
     }
 
     get dashboardTitle() {
-        return this.selectedModule?.name || "Panel principal";
+        return this.selectedModule?.name || this.selectedArea?.name || "Panel principal";
     }
 
     get dashboardSubtitle() {
         return (
             this.selectedModule?.description ||
+            this.selectedArea?.description ||
             "Vista general de las areas internas."
         );
+    }
+
+    get dashboardEyebrow() {
+        if (this.selectedModule) {
+            return `${this.selectedArea?.name || "Area"} / Dashboard`;
+        }
+        if (this.selectedArea) {
+            return "Area / Dashboard";
+        }
+        return "Panel interno";
+    }
+
+    areaIcon(area) {
+        if (area.code === "comercial") {
+            return "fa fa-briefcase";
+        }
+        if (area.code === "administracion") {
+            return "fa fa-calculator";
+        }
+        return "fa fa-cubes";
+    }
+
+    openArea(area) {
+        if (area.action_id) {
+            this.openAction(area.action_id);
+        }
+    }
+
+    openModule(module) {
+        if (module.action_id) {
+            this.openAction(module.action_id);
+        }
     }
 
     openSection(section) {

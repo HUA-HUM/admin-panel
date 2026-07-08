@@ -5,7 +5,7 @@
             <header class="o_lqa_dashboard__header">
                 <div>
                     <p class="o_lqa_dashboard__eyebrow">
-                        <t t-esc="state.selectedModuleCode ? 'Panel Comercial / Dashboard' : 'Panel Dashboard'"/>
+                        <t t-esc="dashboardEyebrow"/>
                     </p>
                     <h1 t-esc="dashboardTitle"/>
                     <p class="o_lqa_dashboard__subtitle" t-esc="dashboardSubtitle"/>
@@ -18,7 +18,7 @@
             </div>
 
             <t t-else="">
-                <t t-if="!state.selectedModuleCode">
+                <t t-if="isRootDashboard">
                     <section class="o_lqa_dashboard_summary">
                         <div class="o_lqa_dashboard_summary__item">
                             <span class="is-favorites">
@@ -45,10 +45,42 @@
                                 <i class="fa fa-cubes"/>
                             </span>
                             <div>
-                                <small>Módulos</small>
+                                <small>Areas</small>
                                 <strong t-esc="activeModulesCount"/>
                                 <p>Áreas activas</p>
                             </div>
+                        </div>
+                    </section>
+
+                    <section class="o_lqa_dashboard_areas">
+                        <div class="o_lqa_dashboard_favorites__head">
+                            <div>
+                                <p>Areas</p>
+                                <h2>Modulos principales</h2>
+                            </div>
+                            <span>
+                                <i class="fa fa-cubes"/>
+                                <t t-esc="state.areas.length"/>
+                            </span>
+                        </div>
+                        <div class="o_lqa_dashboard_areas__grid">
+                            <button
+                                type="button"
+                                t-foreach="state.areas"
+                                t-as="area"
+                                t-key="area.code"
+                                t-on-click="() => this.openArea(area)"
+                            >
+                                <span class="o_lqa_dashboard_area_icon">
+                                    <i t-att-class="areaIcon(area)"/>
+                                </span>
+                                <span>
+                                    <small t-esc="area.module_count + ' modulos'"/>
+                                    <strong t-esc="area.name"/>
+                                    <p t-esc="area.description"/>
+                                </span>
+                                <i class="fa fa-arrow-right"/>
+                            </button>
                         </div>
                     </section>
 
@@ -84,7 +116,7 @@
                                     <i t-att-class="favoriteIcon(favorite)"/>
                                 </span>
                                 <span>
-                                    <small t-esc="favorite.path || 'Panel Comercial'"/>
+                                    <small t-esc="favorite.path || 'Panel Interno'"/>
                                     <strong t-esc="favorite.name"/>
                                 </span>
                                 <i class="fa fa-arrow-right"/>
@@ -94,7 +126,7 @@
                 </t>
 
                 <div
-                    t-if="state.selectedModuleCode"
+                    t-if="showsModules"
                     class="o_lqa_dashboard__grid"
                 >
                     <section
@@ -111,6 +143,15 @@
                                 </div>
                             </div>
                             <p class="o_lqa_module__description" t-esc="module.description"/>
+                            <button
+                                type="button"
+                                class="o_lqa_module__open"
+                                t-if="module.action_id"
+                                t-on-click="() => this.openModule(module)"
+                            >
+                                Abrir modulo
+                                <i class="fa fa-arrow-right"/>
+                            </button>
 
                             <div class="o_lqa_metrics" t-if="module.metrics.length">
                                 <div

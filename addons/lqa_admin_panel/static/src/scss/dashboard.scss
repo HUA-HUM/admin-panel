@@ -10,12 +10,80 @@
 .o_lqa_dashboard__header,
 .o_lqa_dashboard__loading,
 .o_lqa_dashboard_summary,
+.o_lqa_dashboard_areas,
 .o_lqa_dashboard_favorites,
 .o_lqa_dashboard__grid {
     width: 100%;
     max-width: 1240px;
     margin-right: auto;
     margin-left: auto;
+}
+
+.o_lqa_dashboard_areas {
+    margin-top: 30px;
+}
+
+.o_lqa_dashboard_areas__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+
+    button {
+        display: grid;
+        min-height: 154px;
+        grid-template-columns: 52px minmax(0, 1fr) 20px;
+        align-items: center;
+        gap: 16px;
+        padding: 20px;
+        border: 1px solid #d8e0ea;
+        border-radius: 8px;
+        background: #fff;
+        color: inherit;
+        text-align: left;
+    }
+
+    small,
+    strong,
+    p {
+        display: block;
+        margin: 0;
+    }
+
+    small {
+        color: #ff4f5a;
+        font-size: 10px;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+
+    strong {
+        margin-top: 5px;
+        color: #1f2937;
+        font-size: 23px;
+        font-weight: 800;
+    }
+
+    p {
+        margin-top: 8px;
+        color: #617089;
+        font-size: 13px;
+    }
+
+    > button > i {
+        color: #8da0b8;
+    }
+}
+
+.o_lqa_dashboard_area_icon {
+    display: inline-flex;
+    width: 52px;
+    height: 52px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: #fff0f1;
+    color: #ff4f5a;
+    font-size: 20px;
 }
 
 .o_lqa_dashboard__header {
@@ -338,6 +406,26 @@
     margin: 10px 0 0;
     color: #607086;
     font-size: 13px;
+}
+
+.o_lqa_module__open {
+    display: inline-flex;
+    min-height: 36px;
+    align-items: center;
+    gap: 8px;
+    margin-top: 14px;
+    padding: 0 12px;
+    border: 1px solid #ccd6e4;
+    border-radius: 8px;
+    background: #fff;
+    color: #344256;
+    font-size: 13px;
+    font-weight: 800;
+
+    i {
+        color: #8da0b8;
+        font-size: 11px;
+    }
 }
 
 .o_lqa_metrics {
