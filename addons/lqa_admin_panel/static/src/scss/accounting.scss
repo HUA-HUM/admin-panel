@@ -1,15 +1,23 @@
 .o_lqa_accounting {
-    min-height: 100%;
+    height: 100%;
+    min-height: 0;
+    overflow-x: hidden;
     overflow-y: auto;
-    padding: 28px 32px 48px;
+    padding: 24px 28px 56px;
     background: #f4f6f9;
     color: #202936;
+    overscroll-behavior: contain;
+
+    * {
+        box-sizing: border-box;
+    }
 }
 
 .o_lqa_accounting__header,
 .o_lqa_accounting__summary,
 .o_lqa_accounting__modules,
 .o_lqa_accounting__tabs,
+.o_lqa_accounting__client_intro,
 .o_lqa_accounting__grid,
 .o_lqa_accounting__panel {
     width: 100%;
@@ -23,8 +31,12 @@
     align-items: center;
     justify-content: space-between;
     gap: 18px;
-    padding-bottom: 22px;
-    border-bottom: 1px solid #dce3ec;
+    padding: 20px 22px;
+    border: 1px solid #dbe3ee;
+    border-left: 5px solid #ff4f5a;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.04);
 
     p,
     h1,
@@ -42,7 +54,7 @@
     h1 {
         margin-top: 6px;
         color: #182230;
-        font-size: 32px;
+        font-size: 30px;
         font-weight: 800;
         letter-spacing: 0;
         line-height: 1.1;
@@ -66,12 +78,18 @@
     padding: 0 13px;
     border-radius: 8px;
     font-weight: 800;
+    transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
 }
 
 .o_lqa_accounting__ghost {
     border: 1px solid #ccd6e4;
     background: #fff;
     color: #344256;
+
+    &:hover {
+        border-color: #aebbd0;
+        background: #f8fafc;
+    }
 }
 
 .o_lqa_accounting__primary {
@@ -82,6 +100,11 @@
     &:disabled {
         border-color: #f7a3aa;
         background: #f7a3aa;
+    }
+
+    &:not(:disabled):hover {
+        border-color: #e6404b;
+        background: #e6404b;
     }
 }
 
@@ -113,11 +136,12 @@
     margin-top: 22px;
 
     article {
-        min-height: 108px;
+        min-height: 104px;
         padding: 18px;
         border: 1px solid #d8e0ea;
         border-radius: 8px;
         background: #fff;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
     }
 
     small,
@@ -144,6 +168,57 @@
         margin-top: 4px;
         color: #617089;
         font-size: 13px;
+    }
+}
+
+.o_lqa_accounting__client_intro {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 14px;
+
+    article {
+        display: flex;
+        min-height: 82px;
+        align-items: center;
+        gap: 14px;
+        padding: 16px;
+        border: 1px solid #d8e0ea;
+        border-radius: 8px;
+        background: #fff;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+    }
+
+    span {
+        display: inline-flex;
+        width: 42px;
+        height: 42px;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        background: #fff0f1;
+        color: #ff4f5a;
+        font-size: 18px;
+    }
+
+    small,
+    strong {
+        display: block;
+    }
+
+    small {
+        color: #66758a;
+        font-size: 10px;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+
+    strong {
+        margin-top: 4px;
+        color: #1f2937;
+        font-size: 18px;
+        font-weight: 850;
     }
 }
 
@@ -232,6 +307,12 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(360px, 0.8fr);
     gap: 14px;
+
+    &.is-clients {
+        grid-template-columns: minmax(440px, 1.1fr) minmax(360px, 0.9fr);
+        align-items: stretch;
+        margin-top: 14px;
+    }
 }
 
 .o_lqa_accounting__panel {
@@ -240,6 +321,29 @@
     border: 1px solid #d8e0ea;
     border-radius: 8px;
     background: #fff;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+
+    &.is-emphasis {
+        border-top: 4px solid #ff4f5a;
+    }
+
+    &.is-history {
+        display: flex;
+        min-height: 100%;
+        flex-direction: column;
+
+        .o_lqa_accounting__jobs {
+            flex: 1 1 auto;
+        }
+    }
+
+    &.is-client-issues {
+        margin-top: 14px;
+    }
+
+    &.is-result-panel {
+        margin-bottom: 10px;
+    }
 }
 
 .o_lqa_accounting__grid .o_lqa_accounting__panel {
@@ -315,10 +419,18 @@
         width: 100%;
         min-height: 38px;
         margin-top: 7px;
+        padding: 0 10px;
         border: 1px solid #ccd6e4;
         border-radius: 8px;
         background: #f8fafc;
         color: #263244;
+
+        &:focus {
+            border-color: #ff8a92;
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(255, 79, 90, 0.12);
+            outline: none;
+        }
     }
 
     textarea {
@@ -329,7 +441,7 @@
 }
 
 .o_lqa_accounting__filters {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
     border-bottom: 1px solid #e1e7ef;
 }
 
@@ -349,6 +461,12 @@
     justify-content: flex-end;
     gap: 10px;
     padding: 0 18px 18px;
+
+    &.is-filter-actions {
+        padding-top: 14px;
+        border-bottom: 1px solid #e1e7ef;
+        background: #fbfcfe;
+    }
 }
 
 .o_lqa_accounting__file {
@@ -366,7 +484,7 @@
 }
 
 .o_lqa_accounting__jobs {
-    max-height: 360px;
+    max-height: 386px;
     overflow-y: auto;
     padding: 10px;
 
@@ -386,6 +504,11 @@
         &.is-active {
             border-color: #ff9aa2;
             background: #fff6f7;
+        }
+
+        &:hover {
+            border-color: #d8e0ea;
+            background: #f8fafc;
         }
     }
 
@@ -474,7 +597,9 @@
 
 .o_lqa_accounting__table_wrap {
     width: 100%;
+    max-height: 460px;
     overflow-x: auto;
+    overflow-y: auto;
 }
 
 .o_lqa_accounting__table {
@@ -493,6 +618,9 @@
     }
 
     th {
+        position: sticky;
+        top: 0;
+        z-index: 1;
         background: #f8fafc;
         color: #6a788d;
         font-size: 11px;
@@ -518,7 +646,9 @@
 
 .o_lqa_accounting__message {
     max-width: 440px;
+    min-width: 260px;
     color: #53647a;
+    line-height: 1.35;
 }
 
 .o_lqa_accounting__pagination {
@@ -581,9 +711,14 @@
 @media (max-width: 1100px) {
     .o_lqa_accounting__grid,
     .o_lqa_accounting__summary,
+    .o_lqa_accounting__client_intro,
     .o_lqa_accounting__modules,
     .o_lqa_accounting__inline_form,
     .o_lqa_accounting__filters {
+        grid-template-columns: 1fr;
+    }
+
+    .o_lqa_accounting__grid.is-clients {
         grid-template-columns: 1fr;
     }
 }

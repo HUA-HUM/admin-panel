@@ -102,8 +102,32 @@
                 </nav>
 
                 <t t-if="isClients">
-                    <section class="o_lqa_accounting__grid">
-                        <article class="o_lqa_accounting__panel">
+                    <section class="o_lqa_accounting__client_intro">
+                        <article>
+                            <span><i class="fa fa-user-plus"/></span>
+                            <div>
+                                <small>Alta de clientes</small>
+                                <strong>TLQV y consumidor final</strong>
+                            </div>
+                        </article>
+                        <article>
+                            <span><i class="fa fa-exclamation-circle"/></span>
+                            <div>
+                                <small>Issues fiscales</small>
+                                <strong t-esc="formatNumber(state.issueClients.result.pagination.total)"/>
+                            </div>
+                        </article>
+                        <article>
+                            <span><i class="fa fa-history"/></span>
+                            <div>
+                                <small>Lotes recientes</small>
+                                <strong t-esc="formatNumber(state.clients.jobs.length)"/>
+                            </div>
+                        </article>
+                    </section>
+
+                    <section class="o_lqa_accounting__grid is-clients">
+                        <article class="o_lqa_accounting__panel is-emphasis">
                             <div class="o_lqa_accounting__panel_head">
                                 <div>
                                     <h2>Crear cliente desde TLQV</h2>
@@ -146,7 +170,7 @@
                             </div>
                         </article>
 
-                        <article class="o_lqa_accounting__panel">
+                        <article class="o_lqa_accounting__panel is-history">
                             <div class="o_lqa_accounting__panel_head">
                                 <div>
                                     <h2>Historial de lotes</h2>
@@ -185,7 +209,7 @@
                         </article>
                     </section>
 
-                    <section class="o_lqa_accounting__panel">
+                    <section class="o_lqa_accounting__panel is-client-issues">
                         <div class="o_lqa_accounting__panel_head">
                             <div>
                                 <h2>Consumidor final con DNI</h2>
@@ -239,7 +263,7 @@
                                 </select>
                             </label>
                         </div>
-                        <div class="o_lqa_accounting__actions">
+                        <div class="o_lqa_accounting__actions is-filter-actions">
                             <button type="button" class="o_lqa_accounting__ghost" t-on-click="clearClientIssueFilters">
                                 Limpiar
                             </button>
@@ -333,7 +357,7 @@
                         </div>
                     </section>
 
-                    <section class="o_lqa_accounting__panel">
+                    <section class="o_lqa_accounting__panel is-result-panel">
                         <div class="o_lqa_accounting__panel_head">
                             <div>
                                 <h2>Resultado del lote</h2>
