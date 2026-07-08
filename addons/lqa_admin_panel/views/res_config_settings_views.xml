@@ -6,7 +6,7 @@
         <field name="inherit_id" ref="base.res_config_settings_view_form"/>
         <field name="arch" type="xml">
             <xpath expr="//form" position="inside">
-                <app string="Panel Comercial" name="lqa_admin_panel">
+                <app string="Panel Interno" name="lqa_admin_panel">
                     <block title="APIs internas">
                         <setting string="Entorno" help="Permite separar desarrollo, staging y produccion.">
                             <field name="lqa_api_environment"/>
@@ -125,6 +125,24 @@
                                     class="btn-primary ms-2"
                                 />
                             </div>
+                        </setting>
+                        <setting
+                            string="Contable ARCA"
+                            help="Clientes TLQV, issues fiscales y comprobantes sincronizados desde Xubio."
+                        >
+                            <field name="lqa_accounting_invoice_api_url"/>
+                            <field
+                                name="lqa_accounting_invoice_api_key"
+                                password="True"
+                                placeholder="Clave interna Invoice"
+                            />
+                            <field name="lqa_accounting_madre_api_url"/>
+                            <field
+                                name="lqa_accounting_madre_api_key"
+                                password="True"
+                                placeholder="Clave interna Madre"
+                            />
+                            <field name="lqa_accounting_timeout_seconds"/>
                         </setting>
                     </block>
                 </app>

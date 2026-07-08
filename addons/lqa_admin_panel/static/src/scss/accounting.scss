@@ -9,9 +9,11 @@
 .o_lqa_accounting__header,
 .o_lqa_accounting__summary,
 .o_lqa_accounting__modules,
+.o_lqa_accounting__tabs,
+.o_lqa_accounting__grid,
 .o_lqa_accounting__panel {
     width: 100%;
-    max-width: 1240px;
+    max-width: 1480px;
     margin-right: auto;
     margin-left: auto;
 }
@@ -54,17 +56,33 @@
     }
 }
 
-.o_lqa_accounting__ghost {
+.o_lqa_accounting__ghost,
+.o_lqa_accounting__primary {
     display: inline-flex;
     min-height: 38px;
     align-items: center;
+    justify-content: center;
     gap: 8px;
     padding: 0 13px;
-    border: 1px solid #ccd6e4;
     border-radius: 8px;
+    font-weight: 800;
+}
+
+.o_lqa_accounting__ghost {
+    border: 1px solid #ccd6e4;
     background: #fff;
     color: #344256;
-    font-weight: 800;
+}
+
+.o_lqa_accounting__primary {
+    border: 1px solid #ff4f5a;
+    background: #ff4f5a;
+    color: #fff;
+
+    &:disabled {
+        border-color: #f7a3aa;
+        background: #f7a3aa;
+    }
 }
 
 .o_lqa_accounting__summary {
@@ -160,12 +178,48 @@
     font-size: 21px;
 }
 
+.o_lqa_accounting__tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 18px;
+
+    button {
+        display: inline-flex;
+        min-height: 40px;
+        align-items: center;
+        gap: 8px;
+        padding: 0 15px;
+        border: 1px solid #ccd6e4;
+        border-radius: 8px;
+        background: #fff;
+        color: #344256;
+        font-weight: 800;
+
+        &.is-active {
+            border-color: #ff4f5a;
+            background: #ff4f5a;
+            color: #fff;
+        }
+    }
+}
+
+.o_lqa_accounting__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(360px, 0.8fr);
+    gap: 14px;
+}
+
 .o_lqa_accounting__panel {
     margin-top: 22px;
     overflow: hidden;
     border: 1px solid #d8e0ea;
     border-radius: 8px;
     background: #fff;
+}
+
+.o_lqa_accounting__grid .o_lqa_accounting__panel {
+    margin-top: 0;
 }
 
 .o_lqa_accounting__panel_head {
@@ -204,15 +258,15 @@
         font-size: 11px;
         font-weight: 800;
         text-transform: uppercase;
+        white-space: nowrap;
     }
 }
 
+.o_lqa_accounting__form,
 .o_lqa_accounting__filters {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 12px;
     padding: 18px;
-    border-bottom: 1px solid #e1e7ef;
 
     label {
         color: #44546a;
@@ -222,14 +276,231 @@
     }
 
     select,
-    input {
+    input,
+    textarea {
         width: 100%;
         min-height: 38px;
         margin-top: 7px;
         border: 1px solid #ccd6e4;
         border-radius: 8px;
         background: #f8fafc;
-        color: #7a8798;
+        color: #263244;
+    }
+
+    textarea {
+        min-height: 132px;
+        padding: 10px;
+        resize: vertical;
+    }
+}
+
+.o_lqa_accounting__filters {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    border-bottom: 1px solid #e1e7ef;
+}
+
+.o_lqa_accounting__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 0 18px 18px;
+}
+
+.o_lqa_accounting__file {
+    display: inline-flex;
+    min-height: 36px;
+    align-items: center;
+    gap: 8px;
+    padding: 0 10px;
+    border: 1px solid #d8e0ea;
+    border-radius: 8px;
+    background: #f8fafc;
+    color: #53647a;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.o_lqa_accounting__jobs {
+    max-height: 360px;
+    overflow-y: auto;
+    padding: 10px;
+
+    button {
+        display: flex;
+        width: 100%;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        background: transparent;
+        color: inherit;
+        text-align: left;
+
+        &.is-active {
+            border-color: #ff9aa2;
+            background: #fff6f7;
+        }
+    }
+
+    strong,
+    small {
+        display: block;
+    }
+
+    strong {
+        color: #253044;
+        font-size: 14px;
+        font-weight: 800;
+    }
+
+    small {
+        margin-top: 3px;
+        color: #728197;
+        font-size: 12px;
+    }
+}
+
+.o_lqa_accounting__counts {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+
+    span {
+        display: inline-flex;
+        min-height: 30px;
+        align-items: center;
+        padding: 0 10px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 800;
+
+        &.is-green {
+            background: #eafaf2;
+            color: #087a50;
+        }
+
+        &.is-amber {
+            background: #fff7e6;
+            color: #a85b00;
+        }
+
+        &.is-red {
+            background: #fff0f1;
+            color: #c9343f;
+        }
+    }
+}
+
+.o_lqa_accounting__pill {
+    display: inline-flex;
+    min-height: 24px;
+    align-items: center;
+    padding: 0 9px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-style: normal;
+    font-weight: 800;
+    text-transform: uppercase;
+    white-space: nowrap;
+
+    &.is-green {
+        background: #eafaf2;
+        color: #087a50;
+    }
+
+    &.is-amber {
+        background: #fff7e6;
+        color: #a85b00;
+    }
+
+    &.is-red {
+        background: #fff0f1;
+        color: #c9343f;
+    }
+
+    &.is-blue {
+        background: #eef5ff;
+        color: #1d64d8;
+    }
+}
+
+.o_lqa_accounting__table_wrap {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.o_lqa_accounting__table {
+    width: 100%;
+    min-width: 1040px;
+    border-collapse: collapse;
+
+    th,
+    td {
+        padding: 13px 16px;
+        border-bottom: 1px solid #e1e7ef;
+        color: #253044;
+        font-size: 13px;
+        text-align: left;
+        vertical-align: top;
+    }
+
+    th {
+        background: #f8fafc;
+        color: #6a788d;
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+
+    strong,
+    small {
+        display: block;
+    }
+
+    strong {
+        font-weight: 800;
+    }
+
+    small {
+        margin-top: 3px;
+        color: #758399;
+        font-size: 12px;
+    }
+}
+
+.o_lqa_accounting__message {
+    max-width: 440px;
+    color: #53647a;
+}
+
+.o_lqa_accounting__pagination {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+
+    button {
+        min-height: 34px;
+        padding: 0 12px;
+        border: 1px solid #ccd6e4;
+        border-radius: 8px;
+        background: #fff;
+        color: #344256;
+        font-weight: 800;
+
+        &:disabled {
+            background: #edf1f5;
+            color: #98a4b5;
+        }
+    }
+
+    span {
+        color: #53647a;
+        font-size: 13px;
+        font-weight: 700;
+        white-space: nowrap;
     }
 }
 
@@ -241,6 +512,10 @@
     flex-direction: column;
     gap: 8px;
     color: #6b7a90;
+
+    &.is-compact {
+        min-height: 180px;
+    }
 
     i {
         color: #ff4f5a;
@@ -258,13 +533,27 @@
     }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
+    .o_lqa_accounting__grid,
+    .o_lqa_accounting__summary,
+    .o_lqa_accounting__filters {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 700px) {
     .o_lqa_accounting {
         padding: 22px 16px 34px;
     }
 
-    .o_lqa_accounting__summary,
-    .o_lqa_accounting__filters {
-        grid-template-columns: 1fr;
+    .o_lqa_accounting__header,
+    .o_lqa_accounting__panel_head {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .o_lqa_accounting__actions,
+    .o_lqa_accounting__counts {
+        justify-content: flex-start;
     }
 }

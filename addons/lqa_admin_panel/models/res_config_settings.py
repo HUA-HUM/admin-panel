@@ -255,6 +255,29 @@ class ResConfigSettings(models.TransientModel):
         default=45,
         config_parameter="lqa_admin_panel.retailers_teams_retention_days",
     )
+    lqa_accounting_invoice_api_url = fields.Char(
+        string="URL Invoice ARCA",
+        default="https://invoice.loquieroaca.com",
+        config_parameter="lqa_admin_panel.accounting_invoice_api_url",
+    )
+    lqa_accounting_invoice_api_key = fields.Char(
+        string="Clave interna Invoice ARCA",
+        config_parameter="lqa_admin_panel.accounting_invoice_api_key",
+    )
+    lqa_accounting_madre_api_url = fields.Char(
+        string="URL Madre Contable",
+        default="https://api.madre.loquieroaca.com",
+        config_parameter="lqa_admin_panel.accounting_madre_api_url",
+    )
+    lqa_accounting_madre_api_key = fields.Char(
+        string="Clave interna Madre Contable",
+        config_parameter="lqa_admin_panel.accounting_madre_api_key",
+    )
+    lqa_accounting_timeout_seconds = fields.Integer(
+        string="Timeout Contable",
+        default=120,
+        config_parameter="lqa_admin_panel.accounting_timeout_seconds",
+    )
     lqa_api_timeout_seconds = fields.Integer(
         string="Timeout API",
         default=20,
