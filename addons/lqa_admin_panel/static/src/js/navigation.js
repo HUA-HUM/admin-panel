@@ -24,13 +24,10 @@ patch(NavBar.prototype, {
 
     get lqaSidebarSections() {
         const panelRoot = this.lqaPanelRootMenu();
-        if (panelRoot?.childrenTree?.length) {
+        if (Array.isArray(panelRoot?.childrenTree) && panelRoot.childrenTree.length) {
             return panelRoot.childrenTree;
         }
-        if (panelRoot?.children?.length) {
-            return panelRoot.children;
-        }
-        return this.currentAppSections;
+        return this.currentAppSections || [];
     },
 
     lqaPanelRootMenu() {
