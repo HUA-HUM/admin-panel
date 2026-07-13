@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="base.main_company" model="res.company">
+        <field name="logo" type="base64" file="lqa_admin_panel/static/src/img/tienda-logo-navbar.png"/>
+    </record>
+</odoo>

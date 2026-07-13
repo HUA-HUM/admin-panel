@@ -1,6 +1,6 @@
 {
     "name": "LQA Admin Panel",
-    "version": "18.0.1.0.32",
+    "version": "18.0.1.0.33",
     "category": "Sales",
     "summary": "Panel interno para areas operativas de Lo Quiero Aca",
     "author": "Lo Quiero Aca",
@@ -13,6 +13,7 @@
         "data/retailers_pricing_cron.xml",
         "data/google_merchant_actions_cron.xml",
         "data/retailers_teams_notifications_cron.xml",
+        "data/company_branding.xml",
         "views/panel_menu_views.xml",
         "views/panel_module_views.xml",
         "views/automeli_catalog_views.xml",
