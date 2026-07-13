@@ -55,7 +55,7 @@
                         t-if="currentApp"
                         type="button"
                         class="o_lqa_sidebar__home"
-                        t-on-click="() => this.lqaSelectMenu(currentApp)"
+                        t-on-click="lqaOpenPanelHome"
                     >
                         <i class="fa fa-th-large"/>
                         <span>Panel principal</span>
@@ -88,6 +88,8 @@
                                                         ? 'fa fa-briefcase'
                                                     : section.name === 'Administracion'
                                                         ? 'fa fa-calculator'
+                                                    : section.name === 'Configuracion'
+                                                        ? 'fa fa-sliders'
                                                     : 'fa fa-folder-o'"
                                     />
                                     <t t-esc="section.name"/>

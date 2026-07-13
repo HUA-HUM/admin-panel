@@ -126,12 +126,35 @@ export class LqaAdminDashboard extends Component {
         if (area.code === "administracion") {
             return "fa fa-calculator";
         }
+        if (area.code === "configuracion") {
+            return "fa fa-sliders";
+        }
         return "fa fa-cubes";
+    }
+
+    areaCardClass(area) {
+        return `o_lqa_dashboard_area is-${area.code || "default"}`;
+    }
+
+    areaSummary(area) {
+        if (area.summary) {
+            return area.summary;
+        }
+        if (area.module_count === 1) {
+            return "1 modulo";
+        }
+        return `${area.module_count || 0} modulos`;
     }
 
     openArea(area) {
         if (area.action_id) {
-            this.openAction(area.action_id);
+            let menu = null;
+            try {
+                menu = area.menu_id ? this.menu.getMenu(area.menu_id) : null;
+            } catch {
+                menu = null;
+            }
+            this.openAction(area.action_id, menu);
         }
     }
 

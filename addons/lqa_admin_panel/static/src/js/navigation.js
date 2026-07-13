@@ -23,11 +23,20 @@ patch(NavBar.prototype, {
     },
 
     get lqaSidebarSections() {
+        const rootSections = this.lqaPanelRootSections();
+        if (rootSections.length) {
+            const activeArea = this.lqaActiveAreaSection(rootSections);
+            return activeArea ? [activeArea] : rootSections;
+        }
+        return this.currentAppSections || [];
+    },
+
+    lqaPanelRootSections() {
         const panelRoot = this.lqaPanelRootMenu();
         if (Array.isArray(panelRoot?.childrenTree) && panelRoot.childrenTree.length) {
             return panelRoot.childrenTree;
         }
-        return this.currentAppSections || [];
+        return [];
     },
 
     lqaPanelRootMenu() {
@@ -44,6 +53,44 @@ patch(NavBar.prototype, {
 
     lqaIsExpanded(section) {
         return this.lqaNavigation.expanded[section.id] !== false;
+    },
+
+    lqaCurrentMenu() {
+        try {
+            return this.menuService?.getCurrentMenu?.() || null;
+        } catch {
+            return null;
+        }
+    },
+
+    lqaActiveAreaSection(rootSections) {
+        const panelRootId = Number(this.lqaNavigation.panelRootMenuId || 0);
+        const currentIds = [
+            this.lqaCurrentMenu()?.id,
+            this.currentApp?.id,
+        ]
+            .map((id) => Number(id || 0))
+            .filter((id) => id && id !== panelRootId);
+        if (!currentIds.length) {
+            return null;
+        }
+        return (
+            rootSections.find((section) =>
+                currentIds.some((id) => this.lqaMenuContains(section, id))
+            ) || null
+        );
+    },
+
+    lqaMenuContains(menu, menuId) {
+        if (!menu || !menuId) {
+            return false;
+        }
+        if (Number(menu.id) === Number(menuId)) {
+            return true;
+        }
+        return (menu.childrenTree || []).some((child) =>
+            this.lqaMenuContains(child, menuId)
+        );
     },
 
     lqaToggleSection(section) {
@@ -69,7 +116,8 @@ patch(NavBar.prototype, {
                 this.lqaNavigation.panelRootMenuId &&
                 Number(currentApp?.id) ===
                     Number(this.lqaNavigation.panelRootMenuId)
-            );
+            ) ||
+            this.lqaMenuContains(this.lqaPanelRootMenu(), currentApp?.id);
         return Boolean(
             isPanelApp && (menu?.actionID || menu?.actionId || menu?.action)
         );
@@ -142,6 +190,11 @@ patch(NavBar.prototype, {
         } finally {
             delete this.lqaNavigation.favoritePending[menu.id];
         }
+    },
+
+    async lqaOpenPanelHome() {
+        const rootMenu = this.lqaPanelRootMenu() || this.currentApp;
+        await this.lqaSelectMenu(rootMenu);
     },
 
     async lqaSelectMenu(menu) {

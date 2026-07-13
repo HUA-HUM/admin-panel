@@ -16,12 +16,25 @@ class LqaDashboardService(models.AbstractModel):
             ),
             "module_codes": ("mercadolibre", "automeli", "retailers"),
             "action_xmlid": "lqa_admin_panel.action_lqa_comercial_dashboard",
+            "menu_xmlid": "lqa_admin_panel.menu_lqa_comercial",
+            "summary": "Ventas y canales",
         },
         "administracion": {
             "name": "Administracion",
             "description": "Gestion contable, administrativa y fiscal.",
             "module_codes": ("administracion",),
             "action_xmlid": "lqa_admin_panel.action_lqa_administracion_dashboard",
+            "menu_xmlid": "lqa_admin_panel.menu_lqa_administracion",
+            "summary": "Facturacion y clientes",
+        },
+        "configuracion": {
+            "name": "Configuraciones",
+            "description": "Usuarios, permisos y parametros generales del panel.",
+            "module_codes": (),
+            "action_xmlid": "lqa_admin_panel.action_lqa_settings",
+            "menu_xmlid": "lqa_admin_panel.menu_lqa_config",
+            "summary": "Sistema",
+            "groups": ("lqa_admin_panel.group_lqa_admin",),
         },
     }
 
@@ -101,6 +114,7 @@ class LqaDashboardService(models.AbstractModel):
         return [
             self._serialize_area(code, values)
             for code, values in self.AREA_DEFINITIONS.items()
+            if self._can_see_area(values)
         ]
 
     def _serialize_area(self, code, values):
@@ -117,9 +131,15 @@ class LqaDashboardService(models.AbstractModel):
             "name": values["name"],
             "description": values["description"],
             "action_id": self._action_id_from_xmlid(values.get("action_xmlid")),
+            "menu_id": self._menu_id_from_xmlid(values.get("menu_xmlid")),
+            "summary": values.get("summary") or "",
             "module_count": len(modules),
             "section_count": section_count,
         }
+
+    def _can_see_area(self, values):
+        groups = values.get("groups") or ()
+        return not groups or any(self.env.user.has_group(group) for group in groups)
 
     def _area_code_for_module(self, module_code):
         for code, values in self.AREA_DEFINITIONS.items():
@@ -168,6 +188,12 @@ class LqaDashboardService(models.AbstractModel):
             return False
         action = self.env.ref(xmlid, raise_if_not_found=False)
         return action.id if action else False
+
+    def _menu_id_from_xmlid(self, xmlid):
+        if not xmlid:
+            return False
+        menu = self.env.ref(xmlid, raise_if_not_found=False)
+        return menu.id if menu else False
 
     def _favorite_state(self):
         menus = self._favorite_menus()

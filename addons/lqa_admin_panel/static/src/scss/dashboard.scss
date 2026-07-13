@@ -25,21 +25,43 @@
 
 .o_lqa_dashboard_areas__grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 14px;
 
     button {
+        position: relative;
         display: grid;
-        min-height: 154px;
-        grid-template-columns: 52px minmax(0, 1fr) 20px;
-        align-items: center;
+        min-height: 184px;
+        overflow: hidden;
+        grid-template-columns: 56px minmax(0, 1fr) 22px;
+        align-items: flex-start;
         gap: 16px;
-        padding: 20px;
+        padding: 22px;
         border: 1px solid #d8e0ea;
         border-radius: 8px;
         background: #fff;
         color: inherit;
         text-align: left;
+        transition:
+            border-color 140ms ease,
+            box-shadow 140ms ease,
+            transform 140ms ease;
+
+        &::before {
+            position: absolute;
+            top: 0;
+            right: 0;
+            left: 0;
+            height: 4px;
+            background: #ff4f5a;
+            content: "";
+        }
+
+        &:hover {
+            border-color: #b9c7d8;
+            box-shadow: 0 16px 34px rgba(31, 41, 55, 0.1);
+            transform: translateY(-2px);
+        }
     }
 
     small,
@@ -70,20 +92,65 @@
     }
 
     > button > i {
+        align-self: center;
         color: #8da0b8;
+    }
+}
+
+.o_lqa_dashboard_area {
+    &.is-administracion::before {
+        background: #2563eb;
+    }
+
+    &.is-administracion .o_lqa_dashboard_area_icon {
+        background: #eaf2ff;
+        color: #2563eb;
+    }
+
+    &.is-configuracion::before {
+        background: #0f8f5f;
+    }
+
+    &.is-configuracion .o_lqa_dashboard_area_icon {
+        background: #e9f8f1;
+        color: #0f8f5f;
     }
 }
 
 .o_lqa_dashboard_area_icon {
     display: inline-flex;
-    width: 52px;
-    height: 52px;
+    width: 56px;
+    height: 56px;
     align-items: center;
     justify-content: center;
     border-radius: 8px;
     background: #fff0f1;
     color: #ff4f5a;
     font-size: 20px;
+}
+
+.o_lqa_dashboard_area_content {
+    min-width: 0;
+}
+
+.o_lqa_dashboard_area_meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 14px;
+
+    span {
+        display: inline-flex;
+        min-height: 24px;
+        align-items: center;
+        padding: 0 8px;
+        border: 1px solid #e1e7ef;
+        border-radius: 8px;
+        background: #f8fafc;
+        color: #475569;
+        font-size: 11px;
+        font-weight: 800;
+    }
 }
 
 .o_lqa_dashboard__header {
@@ -100,6 +167,21 @@
         font-weight: 800;
         letter-spacing: 0;
         line-height: 1.15;
+    }
+
+    &.is-root {
+        padding: 24px;
+        overflow: hidden;
+        border: 1px solid #d8e0ea;
+        border-radius: 8px;
+        background:
+            linear-gradient(90deg, rgba(255, 79, 90, 0.08), rgba(37, 99, 235, 0.05)),
+            #fff;
+        box-shadow: 0 14px 32px rgba(31, 41, 55, 0.06);
+
+        h1 {
+            font-size: 34px;
+        }
     }
 }
 
@@ -527,6 +609,7 @@
 
 @media (max-width: 900px) {
     .o_lqa_dashboard_summary,
+    .o_lqa_dashboard_areas__grid,
     .o_lqa_dashboard_favorites__grid {
         grid-template-columns: 1fr;
     }

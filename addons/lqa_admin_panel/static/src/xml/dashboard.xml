@@ -2,7 +2,12 @@
 <templates xml:space="preserve">
     <t t-name="lqa_admin_panel.Dashboard">
         <div class="o_lqa_dashboard">
-            <header class="o_lqa_dashboard__header">
+            <header
+                t-att-class="{
+                    'o_lqa_dashboard__header': true,
+                    'is-root': isRootDashboard
+                }"
+            >
                 <div>
                     <p class="o_lqa_dashboard__eyebrow">
                         <t t-esc="dashboardEyebrow"/>
@@ -55,8 +60,8 @@
                     <section class="o_lqa_dashboard_areas">
                         <div class="o_lqa_dashboard_favorites__head">
                             <div>
-                                <p>Areas</p>
-                                <h2>Modulos principales</h2>
+                                <p>Panel principal</p>
+                                <h2>Areas de trabajo</h2>
                             </div>
                             <span>
                                 <i class="fa fa-cubes"/>
@@ -69,15 +74,29 @@
                                 t-foreach="state.areas"
                                 t-as="area"
                                 t-key="area.code"
+                                t-att-class="areaCardClass(area)"
                                 t-on-click="() => this.openArea(area)"
                             >
                                 <span class="o_lqa_dashboard_area_icon">
                                     <i t-att-class="areaIcon(area)"/>
                                 </span>
-                                <span>
-                                    <small t-esc="area.module_count + ' modulos'"/>
+                                <span class="o_lqa_dashboard_area_content">
+                                    <small t-esc="areaSummary(area)"/>
                                     <strong t-esc="area.name"/>
                                     <p t-esc="area.description"/>
+                                    <span class="o_lqa_dashboard_area_meta">
+                                        <span t-if="area.module_count">
+                                            <t t-esc="area.module_count"/>
+                                            modulos
+                                        </span>
+                                        <span t-if="area.section_count">
+                                            <t t-esc="area.section_count"/>
+                                            secciones
+                                        </span>
+                                        <span t-if="!area.module_count and !area.section_count">
+                                            Acceso directo
+                                        </span>
+                                    </span>
                                 </span>
                                 <i class="fa fa-arrow-right"/>
                             </button>
