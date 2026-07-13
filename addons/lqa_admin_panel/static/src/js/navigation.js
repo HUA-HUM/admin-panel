@@ -22,11 +22,15 @@ patch(NavBar.prototype, {
         });
     },
 
+    get lqaShouldShowSidebar() {
+        return Boolean(this.lqaActiveAreaSection(this.lqaPanelRootSections()));
+    },
+
     get lqaSidebarSections() {
         const rootSections = this.lqaPanelRootSections();
         if (rootSections.length) {
             const activeArea = this.lqaActiveAreaSection(rootSections);
-            return activeArea ? [activeArea] : rootSections;
+            return activeArea ? [activeArea] : [];
         }
         return this.currentAppSections || [];
     },
@@ -63,6 +67,15 @@ patch(NavBar.prototype, {
         }
     },
 
+    lqaCurrentAction() {
+        const actionService = this.actionService || this.env?.services?.action;
+        try {
+            return actionService?.currentController?.action || null;
+        } catch {
+            return null;
+        }
+    },
+
     lqaActiveAreaSection(rootSections) {
         const panelRootId = Number(this.lqaNavigation.panelRootMenuId || 0);
         const currentIds = [
@@ -71,12 +84,20 @@ patch(NavBar.prototype, {
         ]
             .map((id) => Number(id || 0))
             .filter((id) => id && id !== panelRootId);
-        if (!currentIds.length) {
+        const currentActionIds = [
+            this.lqaCurrentAction()?.id,
+            this.lqaCurrentAction()?.action_id,
+            this.lqaCurrentAction()?.actionId,
+        ]
+            .map((id) => Number(id || 0))
+            .filter(Boolean);
+        if (!currentIds.length && !currentActionIds.length) {
             return null;
         }
         return (
             rootSections.find((section) =>
-                currentIds.some((id) => this.lqaMenuContains(section, id))
+                currentIds.some((id) => this.lqaMenuContains(section, id)) ||
+                currentActionIds.some((id) => this.lqaMenuContainsAction(section, id))
             ) || null
         );
     },
@@ -93,11 +114,27 @@ patch(NavBar.prototype, {
         );
     },
 
+    lqaMenuContainsAction(menu, actionId) {
+        if (!menu || !actionId) {
+            return false;
+        }
+        const menuActionId = Number(menu.actionID || menu.actionId || 0);
+        if (menuActionId && menuActionId === Number(actionId)) {
+            return true;
+        }
+        return (menu.childrenTree || []).some((child) =>
+            this.lqaMenuContainsAction(child, actionId)
+        );
+    },
+
     lqaToggleSection(section) {
         this.lqaNavigation.expanded[section.id] = !this.lqaIsExpanded(section);
     },
 
     lqaOpenMobileSidebar() {
+        if (!this.lqaShouldShowSidebar) {
+            return;
+        }
         this.lqaNavigation.mobileOpen = true;
     },
 

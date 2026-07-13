@@ -7,6 +7,7 @@
     >
         <xpath expr="//t[@t-call='web.NavBar.AppsMenu']" position="replace">
             <button
+                t-if="lqaShouldShowSidebar"
                 type="button"
                 class="o_lqa_mobile_menu"
                 aria-label="Abrir menu"
@@ -29,9 +30,10 @@
         </xpath>
         <xpath expr="//header" position="after">
             <aside
+                t-if="lqaShouldShowSidebar"
                 t-att-class="{
                     'o_lqa_sidebar': true,
-                    'is-mobile-open': lqaNavigation.mobileOpen,
+                    'is-mobile-open': lqaNavigation.mobileOpen
                 }"
                 aria-label="Navegacion del panel"
             >
@@ -403,7 +405,7 @@
                 </div>
             </aside>
             <button
-                t-if="lqaNavigation.mobileOpen"
+                t-if="lqaShouldShowSidebar and lqaNavigation.mobileOpen"
                 type="button"
                 class="o_lqa_sidebar_backdrop"
                 aria-label="Cerrar menu"

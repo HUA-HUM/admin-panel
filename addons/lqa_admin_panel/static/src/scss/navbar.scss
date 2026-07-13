@@ -375,6 +375,10 @@ $lqa-navbar-height: 48px;
 }
 
 .o_web_client > .o_action_manager {
+    margin-left: 0;
+}
+
+.o_web_client:has(> .o_lqa_sidebar) > .o_action_manager {
     margin-left: $lqa-sidebar-width;
 }
 
