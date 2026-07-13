@@ -1,6 +1,6 @@
 {
     "name": "LQA Admin Panel",
-    "version": "18.0.1.0.31",
+    "version": "18.0.1.0.32",
     "category": "Sales",
     "summary": "Panel interno para areas operativas de Lo Quiero Aca",
     "author": "Lo Quiero Aca",
@@ -17,6 +17,7 @@
         "views/panel_module_views.xml",
         "views/automeli_catalog_views.xml",
         "views/res_config_settings_views.xml",
+        "views/login_views.xml",
         "views/panel_data.xml",
     ],
     "assets": {
@@ -88,6 +89,7 @@
         ],
         "web.assets_frontend": [
             "lqa_admin_panel/static/src/js/branding.js",
+            "lqa_admin_panel/static/src/scss/login.scss",
         ],
     },
     "application": True,
