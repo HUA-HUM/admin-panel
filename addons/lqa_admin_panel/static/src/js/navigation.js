@@ -2,7 +2,7 @@
 
 import { onWillStart, useState } from "@odoo/owl";
 import { patch } from "@web/core/utils/patch";
-import { useService } from "@web/core/utils/hooks";
+import { useBus, useService } from "@web/core/utils/hooks";
 import { NavBar } from "@web/webclient/navbar/navbar";
 
 patch(NavBar.prototype, {
@@ -16,6 +16,14 @@ patch(NavBar.prototype, {
             panelRootMenuId: false,
             favoriteMenuIds: {},
             favoritePending: {},
+            activeAreaCode: false,
+            activeAreaMenuId: false,
+            isRootDashboard: false,
+        });
+        useBus(this.env.bus, "lqa-dashboard-context-changed", ({ detail }) => {
+            this.lqaNavigation.activeAreaCode = detail?.areaCode || false;
+            this.lqaNavigation.activeAreaMenuId = detail?.areaMenuId || false;
+            this.lqaNavigation.isRootDashboard = Boolean(detail?.isRootDashboard);
         });
         onWillStart(async () => {
             await this.lqaLoadFavorites();
@@ -27,6 +35,13 @@ patch(NavBar.prototype, {
     },
 
     get lqaSidebarSections() {
+        if (this.lqaNavigation.isRootDashboard) {
+            return [];
+        }
+        const contextualArea = this.lqaActiveAreaFromContext();
+        if (contextualArea?.childrenTree?.length) {
+            return contextualArea.childrenTree;
+        }
         const directArea = this.lqaCurrentAreaMenu();
         if (directArea?.childrenTree?.length) {
             return directArea.childrenTree;
@@ -44,6 +59,29 @@ patch(NavBar.prototype, {
         return [];
     },
 
+    lqaActiveAreaFromContext() {
+        const menuId = Number(this.lqaNavigation.activeAreaMenuId || 0);
+        if (menuId && this.menuService?.getMenu) {
+            try {
+                const menu = this.menuService.getMenu(menuId);
+                if (this.lqaIsAreaMenu(menu)) {
+                    return menu;
+                }
+            } catch {
+                // The menu tree may still be loading; fall through to code lookup.
+            }
+        }
+        const areaCode = String(this.lqaNavigation.activeAreaCode || "").toLowerCase();
+        if (!areaCode) {
+            return null;
+        }
+        return (
+            this.lqaPanelRootSections().find(
+                (section) => this.lqaAreaCodeForMenu(section) === areaCode
+            ) || null
+        );
+    },
+
     lqaCurrentAreaMenu() {
         return (
             [this.lqaCurrentMenu(), this.currentApp].find((menu) =>
@@ -53,9 +91,21 @@ patch(NavBar.prototype, {
     },
 
     lqaIsAreaMenu(menu) {
-        return ["comercial", "administracion", "configuracion"].includes(
-            String(menu?.name || "").trim().toLowerCase()
-        );
+        return Boolean(this.lqaAreaCodeForMenu(menu));
+    },
+
+    lqaAreaCodeForMenu(menu) {
+        const name = String(menu?.name || "").trim().toLowerCase();
+        if (name === "comercial") {
+            return "comercial";
+        }
+        if (name === "administracion") {
+            return "administracion";
+        }
+        if (name === "configuracion" || name === "configuraciones") {
+            return "configuracion";
+        }
+        return "";
     },
 
     lqaPanelRootSections() {

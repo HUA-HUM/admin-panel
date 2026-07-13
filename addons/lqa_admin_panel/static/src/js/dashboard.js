@@ -48,6 +48,12 @@ export class LqaAdminDashboard extends Component {
 
     updateRootDashboardClass() {
         document.body.classList.toggle("o_lqa_root_dashboard", this.isRootDashboard);
+        const area = this.selectedArea;
+        this.env.bus.trigger("lqa-dashboard-context-changed", {
+            isRootDashboard: this.isRootDashboard,
+            areaCode: this.isRootDashboard ? false : area?.code || this.state.areaCode,
+            areaMenuId: this.isRootDashboard ? false : area?.menu_id || false,
+        });
     }
 
     async loadDashboard(
