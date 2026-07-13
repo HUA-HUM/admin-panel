@@ -104,7 +104,7 @@
         <field name="name">Clientes</field>
         <field name="code">clients</field>
         <field name="description">Clientes con issues fiscales, alta por TLQV y consumidor final con DNI.</field>
-        <field name="badge">Nuevo</field>
+        <field name="badge">Xubio</field>
         <field name="status">available</field>
         <field name="sequence">10</field>
         <field name="action_xmlid">lqa_admin_panel.action_lqa_administracion_clients</field>
@@ -113,10 +113,10 @@
 
     <record id="panel_section_administracion_arca_billing" model="lqa.panel.section">
         <field name="module_id" ref="panel_module_administracion"/>
-        <field name="name">Facturacion ARCA</field>
+        <field name="name">Comprobantes</field>
         <field name="code">arca_billing</field>
-        <field name="description">Gestion de comprobantes fiscales ARCA para ordenes de venta.</field>
-        <field name="badge">Inicial</field>
+        <field name="description">Consulta y auditoria de comprobantes sincronizados con Xubio.</field>
+        <field name="badge">Xubio</field>
         <field name="status">available</field>
         <field name="sequence">20</field>
         <field name="action_xmlid">lqa_admin_panel.action_lqa_administracion_arca_billing</field>
@@ -127,8 +127,8 @@
         <field name="module_id" ref="panel_module_administracion"/>
         <field name="name">Xubio</field>
         <field name="code">xubio</field>
-        <field name="description">Herramientas contables y consultas vinculadas a Xubio.</field>
-        <field name="badge">Nuevo</field>
+        <field name="description">Clientes y comprobantes contables conectados a Xubio.</field>
+        <field name="badge">2 secciones</field>
         <field name="status">available</field>
         <field name="sequence">30</field>
         <field name="action_xmlid">lqa_admin_panel.action_lqa_administracion_xubio</field>
@@ -352,7 +352,7 @@
         <value
             eval="{
                 'description': 'Clientes con issues fiscales, alta por TLQV y consumidor final con DNI.',
-                'badge': 'Nuevo',
+                'badge': 'Xubio',
                 'status': 'available',
                 'sequence': 10,
                 'action_xmlid': 'lqa_admin_panel.action_lqa_administracion_clients',
@@ -365,8 +365,9 @@
         <value eval="[ref('panel_section_administracion_arca_billing')]"/>
         <value
             eval="{
-                'description': 'Gestion de comprobantes fiscales ARCA para ordenes de venta.',
-                'badge': 'Inicial',
+                'name': 'Comprobantes',
+                'description': 'Consulta y auditoria de comprobantes sincronizados con Xubio.',
+                'badge': 'Xubio',
                 'status': 'available',
                 'sequence': 20,
                 'action_xmlid': 'lqa_admin_panel.action_lqa_administracion_arca_billing',
@@ -379,8 +380,8 @@
         <value eval="[ref('panel_section_administracion_xubio')]"/>
         <value
             eval="{
-                'description': 'Herramientas contables y consultas vinculadas a Xubio.',
-                'badge': 'Nuevo',
+                'description': 'Clientes y comprobantes contables conectados a Xubio.',
+                'badge': '2 secciones',
                 'status': 'available',
                 'sequence': 30,
                 'action_xmlid': 'lqa_admin_panel.action_lqa_administracion_xubio',

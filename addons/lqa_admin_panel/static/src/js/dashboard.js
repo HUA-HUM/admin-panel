@@ -249,7 +249,7 @@ export class LqaAdminDashboard extends Component {
         if (name.includes("acciones")) {
             return "fa fa-bolt";
         }
-        if (name.includes("facturacion") || name.includes("arca")) {
+        if (name.includes("facturacion") || name.includes("arca") || name.includes("comprobantes")) {
             return "fa fa-file-text-o";
         }
         if (name.includes("xubio")) {

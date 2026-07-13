@@ -337,6 +337,8 @@
                                                                                     ? 'fa fa-bolt'
                                                                                     : child.name === 'Facturacion ARCA'
                                                                                         ? 'fa fa-file-text-o'
+                                                                                    : child.name === 'Comprobantes'
+                                                                                        ? 'fa fa-file-text-o'
                                                                                     : child.name === 'Xubio'
                                                                                         ? 'fa fa-exchange'
                                                                                     : child.name === 'Clientes'

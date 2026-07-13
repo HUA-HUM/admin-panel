@@ -12,7 +12,7 @@
                     t-if="isWorkspace"
                     type="button"
                     class="o_lqa_accounting__ghost"
-                    t-on-click="openDashboard"
+                    t-on-click="openBack"
                 >
                     <i class="fa fa-arrow-left"/>
                     Volver
@@ -26,63 +26,46 @@
                     <span>Administracion</span>
                 </article>
                 <article>
-                    <small>Clientes</small>
-                    <strong>Clientes</strong>
-                    <span>Issues CUIT y consumidor final</span>
-                </article>
-                <article>
-                    <small>ARCA / Xubio</small>
-                    <strong>Facturacion</strong>
-                    <span>Consulta y auditoria</span>
-                </article>
-                <article>
                     <small>Integracion</small>
                     <strong>Xubio</strong>
-                    <span>Gestion contable conectada</span>
+                    <span>Clientes y comprobantes</span>
+                </article>
+                <article>
+                    <small>Secciones</small>
+                    <strong>2</strong>
+                    <span>Clientes y comprobantes</span>
                 </article>
             </section>
 
             <section t-if="isDashboard" class="o_lqa_accounting__modules">
-                <button type="button" t-on-click="openClients">
-                    <span class="o_lqa_accounting__icon">
-                        <i class="fa fa-users"/>
-                    </span>
-                    <div>
-                        <small>Modulo de clientes</small>
-                        <strong>Clientes</strong>
-                        <p>Clientes con error de CUIT, alta por TLQV y consumidor final con DNI.</p>
-                    </div>
-                    <i class="fa fa-arrow-right"/>
-                </button>
-                <button type="button" t-on-click="openArcaBilling">
-                    <span class="o_lqa_accounting__icon">
-                        <i class="fa fa-file-text-o"/>
-                    </span>
-                    <div>
-                        <small>Modulo contable</small>
-                        <strong>Facturacion ARCA</strong>
-                        <p>Consulta y auditoria de comprobantes sincronizados con Xubio.</p>
-                    </div>
-                    <i class="fa fa-arrow-right"/>
-                </button>
-                <button type="button" t-on-click="openXubio" class="is-xubio">
+                <article class="o_lqa_accounting__xubio_module">
                     <span class="o_lqa_accounting__brand_icon">
-                        <img
-                            src="/lqa_admin_panel/static/src/img/xubio-logo.png"
-                            alt="Xubio"
-                        />
+                        <img src="/lqa_admin_panel/static/src/img/xubio-logo.png" alt="Xubio"/>
                     </span>
-                    <div>
+                    <div class="o_lqa_accounting__xubio_module_body">
                         <small>Modulo Xubio</small>
                         <strong>Xubio</strong>
-                        <p>Base para consultas, acciones y herramientas contables vinculadas a Xubio.</p>
+                        <p>Clientes fiscales y comprobantes sincronizados desde la operacion contable.</p>
+                        <div class="o_lqa_accounting__xubio_actions">
+                            <button type="button" t-on-click="openClients">
+                                <i class="fa fa-users"/>
+                                Clientes
+                            </button>
+                            <button type="button" t-on-click="openArcaBilling">
+                                <i class="fa fa-file-text-o"/>
+                                Comprobantes
+                            </button>
+                        </div>
                     </div>
-                    <i class="fa fa-arrow-right"/>
-                </button>
+                    <button type="button" class="o_lqa_accounting__xubio_open" t-on-click="openXubio">
+                        Ver modulo
+                        <i class="fa fa-arrow-right"/>
+                    </button>
+                </article>
             </section>
 
             <t t-if="isWorkspace">
-                <section class="o_lqa_accounting__summary">
+                <section t-if="!isXubio" class="o_lqa_accounting__summary">
                     <article>
                         <small>Ultimo lote</small>
                         <strong t-esc="state.clients.selectedJob ? formatNumber(state.clients.selectedJob.inputCount) : '0'"/>
@@ -102,7 +85,7 @@
                     </article>
                 </section>
 
-                <nav class="o_lqa_accounting__tabs">
+                <nav t-if="!isXubio" class="o_lqa_accounting__tabs">
                     <button
                         type="button"
                         t-att-class="state.activeTab === 'clients' ? 'is-active' : ''"
@@ -118,14 +101,6 @@
                     >
                         <i class="fa fa-file-text-o"/>
                         Comprobantes Xubio
-                    </button>
-                    <button
-                        type="button"
-                        t-att-class="state.activeTab === 'xubio' ? 'is-active' : ''"
-                        t-on-click="() => this.setTab('xubio')"
-                    >
-                        <i class="fa fa-exchange"/>
-                        Xubio
                     </button>
                 </nav>
 
@@ -453,26 +428,21 @@
                                 <small>Modulo Xubio</small>
                                 <h2>Xubio</h2>
                                 <p>
-                                    Esta seccion queda preparada para sumar consultas, acciones y automatizaciones contables conectadas con Xubio.
+                                    Centraliza las herramientas contables de clientes y comprobantes conectadas con Xubio.
                                 </p>
                             </div>
                         </div>
                         <div class="o_lqa_accounting__xubio_grid">
-                            <article>
+                            <button type="button" t-on-click="openClients">
+                                <i class="fa fa-users"/>
+                                <strong>Clientes</strong>
+                                <span>Issues de CUIT, altas por TLQV y conversion a consumidor final con DNI.</span>
+                            </button>
+                            <button type="button" t-on-click="openArcaBilling">
                                 <i class="fa fa-file-text-o"/>
                                 <strong>Comprobantes</strong>
                                 <span>Auditoria y consulta de comprobantes sincronizados.</span>
-                            </article>
-                            <article>
-                                <i class="fa fa-users"/>
-                                <strong>Clientes</strong>
-                                <span>Relacion con altas fiscales y consumidor final.</span>
-                            </article>
-                            <article>
-                                <i class="fa fa-cogs"/>
-                                <strong>Proximas acciones</strong>
-                                <span>Espacio listo para nuevas operaciones de Xubio.</span>
-                            </article>
+                            </button>
                         </div>
                     </section>
                 </t>

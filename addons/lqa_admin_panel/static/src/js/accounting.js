@@ -122,7 +122,7 @@ export class LqaAccounting extends Component {
         if (this.isXubio) {
             return "Xubio";
         }
-        return this.isArcaBilling ? "Facturacion ARCA" : "Administracion";
+        return this.isArcaBilling ? "Comprobantes Xubio" : "Administracion";
     }
 
     get pageSubtitle() {
@@ -130,10 +130,10 @@ export class LqaAccounting extends Component {
             return "Clientes fiscales, issues de CUIT y altas como consumidor final.";
         }
         if (this.isXubio) {
-            return "Herramientas contables y consultas vinculadas a Xubio.";
+            return "Clientes y comprobantes contables conectados a Xubio.";
         }
         return this.isArcaBilling
-            ? "Clientes fiscales y comprobantes de ventas."
+            ? "Consulta y auditoria de comprobantes sincronizados con Xubio."
             : "Area administrativa, contable y fiscal.";
     }
 
@@ -155,6 +155,14 @@ export class LqaAccounting extends Component {
 
     async openDashboard() {
         this.state.view = "dashboard";
+    }
+
+    async openBack() {
+        if (this.isClients || this.isArcaBilling) {
+            await this.openXubio();
+            return;
+        }
+        await this.openDashboard();
     }
 
     async openArcaBilling() {
