@@ -65,72 +65,9 @@
             </section>
 
             <t t-if="isWorkspace">
-                <section t-if="!isXubio" class="o_lqa_accounting__summary">
-                    <article>
-                        <small>Ultimo lote</small>
-                        <strong t-esc="state.clients.selectedJob ? formatNumber(state.clients.selectedJob.inputCount) : '0'"/>
-                        <span t-if="isClients" t-esc="selectedJobSummary"/>
-                        <span t-if="isArcaBilling">Altas de clientes</span>
-                        <span t-if="isXubio">Modulo Xubio</span>
-                    </article>
-                    <article>
-                        <small>Issues fiscales</small>
-                        <strong t-esc="formatNumber(state.issueClients.result.pagination.total)"/>
-                        <span>Clientes a revisar o convertir</span>
-                    </article>
-                    <article>
-                        <small>Comprobantes</small>
-                        <strong t-esc="formatNumber(state.xubio.result.pagination.total)"/>
-                        <span>Xubio segun filtros activos</span>
-                    </article>
-                </section>
-
-                <nav t-if="!isXubio" class="o_lqa_accounting__tabs">
-                    <button
-                        type="button"
-                        t-att-class="state.activeTab === 'clients' ? 'is-active' : ''"
-                        t-on-click="() => this.setTab('clients')"
-                    >
-                        <i class="fa fa-users"/>
-                        Clientes
-                    </button>
-                    <button
-                        type="button"
-                        t-att-class="state.activeTab === 'comprobantes' ? 'is-active' : ''"
-                        t-on-click="() => this.setTab('comprobantes')"
-                    >
-                        <i class="fa fa-file-text-o"/>
-                        Comprobantes Xubio
-                    </button>
-                </nav>
-
                 <t t-if="isClients">
-                    <section class="o_lqa_accounting__client_intro">
-                        <article>
-                            <span><i class="fa fa-user-plus"/></span>
-                            <div>
-                                <small>Alta de clientes</small>
-                                <strong>TLQV y consumidor final</strong>
-                            </div>
-                        </article>
-                        <article>
-                            <span><i class="fa fa-exclamation-circle"/></span>
-                            <div>
-                                <small>Issues fiscales</small>
-                                <strong t-esc="formatNumber(state.issueClients.result.pagination.total)"/>
-                            </div>
-                        </article>
-                        <article>
-                            <span><i class="fa fa-history"/></span>
-                            <div>
-                                <small>Lotes recientes</small>
-                                <strong t-esc="formatNumber(state.clients.jobs.length)"/>
-                            </div>
-                        </article>
-                    </section>
-
                     <section class="o_lqa_accounting__grid is-clients">
-                        <article class="o_lqa_accounting__panel is-emphasis">
+                        <article class="o_lqa_accounting__panel is-emphasis is-client-create">
                             <div class="o_lqa_accounting__panel_head">
                                 <div>
                                     <h2>Crear cliente desde TLQV</h2>
@@ -170,44 +107,6 @@
                                     <t t-if="state.clients.running">Procesando</t>
                                     <t t-else="">Crear clientes</t>
                                 </button>
-                            </div>
-                        </article>
-
-                        <article class="o_lqa_accounting__panel is-history">
-                            <div class="o_lqa_accounting__panel_head">
-                                <div>
-                                    <h2>Historial de lotes</h2>
-                                    <p>Resultados guardados por usuario y fecha.</p>
-                                </div>
-                                <button type="button" class="o_lqa_accounting__ghost" t-on-click="loadClientJobs">
-                                    <i class="fa fa-refresh"/>
-                                    Actualizar
-                                </button>
-                            </div>
-                            <div class="o_lqa_accounting__jobs">
-                                <button
-                                    t-foreach="state.clients.jobs"
-                                    t-as="job"
-                                    t-key="job.id"
-                                    type="button"
-                                    t-att-class="state.clients.selectedJob and state.clients.selectedJob.id === job.id ? 'is-active' : ''"
-                                    t-on-click="() => this.selectJob(job)"
-                                >
-                                    <span>
-                                        <strong t-esc="job.name"/>
-                                        <small>
-                                            <t t-esc="formatDate(job.createdAt)"/>
-                                            ·
-                                            <t t-esc="job.user"/>
-                                        </small>
-                                    </span>
-                                    <em t-att-class="'o_lqa_accounting__pill ' + stateClass(job.state)" t-esc="stateLabel(job.state)"/>
-                                </button>
-                                <div t-if="!state.clients.jobs.length and !state.clients.loadingJobs" class="o_lqa_accounting__empty is-compact">
-                                    <i class="fa fa-folder-open-o"/>
-                                    <strong>Sin lotes todavia</strong>
-                                    <span>Cuando proceses un CSV, va a quedar guardado aca.</span>
-                                </div>
                             </div>
                         </article>
                     </section>
@@ -412,7 +311,7 @@
                         <div t-else="" class="o_lqa_accounting__empty">
                             <i class="fa fa-list-alt"/>
                             <strong>Sin resultados seleccionados</strong>
-                            <span>Procesa un lote o elegi uno del historial.</span>
+                            <span>Procesa un lote para ver el resultado aca.</span>
                         </div>
                     </section>
                 </t>
