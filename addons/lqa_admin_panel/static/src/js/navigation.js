@@ -23,10 +23,14 @@ patch(NavBar.prototype, {
     },
 
     get lqaShouldShowSidebar() {
-        return Boolean(this.lqaActiveAreaSection(this.lqaPanelRootSections()));
+        return this.lqaSidebarSections.length > 0;
     },
 
     get lqaSidebarSections() {
+        const directArea = this.lqaCurrentAreaMenu();
+        if (directArea?.childrenTree?.length) {
+            return directArea.childrenTree;
+        }
         const rootSections = this.lqaPanelRootSections();
         if (rootSections.length) {
             const activeArea = this.lqaActiveAreaSection(rootSections);
@@ -37,7 +41,21 @@ patch(NavBar.prototype, {
                 ? activeArea.childrenTree
                 : [activeArea];
         }
-        return this.currentAppSections || [];
+        return [];
+    },
+
+    lqaCurrentAreaMenu() {
+        return (
+            [this.lqaCurrentMenu(), this.currentApp].find((menu) =>
+                this.lqaIsAreaMenu(menu)
+            ) || null
+        );
+    },
+
+    lqaIsAreaMenu(menu) {
+        return ["comercial", "administracion", "configuracion"].includes(
+            String(menu?.name || "").trim().toLowerCase()
+        );
     },
 
     lqaPanelRootSections() {
@@ -81,6 +99,17 @@ patch(NavBar.prototype, {
         }
     },
 
+    lqaCurrentRouteActionId() {
+        const pathname = window.location?.pathname || "";
+        const hash = window.location?.hash || "";
+        const pathMatch = pathname.match(/\/odoo\/action-(\d+)/);
+        if (pathMatch?.[1]) {
+            return Number(pathMatch[1]);
+        }
+        const hashMatch = hash.match(/[?#&]action=(\d+)/);
+        return hashMatch?.[1] ? Number(hashMatch[1]) : 0;
+    },
+
     lqaActiveAreaSection(rootSections) {
         const panelRootId = Number(this.lqaNavigation.panelRootMenuId || 0);
         const currentNames = [
@@ -99,8 +128,9 @@ patch(NavBar.prototype, {
             this.lqaCurrentAction()?.id,
             this.lqaCurrentAction()?.action_id,
             this.lqaCurrentAction()?.actionId,
+            this.lqaCurrentRouteActionId(),
         ]
-            .map((id) => Number(id || 0))
+            .map((id) => this.lqaActionIdValue(id))
             .filter(Boolean);
         if (!currentIds.length && !currentActionIds.length) {
             return this.lqaActiveAreaFromAction(rootSections);
@@ -188,13 +218,25 @@ patch(NavBar.prototype, {
         if (!menu || !actionId) {
             return false;
         }
-        const menuActionId = Number(menu.actionID || menu.actionId || 0);
+        const menuActionId = this.lqaActionIdValue(menu.actionID || menu.actionId);
         if (menuActionId && menuActionId === Number(actionId)) {
             return true;
         }
         return (menu.childrenTree || []).some((child) =>
             this.lqaMenuContainsAction(child, actionId)
         );
+    },
+
+    lqaActionIdValue(value) {
+        if (!value) {
+            return 0;
+        }
+        if (typeof value === "number") {
+            return value;
+        }
+        const text = String(value);
+        const match = text.match(/(\d+)$/);
+        return match?.[1] ? Number(match[1]) : 0;
     },
 
     lqaToggleSection(section) {
