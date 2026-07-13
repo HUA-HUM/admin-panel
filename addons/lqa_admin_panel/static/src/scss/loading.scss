@@ -80,6 +80,16 @@ $lqa-navbar-height: 48px;
     }
 }
 
+body.o_lqa_root_dashboard {
+    .o_loading_indicator {
+        inset: $lqa-navbar-height 0 0 0;
+    }
+
+    .o_blockUI:not(.o_blockUI_invisible) {
+        left: 0 !important;
+    }
+}
+
 @keyframes o_lqa_spinner_rotation {
     to {
         transform: rotate(360deg);

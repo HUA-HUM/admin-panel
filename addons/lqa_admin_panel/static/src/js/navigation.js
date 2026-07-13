@@ -63,7 +63,32 @@ patch(NavBar.prototype, {
         if (Array.isArray(panelRoot?.childrenTree) && panelRoot.childrenTree.length) {
             return panelRoot.childrenTree;
         }
+        if (
+            this.lqaIsPanelRootMenu(this.currentApp) &&
+            Array.isArray(this.currentApp?.childrenTree) &&
+            this.currentApp.childrenTree.length
+        ) {
+            return this.currentApp.childrenTree;
+        }
+        if (
+            this.lqaIsPanelRootMenu(this.currentApp) &&
+            Array.isArray(this.currentAppSections) &&
+            this.currentAppSections.length
+        ) {
+            return this.currentAppSections;
+        }
         return [];
+    },
+
+    lqaIsPanelRootMenu(menu) {
+        const menuId = Number(menu?.id || 0);
+        const rootId = Number(this.lqaNavigation.panelRootMenuId || 0);
+        return (
+            menu?.xmlid === "lqa_admin_panel.menu_lqa_root" ||
+            menu?.xmlID === "lqa_admin_panel.menu_lqa_root" ||
+            String(menu?.name || "").trim().toLowerCase() === "panel interno" ||
+            (rootId && menuId === rootId)
+        );
     },
 
     lqaPanelRootMenu() {
@@ -244,9 +269,6 @@ patch(NavBar.prototype, {
     },
 
     lqaOpenMobileSidebar() {
-        if (!this.lqaShouldShowSidebar) {
-            return;
-        }
         this.lqaNavigation.mobileOpen = true;
     },
 

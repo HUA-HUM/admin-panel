@@ -1,6 +1,13 @@
 /** @odoo-module **/
 
-import { Component, onWillStart, useState } from "@odoo/owl";
+import {
+    Component,
+    onMounted,
+    onPatched,
+    onWillStart,
+    onWillUnmount,
+    useState,
+} from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useBus, useService } from "@web/core/utils/hooks";
 
@@ -27,9 +34,20 @@ export class LqaAdminDashboard extends Component {
             this.state.favorites = detail?.favorites || [];
         });
 
+        this.updateRootDashboardClass();
+        onMounted(() => this.updateRootDashboardClass());
+        onPatched(() => this.updateRootDashboardClass());
+        onWillUnmount(() => {
+            document.body.classList.remove("o_lqa_root_dashboard");
+        });
+
         onWillStart(async () => {
             await this.loadDashboard();
         });
+    }
+
+    updateRootDashboardClass() {
+        document.body.classList.toggle("o_lqa_root_dashboard", this.isRootDashboard);
     }
 
     async loadDashboard(

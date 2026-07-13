@@ -375,11 +375,18 @@ $lqa-navbar-height: 48px;
 }
 
 .o_web_client > .o_action_manager {
-    margin-left: 0;
+    margin-left: $lqa-sidebar-width;
 }
 
-.o_web_client:has(> .o_lqa_sidebar) > .o_action_manager {
-    margin-left: $lqa-sidebar-width;
+body.o_lqa_root_dashboard {
+    .o_lqa_mobile_menu,
+    .o_lqa_sidebar {
+        display: none !important;
+    }
+
+    .o_web_client > .o_action_manager {
+        margin-left: 0;
+    }
 }
 
 .o_lqa_sidebar_backdrop {
