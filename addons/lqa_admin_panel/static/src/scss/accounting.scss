@@ -131,7 +131,7 @@
 
 .o_lqa_accounting__summary {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     gap: 12px;
     margin-top: 22px;
 
@@ -224,7 +224,7 @@
 
 .o_lqa_accounting__modules {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 14px;
     margin-top: 22px;
 
@@ -241,6 +241,11 @@
         background: #fff;
         color: inherit;
         text-align: left;
+
+        &.is-xubio {
+            border-color: #c8dbe8;
+            background: linear-gradient(135deg, #fff 0%, #f7fbfd 100%);
+        }
     }
 
     small {
@@ -275,6 +280,25 @@
     background: #fff0f1;
     color: #ff4f5a;
     font-size: 21px;
+}
+
+.o_lqa_accounting__brand_icon {
+    display: inline-flex;
+    width: 52px;
+    height: 52px;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border: 1px solid #dbe7ef;
+    border-radius: 8px;
+    background: #fff;
+
+    img {
+        display: block;
+        width: 46px;
+        height: 46px;
+        object-fit: contain;
+    }
 }
 
 .o_lqa_accounting__tabs {
@@ -312,6 +336,92 @@
         grid-template-columns: minmax(440px, 1.1fr) minmax(360px, 0.9fr);
         align-items: stretch;
         margin-top: 14px;
+    }
+}
+
+.o_lqa_accounting__xubio {
+    margin-top: 18px;
+}
+
+.o_lqa_accounting__xubio_hero {
+    display: grid;
+    grid-template-columns: 170px minmax(0, 1fr);
+    gap: 24px;
+    align-items: center;
+    padding: 26px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #f8fbfd 0%, #fff 100%);
+
+    img {
+        display: block;
+        width: 100%;
+        max-width: 150px;
+        aspect-ratio: 1;
+        object-fit: contain;
+        border: 1px solid #dbe7ef;
+        border-radius: 8px;
+        background: #fff;
+    }
+
+    small {
+        color: #ff4f5a;
+        font-size: 10px;
+        font-weight: 850;
+        text-transform: uppercase;
+    }
+
+    h2 {
+        margin: 6px 0 0;
+        color: #182230;
+        font-size: 30px;
+        font-weight: 850;
+        letter-spacing: 0;
+    }
+
+    p {
+        max-width: 680px;
+        margin: 10px 0 0;
+        color: #617089;
+        font-size: 14px;
+        line-height: 1.45;
+    }
+}
+
+.o_lqa_accounting__xubio_grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 14px;
+
+    article {
+        min-height: 124px;
+        padding: 18px;
+        border: 1px solid #d8e0ea;
+        border-radius: 8px;
+        background: #fff;
+    }
+
+    i {
+        color: #0f5b7f;
+        font-size: 18px;
+    }
+
+    strong,
+    span {
+        display: block;
+    }
+
+    strong {
+        margin-top: 12px;
+        color: #1f2937;
+        font-size: 17px;
+        font-weight: 850;
+    }
+
+    span {
+        margin-top: 6px;
+        color: #66758a;
+        font-size: 13px;
     }
 }
 
@@ -737,5 +847,14 @@
     .o_lqa_accounting__actions,
     .o_lqa_accounting__counts {
         justify-content: flex-start;
+    }
+
+    .o_lqa_accounting__xubio_hero,
+    .o_lqa_accounting__xubio_grid {
+        grid-template-columns: 1fr;
+    }
+
+    .o_lqa_accounting__xubio_hero img {
+        max-width: 120px;
     }
 }

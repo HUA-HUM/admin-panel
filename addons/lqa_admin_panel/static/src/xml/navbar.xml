@@ -337,6 +337,8 @@
                                                                                     ? 'fa fa-bolt'
                                                                                     : child.name === 'Facturacion ARCA'
                                                                                         ? 'fa fa-file-text-o'
+                                                                                    : child.name === 'Xubio'
+                                                                                        ? 'fa fa-exchange'
                                                                                     : child.name === 'Clientes'
                                                                                         ? 'fa fa-users'
                                                                                     : 'fa fa-circle-o'"
@@ -378,6 +380,8 @@
                                         ? 'fa fa-line-chart'
                                         : section.name === 'Clientes'
                                             ? 'fa fa-users'
+                                        : section.name === 'Xubio'
+                                            ? 'fa fa-exchange'
                                         : section.name === 'Usuarios'
                                             ? 'fa fa-users'
                                         : section.name === 'Configuracion'

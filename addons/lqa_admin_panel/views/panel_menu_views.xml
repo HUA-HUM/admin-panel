@@ -47,6 +47,12 @@
         <field name="params" eval="{'view': 'arca_billing'}"/>
     </record>
 
+    <record id="action_lqa_administracion_xubio" model="ir.actions.client">
+        <field name="name">Xubio</field>
+        <field name="tag">lqa_admin_panel.accounting</field>
+        <field name="params" eval="{'view': 'xubio'}"/>
+    </record>
+
     <record id="action_lqa_retailers_marketplaces" model="ir.actions.client">
         <field name="name">Marketplaces</field>
         <field name="tag">lqa_admin_panel.retailers</field>
@@ -468,7 +474,7 @@
         name="Contable"
         parent="menu_lqa_administracion"
         action="action_lqa_administracion_arca_billing"
-        sequence="30"
+        sequence="40"
         groups="lqa_admin_panel.group_lqa_commercial_user"
     />
 
@@ -478,6 +484,15 @@
         parent="menu_lqa_administracion"
         action="action_lqa_administracion_clients"
         sequence="20"
+        groups="lqa_admin_panel.group_lqa_commercial_user"
+    />
+
+    <menuitem
+        id="menu_lqa_administracion_xubio"
+        name="Xubio"
+        parent="menu_lqa_administracion"
+        action="action_lqa_administracion_xubio"
+        sequence="30"
         groups="lqa_admin_panel.group_lqa_commercial_user"
     />
 

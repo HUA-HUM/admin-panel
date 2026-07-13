@@ -35,6 +35,11 @@
                     <strong>Facturacion</strong>
                     <span>Consulta y auditoria</span>
                 </article>
+                <article>
+                    <small>Integracion</small>
+                    <strong>Xubio</strong>
+                    <span>Gestion contable conectada</span>
+                </article>
             </section>
 
             <section t-if="isDashboard" class="o_lqa_accounting__modules">
@@ -60,6 +65,20 @@
                     </div>
                     <i class="fa fa-arrow-right"/>
                 </button>
+                <button type="button" t-on-click="openXubio" class="is-xubio">
+                    <span class="o_lqa_accounting__brand_icon">
+                        <img
+                            src="/lqa_admin_panel/static/src/img/xubio-logo.png"
+                            alt="Xubio"
+                        />
+                    </span>
+                    <div>
+                        <small>Modulo Xubio</small>
+                        <strong>Xubio</strong>
+                        <p>Base para consultas, acciones y herramientas contables vinculadas a Xubio.</p>
+                    </div>
+                    <i class="fa fa-arrow-right"/>
+                </button>
             </section>
 
             <t t-if="isWorkspace">
@@ -69,6 +88,7 @@
                         <strong t-esc="state.clients.selectedJob ? formatNumber(state.clients.selectedJob.inputCount) : '0'"/>
                         <span t-if="isClients" t-esc="selectedJobSummary"/>
                         <span t-if="isArcaBilling">Altas de clientes</span>
+                        <span t-if="isXubio">Modulo Xubio</span>
                     </article>
                     <article>
                         <small>Issues fiscales</small>
@@ -98,6 +118,14 @@
                     >
                         <i class="fa fa-file-text-o"/>
                         Comprobantes Xubio
+                    </button>
+                    <button
+                        type="button"
+                        t-att-class="state.activeTab === 'xubio' ? 'is-active' : ''"
+                        t-on-click="() => this.setTab('xubio')"
+                    >
+                        <i class="fa fa-exchange"/>
+                        Xubio
                     </button>
                 </nav>
 
@@ -410,6 +438,41 @@
                             <i class="fa fa-list-alt"/>
                             <strong>Sin resultados seleccionados</strong>
                             <span>Procesa un lote o elegi uno del historial.</span>
+                        </div>
+                    </section>
+                </t>
+
+                <t t-if="isXubio">
+                    <section class="o_lqa_accounting__panel o_lqa_accounting__xubio">
+                        <div class="o_lqa_accounting__xubio_hero">
+                            <img
+                                src="/lqa_admin_panel/static/src/img/xubio-logo.png"
+                                alt="Xubio"
+                            />
+                            <div>
+                                <small>Modulo Xubio</small>
+                                <h2>Xubio</h2>
+                                <p>
+                                    Esta seccion queda preparada para sumar consultas, acciones y automatizaciones contables conectadas con Xubio.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="o_lqa_accounting__xubio_grid">
+                            <article>
+                                <i class="fa fa-file-text-o"/>
+                                <strong>Comprobantes</strong>
+                                <span>Auditoria y consulta de comprobantes sincronizados.</span>
+                            </article>
+                            <article>
+                                <i class="fa fa-users"/>
+                                <strong>Clientes</strong>
+                                <span>Relacion con altas fiscales y consumidor final.</span>
+                            </article>
+                            <article>
+                                <i class="fa fa-cogs"/>
+                                <strong>Proximas acciones</strong>
+                                <span>Espacio listo para nuevas operaciones de Xubio.</span>
+                            </article>
                         </div>
                     </section>
                 </t>

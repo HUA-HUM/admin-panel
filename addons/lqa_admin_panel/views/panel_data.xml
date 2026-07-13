@@ -123,6 +123,18 @@
         <field name="active">True</field>
     </record>
 
+    <record id="panel_section_administracion_xubio" model="lqa.panel.section">
+        <field name="module_id" ref="panel_module_administracion"/>
+        <field name="name">Xubio</field>
+        <field name="code">xubio</field>
+        <field name="description">Herramientas contables y consultas vinculadas a Xubio.</field>
+        <field name="badge">Nuevo</field>
+        <field name="status">available</field>
+        <field name="sequence">30</field>
+        <field name="action_xmlid">lqa_admin_panel.action_lqa_administracion_xubio</field>
+        <field name="active">True</field>
+    </record>
+
     <record id="panel_section_retailers_orders" model="lqa.panel.section">
         <field name="module_id" ref="panel_module_retailers"/>
         <field name="name">Orders</field>
@@ -358,6 +370,20 @@
                 'status': 'available',
                 'sequence': 20,
                 'action_xmlid': 'lqa_admin_panel.action_lqa_administracion_arca_billing',
+                'active': True,
+            }"
+        />
+    </function>
+
+    <function model="lqa.panel.section" name="write">
+        <value eval="[ref('panel_section_administracion_xubio')]"/>
+        <value
+            eval="{
+                'description': 'Herramientas contables y consultas vinculadas a Xubio.',
+                'badge': 'Nuevo',
+                'status': 'available',
+                'sequence': 30,
+                'action_xmlid': 'lqa_admin_panel.action_lqa_administracion_xubio',
                 'active': True,
             }"
         />

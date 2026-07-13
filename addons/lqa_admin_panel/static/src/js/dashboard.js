@@ -252,6 +252,9 @@ export class LqaAdminDashboard extends Component {
         if (name.includes("facturacion") || name.includes("arca")) {
             return "fa fa-file-text-o";
         }
+        if (name.includes("xubio")) {
+            return "fa fa-exchange";
+        }
         if (name.includes("contable") || name.includes("administracion")) {
             return "fa fa-calculator";
         }

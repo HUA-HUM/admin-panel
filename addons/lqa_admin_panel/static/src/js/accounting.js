@@ -41,7 +41,12 @@ export class LqaAccounting extends Component {
         this.orm = useService("orm");
         this.state = useState({
             view: params.view || "dashboard",
-            activeTab: params.view === "arca_billing" ? "comprobantes" : "clients",
+            activeTab:
+                params.view === "arca_billing"
+                    ? "comprobantes"
+                    : params.view === "xubio"
+                    ? "xubio"
+                    : "clients",
             clients: {
                 fileName: "",
                 fileContent: "",
@@ -102,13 +107,20 @@ export class LqaAccounting extends Component {
         return this.state.view === "clients";
     }
 
+    get isXubio() {
+        return this.state.view === "xubio";
+    }
+
     get isWorkspace() {
-        return this.isArcaBilling || this.isClients;
+        return this.isArcaBilling || this.isClients || this.isXubio;
     }
 
     get pageTitle() {
         if (this.isClients) {
             return "Clientes";
+        }
+        if (this.isXubio) {
+            return "Xubio";
         }
         return this.isArcaBilling ? "Facturacion ARCA" : "Administracion";
     }
@@ -116,6 +128,9 @@ export class LqaAccounting extends Component {
     get pageSubtitle() {
         if (this.isClients) {
             return "Clientes fiscales, issues de CUIT y altas como consumidor final.";
+        }
+        if (this.isXubio) {
+            return "Herramientas contables y consultas vinculadas a Xubio.";
         }
         return this.isArcaBilling
             ? "Clientes fiscales y comprobantes de ventas."
@@ -154,6 +169,12 @@ export class LqaAccounting extends Component {
         await this.loadArcaData();
     }
 
+    async openXubio() {
+        this.state.view = "xubio";
+        this.state.activeTab = "xubio";
+        await this.loadArcaData();
+    }
+
     async loadArcaData() {
         if (this.isClients) {
             await Promise.all([this.loadClientJobs(), this.searchClientIssues()]);
@@ -166,7 +187,8 @@ export class LqaAccounting extends Component {
 
     setTab(tab) {
         this.state.activeTab = tab;
-        this.state.view = tab === "comprobantes" ? "arca_billing" : "clients";
+        this.state.view =
+            tab === "comprobantes" ? "arca_billing" : tab === "xubio" ? "xubio" : "clients";
         this.loadArcaData();
     }
 
