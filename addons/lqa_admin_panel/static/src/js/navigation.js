@@ -30,7 +30,12 @@ patch(NavBar.prototype, {
         const rootSections = this.lqaPanelRootSections();
         if (rootSections.length) {
             const activeArea = this.lqaActiveAreaSection(rootSections);
-            return activeArea ? [activeArea] : [];
+            if (!activeArea) {
+                return [];
+            }
+            return activeArea.childrenTree?.length
+                ? activeArea.childrenTree
+                : [activeArea];
         }
         return this.currentAppSections || [];
     },
@@ -78,6 +83,12 @@ patch(NavBar.prototype, {
 
     lqaActiveAreaSection(rootSections) {
         const panelRootId = Number(this.lqaNavigation.panelRootMenuId || 0);
+        const currentNames = [
+            this.lqaCurrentMenu()?.name,
+            this.currentApp?.name,
+        ]
+            .map((name) => String(name || "").trim().toLowerCase())
+            .filter(Boolean);
         const currentIds = [
             this.lqaCurrentMenu()?.id,
             this.currentApp?.id,
@@ -92,14 +103,73 @@ patch(NavBar.prototype, {
             .map((id) => Number(id || 0))
             .filter(Boolean);
         if (!currentIds.length && !currentActionIds.length) {
-            return null;
+            return this.lqaActiveAreaFromAction(rootSections);
         }
         return (
             rootSections.find((section) =>
+                currentNames.includes(String(section.name || "").trim().toLowerCase())
+            ) ||
+            rootSections.find((section) =>
                 currentIds.some((id) => this.lqaMenuContains(section, id)) ||
                 currentActionIds.some((id) => this.lqaMenuContainsAction(section, id))
+            ) ||
+            this.lqaActiveAreaFromAction(rootSections) ||
+            null
+        );
+    },
+
+    lqaActiveAreaFromAction(rootSections) {
+        const action = this.lqaCurrentAction();
+        const areaName = this.lqaAreaNameFromAction(action);
+        if (!areaName) {
+            return null;
+        }
+        return (
+            rootSections.find(
+                (section) =>
+                    String(section.name || "").trim().toLowerCase() === areaName
             ) || null
         );
+    },
+
+    lqaAreaNameFromAction(action) {
+        const params = action?.params || {};
+        const areaCode = String(params.area_code || "").toLowerCase();
+        const moduleCode = String(params.module_code || "").toLowerCase();
+        const tag = String(action?.tag || "").toLowerCase();
+        const name = String(action?.name || "").toLowerCase();
+        const resModel = String(action?.res_model || "").toLowerCase();
+
+        if (
+            areaCode === "comercial" ||
+            ["mercadolibre", "automeli", "retailers"].includes(moduleCode) ||
+            tag.includes("mercadolibre") ||
+            tag.includes("automeli") ||
+            tag.includes("retailers") ||
+            tag.includes("google_merchant")
+        ) {
+            return "comercial";
+        }
+        if (
+            areaCode === "administracion" ||
+            moduleCode === "administracion" ||
+            tag.includes("accounting") ||
+            name.includes("administracion") ||
+            name.includes("facturacion") ||
+            name.includes("clientes")
+        ) {
+            return "administracion";
+        }
+        if (
+            areaCode === "configuracion" ||
+            tag.includes("user_management") ||
+            resModel === "res.config.settings" ||
+            name.includes("configuracion") ||
+            name.includes("usuarios")
+        ) {
+            return "configuracion";
+        }
+        return "";
     },
 
     lqaMenuContains(menu, menuId) {
