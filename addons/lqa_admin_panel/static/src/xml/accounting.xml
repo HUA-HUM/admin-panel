@@ -66,8 +66,38 @@
 
             <t t-if="isWorkspace">
                 <t t-if="isClients">
-                    <section class="o_lqa_accounting__client_sections">
-                        <article class="o_lqa_accounting__workflow_section is-primary">
+                    <section class="o_lqa_accounting__client_workspace">
+                        <nav class="o_lqa_accounting__client_tabs" role="tablist">
+                            <button
+                                type="button"
+                                t-att-class="'o_lqa_accounting__client_tab ' + (state.clients.activeTab === 'fiscal' ? 'is-active' : '')"
+                                t-on-click="() => this.setClientTab('fiscal')"
+                            >
+                                <span>1</span>
+                                <strong>Clientes CUIT/CUIL</strong>
+                                <small>Alta fiscal desde TLQV</small>
+                            </button>
+                            <button
+                                type="button"
+                                t-att-class="'o_lqa_accounting__client_tab ' + (state.clients.activeTab === 'consumer' ? 'is-active' : '')"
+                                t-on-click="() => this.setClientTab('consumer')"
+                            >
+                                <span>2</span>
+                                <strong>Consumidor final</strong>
+                                <small>DNI e issues fiscales</small>
+                            </button>
+                            <button
+                                type="button"
+                                t-att-class="'o_lqa_accounting__client_tab ' + (state.clients.activeTab === 'records' ? 'is-active' : '')"
+                                t-on-click="() => this.setClientTab('records')"
+                            >
+                                <span>3</span>
+                                <strong>Registros</strong>
+                                <small>Lotes y resultados</small>
+                            </button>
+                        </nav>
+
+                        <article t-if="state.clients.activeTab === 'fiscal'" class="o_lqa_accounting__workflow_section o_lqa_accounting__tab_panel is-primary">
                             <div class="o_lqa_accounting__section_head">
                                 <span class="o_lqa_accounting__section_index">1</span>
                                 <div>
@@ -124,7 +154,7 @@
                             </section>
                         </article>
 
-                        <article class="o_lqa_accounting__workflow_section">
+                        <article t-if="state.clients.activeTab === 'consumer'" class="o_lqa_accounting__workflow_section o_lqa_accounting__tab_panel">
                             <div class="o_lqa_accounting__section_head">
                                 <span class="o_lqa_accounting__section_index">2</span>
                                 <div>
@@ -286,7 +316,7 @@
                             </section>
                         </article>
 
-                        <article class="o_lqa_accounting__workflow_section">
+                        <article t-if="state.clients.activeTab === 'records'" class="o_lqa_accounting__workflow_section o_lqa_accounting__tab_panel">
                             <div class="o_lqa_accounting__section_head">
                                 <span class="o_lqa_accounting__section_index">3</span>
                                 <div>

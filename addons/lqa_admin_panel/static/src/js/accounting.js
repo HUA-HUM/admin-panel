@@ -48,6 +48,7 @@ export class LqaAccounting extends Component {
                     ? "xubio"
                     : "clients",
             clients: {
+                activeTab: "fiscal",
                 fileName: "",
                 fileContent: "",
                 manualInput: "",
@@ -198,6 +199,16 @@ export class LqaAccounting extends Component {
         this.state.view =
             tab === "comprobantes" ? "arca_billing" : tab === "xubio" ? "xubio" : "clients";
         this.loadArcaData();
+    }
+
+    setClientTab(tab) {
+        this.state.clients.activeTab = tab;
+        if (tab === "consumer") {
+            this.searchClientIssues(this.state.issueClients.result.pagination.offset || 0);
+        }
+        if (tab === "records") {
+            this.loadClientJobs(this.state.clients.selectedJob?.id || false);
+        }
     }
 
     async onClientFileChange(event) {
