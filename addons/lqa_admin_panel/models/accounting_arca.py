@@ -1,3 +1,4 @@
+import base64
 import csv
 import io
 import json
@@ -6,6 +7,7 @@ import re
 from urllib.parse import quote
 
 import requests
+import xlsxwriter
 
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError
@@ -115,6 +117,58 @@ class LqaAccountingService(models.AbstractModel):
         "numeroorden",
         "codigotlqv",
     }
+    XUBIO_EXPORT_COLUMNS = (
+        ("numeroDocumento", "Documento", 20),
+        ("tipoNombre", "Tipo", 16),
+        ("documentKind", "Tipo tecnico", 16),
+        ("letraComprobante", "Letra", 10),
+        ("tlqvCode", "TLQV", 14),
+        ("tlqvNumber", "TLQV numero", 12),
+        ("mlOrderId", "Orden ML", 22),
+        ("descripcion", "Descripcion", 34),
+        ("clienteNombre", "Cliente", 30),
+        ("clienteCodigo", "Codigo cliente", 30),
+        ("clienteXubioId", "Cliente Xubio ID", 16),
+        ("fechaEmision", "Fecha emision", 20),
+        ("fechaVencimiento", "Fecha vencimiento", 20),
+        ("importeGravado", "Importe gravado", 18),
+        ("importeImpuestos", "Importe impuestos", 18),
+        ("importeTotal", "Importe total", 18),
+        ("monedaCodigo", "Moneda", 20),
+        ("cotizacion", "Cotizacion", 12),
+        ("cae", "CAE", 20),
+        ("caeFechaVencimiento", "CAE vencimiento", 20),
+        ("fiscalmenteEmitido", "Fiscalmente emitido", 18),
+        ("puntoVentaCodigo", "Punto venta", 14),
+        ("depositoCodigo", "Deposito", 24),
+        ("circuitoContableCodigo", "Circuito", 18),
+        ("productItemsCount", "Items", 10),
+        ("productItemsSummary", "Detalle items", 64),
+        ("syncedAt", "Sincronizado", 20),
+        ("createdAt", "Creado", 20),
+        ("updatedAt", "Actualizado", 20),
+        ("source", "Fuente", 12),
+        ("syncRunId", "Sync run", 12),
+        ("xubioTransactionId", "Xubio transaction ID", 18),
+    )
+    XUBIO_DEFAULT_EXPORT_COLUMNS = (
+        "numeroDocumento",
+        "tipoNombre",
+        "tlqvCode",
+        "mlOrderId",
+        "clienteNombre",
+        "clienteCodigo",
+        "fechaEmision",
+        "importeGravado",
+        "importeImpuestos",
+        "importeTotal",
+        "monedaCodigo",
+        "cae",
+        "fiscalmenteEmitido",
+        "productItemsCount",
+        "syncedAt",
+    )
+    XUBIO_MAX_EXPORT_ROWS = 20000
 
     @api.model
     def create_clients_from_tlqv_csv(self, content="", filename="", manual_input=""):
@@ -298,6 +352,58 @@ class LqaAccountingService(models.AbstractModel):
             },
             "raw": payload,
         }
+
+    @api.model
+    def get_xubio_export_columns(self):
+        self._check_access()
+        default_keys = set(self.XUBIO_DEFAULT_EXPORT_COLUMNS)
+        return [
+            {
+                "key": key,
+                "label": label,
+                "default": key in default_keys,
+            }
+            for key, label, _width in self.XUBIO_EXPORT_COLUMNS
+        ]
+
+    @api.model
+    def export_xubio_comprobantes_xlsx(self, filters=None, columns=None):
+        self._check_access()
+        selected_columns = self._selected_xubio_columns(columns)
+        rows = self._fetch_all_xubio_comprobantes(filters or {})
+        content = self._build_xubio_export_xlsx(rows, selected_columns)
+        return {
+            "filename": "xubio-comprobantes.xlsx",
+            "content": base64.b64encode(content).decode("ascii"),
+            "mimetype": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "total": len(rows),
+        }
+
+    @api.model
+    def fetch_tlqv_document_pdf(self, tlqv_code):
+        self._check_access()
+        tlqv_code = self._normalize_tlqv(tlqv_code)
+        if not tlqv_code:
+            raise UserError(_("El comprobante no tiene TLQV valido para generar PDF."))
+
+        url = self._join_url(
+            self._invoice_base_url(),
+            f"/internal/tlqv-invoice/documents/{quote(tlqv_code, safe='')}/pdf",
+        )
+        headers = {"Accept": "application/pdf"}
+        headers.update(self._invoice_headers())
+        try:
+            response = requests.get(url, headers=headers, timeout=self._timeout())
+        except requests.RequestException as error:
+            raise UserError(_("No se pudo generar el PDF del comprobante: %s") % error)
+        if not 200 <= response.status_code < 300:
+            message = response.text or response.reason or response.status_code
+            raise UserError(_("Invoice API rechazo el PDF de %s: %s") % (tlqv_code, message))
+        return (
+            f"{tlqv_code}-factura-remito.pdf",
+            response.content,
+            response.headers.get("Content-Type") or "application/pdf",
+        )
 
     def _create_client_from_tlqv(self, tlqv_code, endpoint_path=None):
         invoice_response = self._request_json(
@@ -526,37 +632,210 @@ class LqaAccountingService(models.AbstractModel):
 
     def _normalize_comprobante(self, item):
         item = item if isinstance(item, dict) else {}
+        raw_detail = item.get("rawDetailPayload")
+        raw_detail = raw_detail if isinstance(raw_detail, dict) else {}
         product_items = item.get("productItems")
-        if not isinstance(product_items, list):
-            raw_detail = item.get("rawDetailPayload")
+        if not isinstance(product_items, list) or not product_items:
             product_items = (
                 raw_detail.get("transaccionProductoItems")
-                if isinstance(raw_detail, dict)
-                and isinstance(raw_detail.get("transaccionProductoItems"), list)
+                if isinstance(raw_detail.get("transaccionProductoItems"), list)
                 else []
             )
+        product_summary = self._product_items_summary(product_items)
         return {
             "id": item.get("id"),
+            "syncRunId": item.get("syncRunId"),
+            "source": self._clean(item.get("source")),
             "xubioTransactionId": item.get("xubioTransactionId"),
+            "externalId": self._clean(item.get("externalId")),
             "numeroDocumento": self._clean(item.get("numeroDocumento")),
+            "tipoCodigo": item.get("tipoCodigo"),
             "documentKind": self._clean(item.get("documentKind")),
             "tipoNombre": self._clean(item.get("tipoNombre")),
             "letraComprobante": self._clean(item.get("letraComprobante")),
             "descripcion": self._clean(item.get("descripcion")),
             "tlqvCode": self._clean(item.get("tlqvCode")),
+            "tlqvNumber": item.get("tlqvNumber"),
             "mlOrderId": self._clean(item.get("mlOrderId")),
+            "fechaVencimiento": self._clean(item.get("fechaVencimiento")),
+            "clienteXubioId": item.get("clienteXubioId"),
             "clienteCodigo": self._clean(item.get("clienteCodigo")),
             "clienteNombre": self._clean(item.get("clienteNombre")),
             "fechaEmision": self._clean(item.get("fechaEmision")),
             "importeGravado": item.get("importeGravado"),
             "importeImpuestos": item.get("importeImpuestos"),
             "importeTotal": item.get("importeTotal"),
+            "importeMonedaPrincipal": item.get("importeMonedaPrincipal"),
+            "monedaId": item.get("monedaId"),
             "monedaCodigo": self._clean(item.get("monedaCodigo")),
+            "monedaNombre": self._clean(item.get("monedaNombre")),
+            "cotizacion": item.get("cotizacion"),
+            "cotizacionListaPrecio": item.get("cotizacionListaPrecio"),
+            "circuitoContableCodigo": self._clean(item.get("circuitoContableCodigo")),
+            "circuitoContableNombre": self._clean(item.get("circuitoContableNombre")),
+            "depositoCodigo": self._clean(item.get("depositoCodigo")),
+            "depositoNombre": self._clean(item.get("depositoNombre")),
+            "condicionPago": item.get("condicionPago"),
+            "puntoVentaCodigo": self._clean(item.get("puntoVentaCodigo")),
+            "puntoVentaNombre": self._clean(item.get("puntoVentaNombre")),
+            "provinciaCodigo": self._clean(item.get("provinciaCodigo")),
+            "provinciaNombre": self._clean(item.get("provinciaNombre")),
+            "mailEstado": self._clean(item.get("mailEstado")),
             "cae": self._clean(item.get("cae")),
+            "caeFechaVencimiento": self._clean(item.get("caeFechaVencimiento")),
             "fiscalmenteEmitido": bool(item.get("fiscalmenteEmitido")),
             "syncedAt": self._clean(item.get("syncedAt")),
+            "createdAt": self._clean(item.get("createdAt")),
+            "updatedAt": self._clean(item.get("updatedAt")),
             "productItemsCount": len(product_items),
+            "productItemsSummary": product_summary,
         }
+
+    def _selected_xubio_columns(self, columns):
+        available = self._xubio_column_map()
+        requested = columns if isinstance(columns, list) else []
+        keys = [self._clean(key) for key in requested if self._clean(key) in available]
+        if not keys:
+            keys = list(self.XUBIO_DEFAULT_EXPORT_COLUMNS)
+        return [(key, available[key]["label"], available[key]["width"]) for key in keys]
+
+    def _xubio_column_map(self):
+        return {
+            key: {"label": label, "width": width}
+            for key, label, width in self.XUBIO_EXPORT_COLUMNS
+        }
+
+    def _fetch_all_xubio_comprobantes(self, filters):
+        filters = dict(filters or {})
+        limit = min(max(self._as_int(filters.get("limit"), 200), 1), 200)
+        offset = 0
+        rows = []
+        while len(rows) < self.XUBIO_MAX_EXPORT_ROWS:
+            filters.update({"limit": limit, "offset": offset})
+            result = self.get_xubio_comprobantes(filters)
+            batch = result.get("items") or []
+            rows.extend(batch)
+            pagination = result.get("pagination") or {}
+            if not pagination.get("has_next") or not batch:
+                break
+            offset = self._as_int(pagination.get("next_offset"), offset + limit)
+        return rows[: self.XUBIO_MAX_EXPORT_ROWS]
+
+    def _build_xubio_export_xlsx(self, rows, selected_columns):
+        buffer = io.BytesIO()
+        workbook = xlsxwriter.Workbook(
+            buffer,
+            {"in_memory": True, "strings_to_numbers": False, "strings_to_urls": False},
+        )
+        worksheet = workbook.add_worksheet("Comprobantes")
+        header_format = workbook.add_format(
+            {
+                "bold": True,
+                "font_color": "#ffffff",
+                "bg_color": "#ff4f5a",
+                "border": 1,
+                "border_color": "#e53e4a",
+                "valign": "vcenter",
+            }
+        )
+        text_format = workbook.add_format({"valign": "top", "text_wrap": True})
+        money_format = workbook.add_format(
+            {"num_format": '"$" #,##0.00', "valign": "top"}
+        )
+        number_format = workbook.add_format({"num_format": "#,##0.00", "valign": "top"})
+        integer_format = workbook.add_format({"num_format": "#,##0", "valign": "top"})
+        bool_format = workbook.add_format({"valign": "top", "align": "center"})
+
+        for column_index, (_key, label, width) in enumerate(selected_columns):
+            worksheet.write(0, column_index, label, header_format)
+            worksheet.set_column(column_index, column_index, width)
+
+        for row_index, row in enumerate(rows, start=1):
+            for column_index, (key, _label, _width) in enumerate(selected_columns):
+                value = row.get(key)
+                self._write_xlsx_cell(
+                    worksheet,
+                    row_index,
+                    column_index,
+                    key,
+                    value,
+                    text_format,
+                    money_format,
+                    number_format,
+                    integer_format,
+                    bool_format,
+                )
+
+        if selected_columns:
+            worksheet.freeze_panes(1, 0)
+            worksheet.autofilter(0, 0, max(len(rows), 1), len(selected_columns) - 1)
+        workbook.close()
+        buffer.seek(0)
+        return buffer.read()
+
+    def _write_xlsx_cell(
+        self,
+        worksheet,
+        row_index,
+        column_index,
+        key,
+        value,
+        text_format,
+        money_format,
+        number_format,
+        integer_format,
+        bool_format,
+    ):
+        if value is None or value == "":
+            worksheet.write_blank(row_index, column_index, None, text_format)
+            return
+        if isinstance(value, bool):
+            worksheet.write(row_index, column_index, "Si" if value else "No", bool_format)
+            return
+        if key in {"importeGravado", "importeImpuestos", "importeTotal"}:
+            numeric = self._as_float(value)
+            if numeric is None:
+                worksheet.write(row_index, column_index, self._clean(value), text_format)
+                return
+            worksheet.write_number(row_index, column_index, numeric, money_format)
+            return
+        if key in {"cotizacion", "tlqvNumber", "productItemsCount", "syncRunId"}:
+            numeric = self._as_float(value)
+            if numeric is None:
+                worksheet.write(row_index, column_index, self._clean(value), text_format)
+                return
+            if numeric.is_integer():
+                worksheet.write_number(row_index, column_index, int(numeric), integer_format)
+            else:
+                worksheet.write_number(row_index, column_index, numeric, number_format)
+            return
+        worksheet.write(row_index, column_index, self._clean(value), text_format)
+
+    def _product_items_summary(self, product_items):
+        if not isinstance(product_items, list):
+            return ""
+        summaries = []
+        for item in product_items[:8]:
+            if not isinstance(item, dict):
+                continue
+            product = item.get("producto") if isinstance(item.get("producto"), dict) else {}
+            description = self._clean(
+                item.get("descripcion")
+                or product.get("nombre")
+                or product.get("codigo")
+            )
+            quantity = item.get("cantidad")
+            total = item.get("total")
+            parts = [description] if description else []
+            if quantity not in (None, ""):
+                parts.append("x %s" % quantity)
+            if total not in (None, ""):
+                parts.append("$ %s" % total)
+            if parts:
+                summaries.append(" ".join(parts))
+        if len(product_items) > 8:
+            summaries.append("+ %s items mas" % (len(product_items) - 8))
+        return " | ".join(summaries)
 
     def _job_to_dict(self, job, include_lines=False):
         data = {
@@ -691,3 +970,10 @@ class LqaAccountingService(models.AbstractModel):
             return int(value)
         except (TypeError, ValueError):
             return default
+
+    @staticmethod
+    def _as_float(value):
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None

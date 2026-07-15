@@ -74,6 +74,10 @@ export class LqaAccounting extends Component {
             },
             xubio: {
                 loading: false,
+                exporting: false,
+                showExportFields: false,
+                exportColumns: [],
+                pdfLoadingTlqv: "",
                 filters: {
                     tlqvCode: "",
                     numeroDocumento: "",
@@ -190,7 +194,7 @@ export class LqaAccounting extends Component {
             return;
         }
         if (this.isArcaBilling) {
-            await this.searchComprobantes();
+            await Promise.all([this.loadXubioExportColumns(), this.searchComprobantes()]);
         }
     }
 
@@ -410,6 +414,127 @@ export class LqaAccounting extends Component {
         }
     }
 
+    async loadXubioExportColumns() {
+        if (this.state.xubio.exportColumns.length) {
+            return;
+        }
+        try {
+            const columns = await this.orm.call(
+                "lqa.accounting.service",
+                "get_xubio_export_columns",
+                []
+            );
+            this.state.xubio.exportColumns = columns.map((column) => ({
+                ...column,
+                selected: Boolean(column.default),
+            }));
+        } catch (error) {
+            this.notifyError(error, "No se pudieron cargar las columnas de exportacion.");
+        }
+    }
+
+    get xubioSelectedColumnsCount() {
+        return this.state.xubio.exportColumns.filter((column) => column.selected).length;
+    }
+
+    get xubioCurrentPageTotal() {
+        return (this.state.xubio.result.items || []).reduce(
+            (total, item) => total + (Number(item.importeTotal) || 0),
+            0
+        );
+    }
+
+    get xubioFiscalCount() {
+        return (this.state.xubio.result.items || []).filter(
+            (item) => item.fiscalmenteEmitido
+        ).length;
+    }
+
+    get xubioExportColumnKeys() {
+        const selected = this.state.xubio.exportColumns
+            .filter((column) => column.selected)
+            .map((column) => column.key);
+        if (selected.length) {
+            return selected;
+        }
+        return this.state.xubio.exportColumns
+            .filter((column) => column.default)
+            .map((column) => column.key);
+    }
+
+    toggleXubioExportFields() {
+        this.state.xubio.showExportFields = !this.state.xubio.showExportFields;
+    }
+
+    toggleXubioExportColumn(column) {
+        column.selected = !column.selected;
+    }
+
+    selectAllXubioExportColumns() {
+        for (const column of this.state.xubio.exportColumns) {
+            column.selected = true;
+        }
+    }
+
+    resetXubioExportColumns() {
+        for (const column of this.state.xubio.exportColumns) {
+            column.selected = Boolean(column.default);
+        }
+    }
+
+    async exportXubioComprobantes() {
+        if (!this.xubioExportColumnKeys.length) {
+            this.notification.add("Selecciona al menos una columna para exportar.", {
+                type: "warning",
+            });
+            return;
+        }
+        this.state.xubio.exporting = true;
+        try {
+            const result = await this.orm.call(
+                "lqa.accounting.service",
+                "export_xubio_comprobantes_xlsx",
+                [this.state.xubio.filters, this.xubioExportColumnKeys]
+            );
+            this.downloadBase64File(result.filename, result.content, result.mimetype);
+            this.notification.add(
+                `Excel generado con ${this.formatNumber(result.total)} comprobantes.`,
+                { type: "success" }
+            );
+        } catch (error) {
+            this.notifyError(error, "No se pudo exportar el Excel de comprobantes.");
+        } finally {
+            this.state.xubio.exporting = false;
+        }
+    }
+
+    openComprobantePdf(item) {
+        const url = this.comprobantePdfUrl(item);
+        if (!url) {
+            this.notification.add("Este comprobante no tiene TLQV para generar PDF.", {
+                type: "warning",
+            });
+            return;
+        }
+        this.state.xubio.pdfLoadingTlqv = item.tlqvCode;
+        window.open(url, "_blank", "noopener");
+        window.setTimeout(() => {
+            if (this.state.xubio.pdfLoadingTlqv === item.tlqvCode) {
+                this.state.xubio.pdfLoadingTlqv = "";
+            }
+        }, 1200);
+    }
+
+    comprobantePdfUrl(item) {
+        const tlqvCode = String(item?.tlqvCode || "").trim();
+        if (!tlqvCode) {
+            return "";
+        }
+        return `/lqa_admin_panel/accounting/comprobantes/${encodeURIComponent(
+            tlqvCode
+        )}/pdf`;
+    }
+
     clearComprobantesFilters() {
         Object.assign(this.state.xubio.filters, {
             tlqvCode: "",
@@ -499,6 +624,32 @@ export class LqaAccounting extends Component {
             dateStyle: "short",
             timeStyle: "short",
         }).format(date);
+    }
+
+    formatDateOnly(value) {
+        if (!value) {
+            return "-";
+        }
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) {
+            return value;
+        }
+        return new Intl.DateTimeFormat("es-AR", {
+            dateStyle: "short",
+        }).format(date);
+    }
+
+    formatBool(value) {
+        return value ? "Si" : "No";
+    }
+
+    downloadBase64File(filename, content, mimetype) {
+        const anchor = document.createElement("a");
+        anchor.href = `data:${mimetype || "application/octet-stream"};base64,${content}`;
+        anchor.download = filename || "xubio-comprobantes.xlsx";
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
     }
 
     humanize(value) {

@@ -464,11 +464,30 @@
                 </t>
 
                 <t t-if="isArcaBilling">
-                    <section class="o_lqa_accounting__panel">
+                    <section class="o_lqa_accounting__comprobante_hero">
+                        <div>
+                            <p>Auditoria Xubio</p>
+                            <h2>Comprobantes emitidos</h2>
+                            <span>
+                                Consulta comprobantes sincronizados, revisa importes fiscales y descarga el respaldo PDF por TLQV.
+                            </span>
+                        </div>
+                        <button
+                            type="button"
+                            class="o_lqa_accounting__ghost"
+                            t-att-disabled="state.xubio.loading ? true : undefined"
+                            t-on-click="() => this.searchComprobantes(state.xubio.result.pagination.offset || 0)"
+                        >
+                            <i t-att-class="state.xubio.loading ? 'fa fa-spinner fa-spin' : 'fa fa-refresh'"/>
+                            Actualizar
+                        </button>
+                    </section>
+
+                    <section class="o_lqa_accounting__panel is-comprobantes_filters">
                         <div class="o_lqa_accounting__panel_head">
                             <div>
-                                <h2>Comprobantes en Xubio</h2>
-                                <p>Busca comprobantes emitidos por TLQV, documento, cliente u orden ML.</p>
+                                <h2>Explorador de comprobantes</h2>
+                                <p>Filtra por TLQV, documento, cliente, orden ML, tipo y rango de emision.</p>
                             </div>
                             <span>Madre DB</span>
                         </div>
@@ -516,7 +535,25 @@
                                 </select>
                             </label>
                         </div>
-                        <div class="o_lqa_accounting__actions">
+                        <div class="o_lqa_accounting__actions is-filter-actions">
+                            <button
+                                type="button"
+                                class="o_lqa_accounting__ghost"
+                                t-on-click="toggleXubioExportFields"
+                            >
+                                <i class="fa fa-columns"/>
+                                Campos Excel
+                                <span t-if="xubioSelectedColumnsCount" t-esc="xubioSelectedColumnsCount"/>
+                            </button>
+                            <button
+                                type="button"
+                                class="o_lqa_accounting__ghost"
+                                t-att-disabled="state.xubio.exporting ? true : undefined"
+                                t-on-click="exportXubioComprobantes"
+                            >
+                                <i t-att-class="state.xubio.exporting ? 'fa fa-spinner fa-spin' : 'fa fa-file-excel-o'"/>
+                                Exportar Excel
+                            </button>
                             <button type="button" class="o_lqa_accounting__ghost" t-on-click="clearComprobantesFilters">
                                 Limpiar
                             </button>
@@ -530,12 +567,72 @@
                                 Buscar
                             </button>
                         </div>
+                        <div t-if="state.xubio.showExportFields" class="o_lqa_accounting__export_fields">
+                            <div class="o_lqa_accounting__export_head">
+                                <div>
+                                    <strong>Columnas del Excel</strong>
+                                    <span>Selecciona que datos incluir en la descarga segun el analisis que necesites.</span>
+                                </div>
+                                <div>
+                                    <button type="button" class="o_lqa_accounting__ghost" t-on-click="selectAllXubioExportColumns">
+                                        Todas
+                                    </button>
+                                    <button type="button" class="o_lqa_accounting__ghost" t-on-click="resetXubioExportColumns">
+                                        Recomendadas
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="o_lqa_accounting__field_grid">
+                                <label
+                                    t-foreach="state.xubio.exportColumns"
+                                    t-as="column"
+                                    t-key="column.key"
+                                    t-att-class="'o_lqa_accounting__field_toggle ' + (column.selected ? 'is-selected' : '')"
+                                >
+                                    <input
+                                        type="checkbox"
+                                        t-att-checked="column.selected ? true : undefined"
+                                        t-on-change="() => this.toggleXubioExportColumn(column)"
+                                    />
+                                    <span t-esc="column.label"/>
+                                </label>
+                            </div>
+                        </div>
                     </section>
 
-                    <section class="o_lqa_accounting__panel">
+                    <section class="o_lqa_accounting__metric_grid">
+                        <article>
+                            <span><i class="fa fa-list-alt"/></span>
+                            <small>Visibles</small>
+                            <strong t-esc="formatNumber(state.xubio.result.pagination.count)"/>
+                            <em>
+                                de <t t-esc="formatNumber(state.xubio.result.pagination.total)"/> filtrados
+                            </em>
+                        </article>
+                        <article>
+                            <span><i class="fa fa-money"/></span>
+                            <small>Total pagina</small>
+                            <strong t-esc="formatCurrency(xubioCurrentPageTotal)"/>
+                            <em>Importe total visible</em>
+                        </article>
+                        <article>
+                            <span><i class="fa fa-check-circle"/></span>
+                            <small>Fiscal emitido</small>
+                            <strong t-esc="formatNumber(xubioFiscalCount)"/>
+                            <em>Con CAE fiscal en esta pagina</em>
+                        </article>
+                        <article>
+                            <span><i class="fa fa-file-pdf-o"/></span>
+                            <small>Documentos</small>
+                            <strong>PDF</strong>
+                            <em>Factura y remito por TLQV</em>
+                        </article>
+                    </section>
+
+                    <section class="o_lqa_accounting__panel is-comprobantes_table">
                         <div class="o_lqa_accounting__panel_head">
                             <div>
-                                <h2>Listado</h2>
+                                <h2>Listado de comprobantes</h2>
                                 <p>
                                     <t t-esc="formatNumber(state.xubio.result.pagination.count)"/>
                                     visibles de
@@ -560,38 +657,96 @@
                                 </button>
                             </div>
                         </div>
-                        <div t-if="state.xubio.result.items.length" class="o_lqa_accounting__table_wrap">
-                            <table class="o_lqa_accounting__table">
+                        <div t-if="state.xubio.result.items.length" class="o_lqa_accounting__table_wrap is-comprobantes">
+                            <table class="o_lqa_accounting__table is-comprobantes">
                                 <thead>
                                     <tr>
                                         <th>Documento</th>
                                         <th>TLQV</th>
                                         <th>Orden ML</th>
                                         <th>Cliente</th>
-                                        <th>Fecha</th>
-                                        <th>Total</th>
-                                        <th>CAE</th>
+                                        <th>Fechas</th>
+                                        <th>Importes</th>
+                                        <th>Fiscal</th>
+                                        <th>Operacion</th>
                                         <th>Items</th>
                                         <th>Sync</th>
+                                        <th>Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr t-foreach="state.xubio.result.items" t-as="item" t-key="item.id || item.xubioTransactionId">
                                         <td>
-                                            <strong t-esc="item.numeroDocumento || '-'"/>
-                                            <small t-esc="item.tipoNombre || item.documentKind || ''"/>
+                                            <div class="o_lqa_accounting__doc_cell">
+                                                <strong t-esc="item.numeroDocumento || '-'"/>
+                                                <span t-esc="item.tipoNombre || item.documentKind || 'Comprobante'"/>
+                                                <small>
+                                                    Letra <t t-esc="item.letraComprobante || '-'"/>
+                                                    <t t-if="item.xubioTransactionId"> · Xubio <t t-esc="item.xubioTransactionId"/></t>
+                                                </small>
+                                            </div>
                                         </td>
-                                        <td t-esc="item.tlqvCode || '-'"/>
-                                        <td t-esc="item.mlOrderId || '-'"/>
+                                        <td>
+                                            <strong t-esc="item.tlqvCode || '-'"/>
+                                            <small t-if="item.tlqvNumber">#<t t-esc="item.tlqvNumber"/></small>
+                                        </td>
+                                        <td>
+                                            <strong t-esc="item.mlOrderId || '-'"/>
+                                            <small t-esc="item.descripcion || ''"/>
+                                        </td>
                                         <td>
                                             <strong t-esc="item.clienteNombre || '-'"/>
-                                            <small t-esc="item.clienteCodigo || ''"/>
+                                            <small t-esc="item.clienteCodigo || '-'"/>
+                                            <small t-if="item.clienteXubioId">ID <t t-esc="item.clienteXubioId"/></small>
                                         </td>
-                                        <td t-esc="formatDate(item.fechaEmision)"/>
-                                        <td t-esc="formatCurrency(item.importeTotal)"/>
-                                        <td t-esc="item.cae || '-'"/>
-                                        <td t-esc="formatNumber(item.productItemsCount)"/>
-                                        <td t-esc="formatDate(item.syncedAt)"/>
+                                        <td>
+                                            <strong>Emision</strong>
+                                            <span t-esc="formatDateOnly(item.fechaEmision)"/>
+                                            <strong>Venc.</strong>
+                                            <span t-esc="formatDateOnly(item.fechaVencimiento)"/>
+                                        </td>
+                                        <td>
+                                            <div class="o_lqa_accounting__amount_stack">
+                                                <strong t-esc="formatCurrency(item.importeTotal)"/>
+                                                <span>Gravado <t t-esc="formatCurrency(item.importeGravado)"/></span>
+                                                <span>Impuestos <t t-esc="formatCurrency(item.importeImpuestos)"/></span>
+                                                <small t-esc="item.monedaNombre || item.monedaCodigo || ''"/>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span t-att-class="'o_lqa_accounting__chip ' + (item.fiscalmenteEmitido ? 'is-green' : 'is-amber')">
+                                                <t t-esc="item.fiscalmenteEmitido ? 'Emitido' : 'Pendiente'"/>
+                                            </span>
+                                            <strong>CAE</strong>
+                                            <span t-esc="item.cae || '-'"/>
+                                            <small>Vto. <t t-esc="formatDateOnly(item.caeFechaVencimiento)"/></small>
+                                        </td>
+                                        <td>
+                                            <strong t-esc="item.puntoVentaCodigo || '-'"/>
+                                            <small>Deposito <t t-esc="item.depositoCodigo || '-'"/></small>
+                                            <small>Circuito <t t-esc="item.circuitoContableCodigo || '-'"/></small>
+                                        </td>
+                                        <td>
+                                            <strong><t t-esc="formatNumber(item.productItemsCount)"/> items</strong>
+                                            <small t-att-title="item.productItemsSummary || ''" t-esc="item.productItemsSummary || '-'"/>
+                                        </td>
+                                        <td>
+                                            <strong>Sync</strong>
+                                            <span t-esc="formatDate(item.syncedAt)"/>
+                                            <small>Creado <t t-esc="formatDate(item.createdAt)"/></small>
+                                            <small>Act. <t t-esc="formatDate(item.updatedAt)"/></small>
+                                        </td>
+                                        <td>
+                                            <button
+                                                type="button"
+                                                class="o_lqa_accounting__pdf_button"
+                                                t-att-disabled="!comprobantePdfUrl(item) ? true : undefined"
+                                                t-on-click="() => this.openComprobantePdf(item)"
+                                            >
+                                                <i t-att-class="state.xubio.pdfLoadingTlqv === item.tlqvCode ? 'fa fa-spinner fa-spin' : 'fa fa-file-pdf-o'"/>
+                                                PDF
+                                            </button>
+                                        </td>
                                     </tr>
                                 </tbody>
                             </table>
