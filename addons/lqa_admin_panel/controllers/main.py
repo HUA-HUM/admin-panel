@@ -61,14 +61,7 @@ class LqaAdminPanelController(http.Controller):
         sitemap=False,
     )
     def accounting_comprobante_pdf(self, tlqv_code, **kwargs):
-        filename, content, mimetype = request.env[
-            "lqa.accounting.service"
-        ].fetch_tlqv_document_pdf(tlqv_code)
-        safe_filename = filename.replace('"', "")
-        return request.make_response(
-            content,
-            headers=[
-                ("Content-Type", mimetype or "application/pdf"),
-                ("Content-Disposition", f'inline; filename="{safe_filename}"'),
-            ],
+        result = request.env["lqa.accounting.service"].create_tlqv_document_cdn(
+            tlqv_code
         )
+        return request.redirect(result["cdnUrl"], code=303)

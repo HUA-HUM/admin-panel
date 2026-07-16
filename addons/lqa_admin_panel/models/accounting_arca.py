@@ -380,30 +380,43 @@ class LqaAccountingService(models.AbstractModel):
         }
 
     @api.model
-    def fetch_tlqv_document_pdf(self, tlqv_code):
+    def create_tlqv_document_cdn(self, tlqv_code):
         self._check_access()
         tlqv_code = self._normalize_tlqv(tlqv_code)
         if not tlqv_code:
             raise UserError(_("El comprobante no tiene TLQV valido para generar PDF."))
 
-        url = self._join_url(
-            self._invoice_base_url(),
-            f"/internal/tlqv-invoice/documents/{quote(tlqv_code, safe='')}/pdf",
+        response = self._request_json(
+            "POST",
+            self._join_url(
+                self._invoice_base_url(),
+                f"/internal/tlqv-invoice/documents/{quote(tlqv_code, safe='')}/cdn",
+            ),
+            headers=self._invoice_headers(),
+            timeout=self._timeout(),
         )
-        headers = {"Accept": "application/pdf"}
-        headers.update(self._invoice_headers())
-        try:
-            response = requests.get(url, headers=headers, timeout=self._timeout())
-        except requests.RequestException as error:
-            raise UserError(_("No se pudo generar el PDF del comprobante: %s") % error)
-        if not 200 <= response.status_code < 300:
-            message = response.text or response.reason or response.status_code
-            raise UserError(_("Invoice API rechazo el PDF de %s: %s") % (tlqv_code, message))
-        return (
-            f"{tlqv_code}-factura-remito.pdf",
-            response.content,
-            response.headers.get("Content-Type") or "application/pdf",
-        )
+        payload = response["payload"] if isinstance(response["payload"], dict) else {}
+        cdn_url = self._clean(payload.get("cdnUrl"))
+        if not response["ok"] or not cdn_url:
+            message = self._clean(
+                payload.get("message")
+                or payload.get("error")
+                or response.get("text")
+                or response.get("status_code")
+            )
+            raise UserError(
+                _("Invoice API no pudo generar el PDF de %s en CDN: %s")
+                % (tlqv_code, message or _("sin detalle"))
+            )
+        return {
+            "tlqvCode": tlqv_code,
+            "filename": self._clean(payload.get("filename"))
+            or f"{tlqv_code}-factura.pdf",
+            "cdnUrl": cdn_url,
+            "cdnKey": self._clean(payload.get("cdnKey")),
+            "status": self._clean(payload.get("status")),
+            "contentLength": payload.get("contentLength"),
+        }
 
     def _create_client_from_tlqv(self, tlqv_code, endpoint_path=None):
         invoice_response = self._request_json(
