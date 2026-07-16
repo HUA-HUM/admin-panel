@@ -1190,71 +1190,24 @@
     box-shadow: 0 16px 42px rgba(15, 23, 42, 0.05);
 }
 
-.o_lqa_accounting__panel.is-comprobantes_filters {
-    .o_lqa_accounting__panel_head {
-        background: #fff;
+.o_lqa_accounting.is-comprobantes-page {
+    padding-right: 20px;
+    padding-left: 20px;
+
+    .o_lqa_accounting__header,
+    .o_lqa_accounting__comprobante_hero,
+    .o_lqa_accounting__panel {
+        max-width: none;
+    }
+
+    .o_lqa_accounting__panel.is-comprobantes_table {
+        margin-top: 16px;
     }
 }
 
-.o_lqa_accounting__metric_grid {
-    display: grid;
-    width: 100%;
-    max-width: 1480px;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 12px;
-    margin: 14px auto 0;
-
-    article {
-        display: grid;
-        min-height: 112px;
-        grid-template-columns: 44px minmax(0, 1fr);
-        gap: 12px;
-        align-items: center;
-        padding: 16px;
-        border: 1px solid #d8e0ea;
-        border-radius: 10px;
+.o_lqa_accounting__panel.is-comprobantes_filters {
+    .o_lqa_accounting__panel_head {
         background: #fff;
-        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
-    }
-
-    article > span {
-        display: inline-flex;
-        width: 44px;
-        height: 44px;
-        grid-row: 1 / span 3;
-        align-items: center;
-        justify-content: center;
-        border-radius: 10px;
-        background: #fff0f1;
-        color: #ff4f5a;
-        font-size: 18px;
-    }
-
-    small,
-    strong,
-    em {
-        display: block;
-        min-width: 0;
-        font-style: normal;
-    }
-
-    small {
-        color: #66758a;
-        font-size: 10px;
-        font-weight: 850;
-        text-transform: uppercase;
-    }
-
-    strong {
-        color: #1f2937;
-        font-size: 22px;
-        font-weight: 850;
-        line-height: 1.1;
-    }
-
-    em {
-        color: #66758a;
-        font-size: 12px;
     }
 }
 
@@ -1346,12 +1299,14 @@
 }
 
 .o_lqa_accounting__table_wrap.is-comprobantes {
-    max-height: 620px;
+    height: calc(100vh - 410px);
+    min-height: 520px;
+    max-height: 760px;
     border-top: 1px solid #e1e7ef;
 }
 
 .o_lqa_accounting__table.is-comprobantes {
-    min-width: 1760px;
+    min-width: 1840px;
 
     th,
     td {
@@ -1490,7 +1445,6 @@
     .o_lqa_accounting__summary,
     .o_lqa_accounting__client_intro,
     .o_lqa_accounting__modules,
-    .o_lqa_accounting__metric_grid,
     .o_lqa_accounting__records_grid,
     .o_lqa_accounting__inline_form,
     .o_lqa_accounting__filters {

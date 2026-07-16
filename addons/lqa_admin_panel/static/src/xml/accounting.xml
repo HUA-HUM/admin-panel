@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
     <t t-name="lqa_admin_panel.Accounting">
-        <div class="o_lqa_accounting">
+        <div t-att-class="'o_lqa_accounting ' + (isArcaBilling ? 'is-comprobantes-page' : '')">
             <header class="o_lqa_accounting__header">
                 <div>
                     <p>Administracion</p>
@@ -598,35 +598,6 @@
                                 </label>
                             </div>
                         </div>
-                    </section>
-
-                    <section class="o_lqa_accounting__metric_grid">
-                        <article>
-                            <span><i class="fa fa-list-alt"/></span>
-                            <small>Visibles</small>
-                            <strong t-esc="formatNumber(state.xubio.result.pagination.count)"/>
-                            <em>
-                                de <t t-esc="formatNumber(state.xubio.result.pagination.total)"/> filtrados
-                            </em>
-                        </article>
-                        <article>
-                            <span><i class="fa fa-money"/></span>
-                            <small>Total pagina</small>
-                            <strong t-esc="formatCurrency(xubioCurrentPageTotal)"/>
-                            <em>Importe total visible</em>
-                        </article>
-                        <article>
-                            <span><i class="fa fa-check-circle"/></span>
-                            <small>Fiscal emitido</small>
-                            <strong t-esc="formatNumber(xubioFiscalCount)"/>
-                            <em>Con CAE fiscal en esta pagina</em>
-                        </article>
-                        <article>
-                            <span><i class="fa fa-file-pdf-o"/></span>
-                            <small>Documentos</small>
-                            <strong>PDF</strong>
-                            <em>Factura y remito por TLQV</em>
-                        </article>
                     </section>
 
                     <section class="o_lqa_accounting__panel is-comprobantes_table">
