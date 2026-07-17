@@ -508,31 +508,55 @@ export class LqaAccounting extends Component {
         }
     }
 
-    openComprobantePdf(item) {
-        const url = this.comprobantePdfUrl(item);
-        if (!url) {
+    async openComprobantePdf(item) {
+        const tlqvCode = this.comprobanteTlqvCode(item);
+        if (!tlqvCode) {
             this.notification.add("Este comprobante no tiene TLQV para generar PDF.", {
                 type: "warning",
             });
             return;
         }
-        this.state.xubio.pdfLoadingTlqv = item.tlqvCode;
-        window.open(url, "_blank", "noopener");
-        window.setTimeout(() => {
-            if (this.state.xubio.pdfLoadingTlqv === item.tlqvCode) {
+
+        const pdfWindow = window.open("about:blank", "_blank");
+        if (pdfWindow) {
+            pdfWindow.document.write(
+                "<!doctype html><title>Generando PDF</title><body style=\"font-family: sans-serif; padding: 24px;\">Generando comprobante...</body>"
+            );
+        }
+
+        this.state.xubio.pdfLoadingTlqv = tlqvCode;
+        try {
+            const result = await this.orm.call(
+                "lqa.accounting.service",
+                "create_tlqv_document_cdn",
+                [tlqvCode]
+            );
+            if (!result?.cdnUrl) {
+                throw new Error("Invoice API no devolvio una URL de CDN.");
+            }
+            if (pdfWindow) {
+                pdfWindow.location.href = result.cdnUrl;
+            } else {
+                window.open(result.cdnUrl, "_blank", "noopener");
+            }
+        } catch (error) {
+            if (pdfWindow) {
+                pdfWindow.close();
+            }
+            this.notifyError(error, "No se pudo generar el PDF en CDN.");
+        } finally {
+            if (this.state.xubio.pdfLoadingTlqv === tlqvCode) {
                 this.state.xubio.pdfLoadingTlqv = "";
             }
-        }, 1200);
+        }
     }
 
-    comprobantePdfUrl(item) {
-        const tlqvCode = String(item?.tlqvCode || "").trim();
-        if (!tlqvCode) {
-            return "";
-        }
-        return `/lqa_admin_panel/accounting/comprobantes/${encodeURIComponent(
-            tlqvCode
-        )}/cdn`;
+    canGenerateComprobantePdf(item) {
+        return Boolean(this.comprobanteTlqvCode(item));
+    }
+
+    comprobanteTlqvCode(item) {
+        return String(item?.tlqvCode || "").trim();
     }
 
     clearComprobantesFilters() {

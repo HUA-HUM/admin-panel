@@ -711,7 +711,7 @@
                                             <button
                                                 type="button"
                                                 class="o_lqa_accounting__pdf_button"
-                                                t-att-disabled="!comprobantePdfUrl(item) ? true : undefined"
+                                                t-att-disabled="!canGenerateComprobantePdf(item) ? true : undefined"
                                                 t-on-click="() => this.openComprobantePdf(item)"
                                             >
                                                 <i t-att-class="state.xubio.pdfLoadingTlqv === item.tlqvCode ? 'fa fa-spinner fa-spin' : 'fa fa-file-pdf-o'"/>
