@@ -532,7 +532,7 @@ export class LqaAccounting extends Component {
         }
         return `/lqa_admin_panel/accounting/comprobantes/${encodeURIComponent(
             tlqvCode
-        )}/pdf`;
+        )}/cdn`;
     }
 
     clearComprobantesFilters() {

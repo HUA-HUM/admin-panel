@@ -54,7 +54,10 @@ class LqaAdminPanelController(http.Controller):
         )
 
     @http.route(
-        "/lqa_admin_panel/accounting/comprobantes/<string:tlqv_code>/pdf",
+        [
+            "/lqa_admin_panel/accounting/comprobantes/<string:tlqv_code>/pdf",
+            "/lqa_admin_panel/accounting/comprobantes/<string:tlqv_code>/cdn",
+        ],
         type="http",
         auth="user",
         csrf=False,

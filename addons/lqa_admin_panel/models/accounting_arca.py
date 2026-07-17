@@ -386,13 +386,15 @@ class LqaAccountingService(models.AbstractModel):
         if not tlqv_code:
             raise UserError(_("El comprobante no tiene TLQV valido para generar PDF."))
 
+        headers = self._invoice_headers()
+        headers["Content-Type"] = "application/json"
         response = self._request_json(
             "POST",
             self._join_url(
                 self._invoice_base_url(),
                 f"/internal/tlqv-invoice/documents/{quote(tlqv_code, safe='')}/cdn",
             ),
-            headers=self._invoice_headers(),
+            headers=headers,
             timeout=self._timeout(),
         )
         payload = response["payload"] if isinstance(response["payload"], dict) else {}
