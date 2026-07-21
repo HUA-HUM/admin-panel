@@ -142,11 +142,11 @@ class LqaRetailersPricingService(models.AbstractModel):
     ALLOWED_CHANNELS = ("fravega", "megatone", "oncity")
     MAX_ITEMS = 50000
     PANEL_LINE_LIMIT = 500
-    PROCESS_LINES_PER_RUN = 2000
+    PROCESS_LINES_PER_RUN = 1000
     LINE_CREATE_CHUNK_SIZE = 1000
     MAX_UPLOAD_BYTES = 60 * 1024 * 1024
     MAX_XLSX_XML_BYTES = 120 * 1024 * 1024
-    REQUEST_CHUNK_SIZE = 100
+    REQUEST_CHUNK_SIZE = 10
     XLSX_OUTPUT_COLUMNS = (
         ("SKU", "input.sku", "text", 18),
         ("Canal", "input.salesChannel", "text", 15),
