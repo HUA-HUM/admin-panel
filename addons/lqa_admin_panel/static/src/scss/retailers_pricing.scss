@@ -420,6 +420,19 @@
     border: 1px solid #e2e8f0;
     border-radius: 8px;
 
+    .o_lqa_retailers_pricing_preview_notice {
+        padding: 10px 12px;
+        border-bottom: 1px solid #dbeafe;
+        background: #eff6ff;
+        color: #335171;
+        font-size: 12px;
+        font-weight: 700;
+
+        strong {
+            color: #1d4ed8;
+        }
+    }
+
     table {
         width: 100%;
         min-width: 1020px;

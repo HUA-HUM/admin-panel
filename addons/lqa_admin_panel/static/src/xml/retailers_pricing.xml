@@ -231,6 +231,16 @@
                             Todavía no hay detalle disponible.
                         </div>
                         <div t-else="" class="o_lqa_retailers_pricing_table_wrap">
+                            <div
+                                t-if="state.selectedJob.linesTruncated"
+                                class="o_lqa_retailers_pricing_preview_notice"
+                            >
+                                Mostrando las primeras
+                                <strong t-esc="formatNumber(state.selectedJob.linePreviewCount)"/>
+                                filas de
+                                <strong t-esc="formatNumber(state.selectedJob.inputCount)"/>.
+                                El Excel descargado incluye el resultado completo.
+                            </div>
                             <table>
                                 <thead>
                                     <tr>

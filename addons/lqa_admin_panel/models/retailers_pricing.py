@@ -59,7 +59,7 @@ class LqaRetailersPricingJob(models.Model):
     @api.model
     def _cron_process_pending_jobs(self, limit=2):
         jobs = self.search(
-            [("state", "=", "pending")],
+            [("state", "in", ("pending", "processing"))],
             order="create_date asc, id asc",
             limit=limit,
         )
@@ -140,9 +140,12 @@ class LqaRetailersPricingService(models.AbstractModel):
         "internal/getProfit/channel/details/bulk"
     )
     ALLOWED_CHANNELS = ("fravega", "megatone", "oncity")
-    MAX_ITEMS = 5000
-    MAX_UPLOAD_BYTES = 20 * 1024 * 1024
-    MAX_XLSX_XML_BYTES = 40 * 1024 * 1024
+    MAX_ITEMS = 50000
+    PANEL_LINE_LIMIT = 500
+    PROCESS_LINES_PER_RUN = 2000
+    LINE_CREATE_CHUNK_SIZE = 1000
+    MAX_UPLOAD_BYTES = 60 * 1024 * 1024
+    MAX_XLSX_XML_BYTES = 120 * 1024 * 1024
     REQUEST_CHUNK_SIZE = 100
     XLSX_OUTPUT_COLUMNS = (
         ("SKU", "input.sku", "text", 18),
@@ -237,27 +240,35 @@ class LqaRetailersPricingService(models.AbstractModel):
         job = self.env["lqa.retailers.pricing.job"].browse(
             self._as_int(job_id, 0)
         ).exists()
-        if not job or job.state != "pending":
+        if not job or job.state not in {"pending", "processing"}:
             return {}
-        job.write(
-            {
-                "state": "processing",
-                "started_at": fields.Datetime.now(),
-                "error_message": "",
-            }
-        )
+        if job.state == "pending":
+            job.write(
+                {
+                    "state": "processing",
+                    "started_at": fields.Datetime.now(),
+                    "error_message": "",
+                }
+            )
         try:
-            self._process_job_lines(job)
-            self._finish_job(job)
+            processed_count = self._process_job_lines(
+                job,
+                limit=self.PROCESS_LINES_PER_RUN,
+            )
+            self._update_job_counts(job)
+            if not processed_count or not self._pending_lines_count(job):
+                self._finish_job(job)
         except Exception as error:
             message = str(error)
             job.line_ids.filtered(lambda line: line.state == "pending").write(
                 {"state": "failed", "error_message": message}
             )
+            success_count, failed_count = self._job_line_counts(job)
             job.write(
                 {
                     "state": "failed",
-                    "failed_count": job.input_count,
+                    "success_count": success_count,
+                    "failed_count": failed_count,
                     "error_message": message,
                     "finished_at": fields.Datetime.now(),
                 }
@@ -339,18 +350,28 @@ class LqaRetailersPricingService(models.AbstractModel):
                 "source_type": source_type,
                 "input_filename": filename or "",
                 "input_count": len(rows),
-                "line_ids": [
-                    fields.Command.create(self._line_values(row, index))
-                    for index, row in enumerate(rows, start=1)
-                ],
             }
         )
+        line_model = self.env["lqa.retailers.pricing.item"].sudo()
+        pending_values = []
+        for index, row in enumerate(rows, start=1):
+            pending_values.append({**self._line_values(row, index), "job_id": job.id})
+            if len(pending_values) >= self.LINE_CREATE_CHUNK_SIZE:
+                line_model.create(pending_values)
+                pending_values = []
+        if pending_values:
+            line_model.create(pending_values)
         return self._job_to_dict(job)
 
-    def _process_job_lines(self, job):
+    def _process_job_lines(self, job, limit=None):
         endpoint, api_key, timeout = self._pricing_config()
         client = self.env["lqa.api.client"]
-        lines = job.line_ids.sorted("sequence")
+        lines = self.env["lqa.retailers.pricing.item"].search(
+            [("job_id", "=", job.id), ("state", "=", "pending")],
+            order="sequence asc, id asc",
+            limit=limit or None,
+        )
+        processed_count = 0
         for chunk in self._chunks(lines, self.REQUEST_CHUNK_SIZE):
             payload = [json.loads(line.input_payload_json) for line in chunk]
             response = client.request_absolute_json(
@@ -386,10 +407,11 @@ class LqaRetailersPricingService(models.AbstractModel):
                             ),
                         }
                     )
+                processed_count += 1
+        return processed_count
 
     def _finish_job(self, job):
-        success_count = len(job.line_ids.filtered(lambda line: line.state == "done"))
-        failed_count = len(job.line_ids.filtered(lambda line: line.state == "failed"))
+        success_count, failed_count = self._job_line_counts(job)
         job.write(
             {
                 "state": "done" if success_count else "failed",
@@ -397,6 +419,28 @@ class LqaRetailersPricingService(models.AbstractModel):
                 "failed_count": failed_count,
                 "finished_at": fields.Datetime.now(),
             }
+        )
+
+    def _update_job_counts(self, job):
+        success_count, failed_count = self._job_line_counts(job)
+        job.write(
+            {
+                "success_count": success_count,
+                "failed_count": failed_count,
+            }
+        )
+
+    def _job_line_counts(self, job):
+        line_model = self.env["lqa.retailers.pricing.item"]
+        domain = [("job_id", "=", job.id)]
+        return (
+            line_model.search_count([*domain, ("state", "=", "done")]),
+            line_model.search_count([*domain, ("state", "=", "failed")]),
+        )
+
+    def _pending_lines_count(self, job):
+        return self.env["lqa.retailers.pricing.item"].search_count(
+            [("job_id", "=", job.id), ("state", "=", "pending")]
         )
 
     def _parse_xlsx(self, filename, content_base64):
@@ -410,7 +454,10 @@ class LqaRetailersPricingService(models.AbstractModel):
         if not content:
             raise UserError(_("El archivo esta vacio."))
         if len(content) > self.MAX_UPLOAD_BYTES:
-            raise UserError(_("El archivo no puede superar 20 MB."))
+            raise UserError(
+                _("El archivo no puede superar %s MB.")
+                % int(self.MAX_UPLOAD_BYTES / 1024 / 1024)
+            )
         rows = self._read_xlsx_rows(content)
         rows = [row for row in rows if any(self._clean(value) for value in row)]
         if not rows:
@@ -684,7 +731,19 @@ class LqaRetailersPricingService(models.AbstractModel):
             "canDownload": job.state in {"done", "failed"},
         }
         if include_lines:
-            data["lines"] = [line.to_panel_dict() for line in job.line_ids]
+            lines = self.env["lqa.retailers.pricing.item"].search(
+                [("job_id", "=", job.id)],
+                order="sequence asc, id asc",
+                limit=self.PANEL_LINE_LIMIT,
+            )
+            data.update(
+                {
+                    "lines": [line.to_panel_dict() for line in lines],
+                    "linePreviewCount": len(lines),
+                    "linePreviewLimit": self.PANEL_LINE_LIMIT,
+                    "linesTruncated": job.input_count > len(lines),
+                }
+            )
         return data
 
     def _read_xlsx_rows(self, content):
