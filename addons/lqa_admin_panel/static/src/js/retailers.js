@@ -72,6 +72,7 @@ export class LqaRetailers extends Component {
     setup() {
         this.notification = useService("notification");
         this.orm = useService("orm");
+        this.refreshBulkFileInput = null;
         const params = this.props.action?.params || {};
         const initialMarketplaceId = params.marketplace_id || "";
 
@@ -87,6 +88,8 @@ export class LqaRetailers extends Component {
             loadingStatus: false,
             runningImport: false,
             refreshingPublished: false,
+            refreshingSku: false,
+            refreshingBulk: false,
             confirmImport: false,
             confirmRefresh: false,
             confirmDeleteGoogleMerchant: false,
@@ -99,7 +102,19 @@ export class LqaRetailers extends Component {
             refreshForm: {
                 marketplace: "fravega",
             },
+            refreshSkuForm: {
+                marketplace: "fravega",
+                sku: "",
+            },
+            refreshBulkForm: {
+                marketplace: "fravega",
+                runId: "",
+                filename: "",
+                content: "",
+            },
             refreshResult: null,
+            refreshSkuResult: null,
+            refreshBulkResult: null,
             products: { items: [], summary: {}, pagination: {} },
             imports: { items: [], pagination: {} },
             status: { total: 0, statuses: [] },
@@ -480,6 +495,100 @@ export class LqaRetailers extends Component {
         } finally {
             this.state.refreshingPublished = false;
         }
+    }
+
+    async submitRefreshSku() {
+        if (!this.state.refreshSkuForm.sku.trim()) {
+            this.notification.add("Ingresa un SKU para actualizar.", {
+                type: "warning",
+            });
+            return;
+        }
+        this.state.refreshingSku = true;
+        try {
+            const result = await this.orm.call(
+                "lqa.retailers.service",
+                "refresh_published_sku",
+                [this.state.refreshSkuForm.marketplace, this.state.refreshSkuForm.sku]
+            );
+            this.state.refreshSkuResult = result;
+            this.notification.add(
+                `Actualizacion enviada para ${result.sku} en ${result.marketplace_name}.`,
+                { type: "success" }
+            );
+        } catch (error) {
+            this.notifyError(error, "No se pudo actualizar el SKU.");
+        } finally {
+            this.state.refreshingSku = false;
+        }
+    }
+
+    async onRefreshBulkFileChange(event) {
+        this.refreshBulkFileInput = event.target;
+        const file = event.target.files?.[0];
+        if (!file) {
+            this.clearRefreshBulkFile();
+            return;
+        }
+        try {
+            const dataUrl = await this.readFileAsDataUrl(file);
+            this.state.refreshBulkForm.filename = file.name;
+            this.state.refreshBulkForm.content = dataUrl.split(",", 2)[1] || "";
+        } catch (error) {
+            this.clearRefreshBulkFile();
+            this.notification.add("No se pudo leer el archivo seleccionado.", {
+                type: "danger",
+            });
+        }
+    }
+
+    clearRefreshBulkFile() {
+        this.state.refreshBulkForm.filename = "";
+        this.state.refreshBulkForm.content = "";
+        if (this.refreshBulkFileInput) {
+            this.refreshBulkFileInput.value = "";
+        }
+    }
+
+    async submitRefreshBulk() {
+        if (!this.state.refreshBulkForm.content) {
+            this.notification.add("Selecciona un CSV o Excel con SKUs.", {
+                type: "warning",
+            });
+            return;
+        }
+        this.state.refreshingBulk = true;
+        try {
+            const result = await this.orm.call(
+                "lqa.retailers.service",
+                "refresh_published_bulk",
+                [
+                    this.state.refreshBulkForm.marketplace,
+                    this.state.refreshBulkForm.filename,
+                    this.state.refreshBulkForm.content,
+                    this.state.refreshBulkForm.runId,
+                ]
+            );
+            this.state.refreshBulkResult = result;
+            this.clearRefreshBulkFile();
+            this.notification.add(
+                `Bulk enviado: ${this.formatNumber(result.sku_count)} SKUs para ${result.marketplace_name}.`,
+                { type: "success" }
+            );
+        } catch (error) {
+            this.notifyError(error, "No se pudo enviar el bulk de SKUs.");
+        } finally {
+            this.state.refreshingBulk = false;
+        }
+    }
+
+    readFileAsDataUrl(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result || ""));
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(file);
+        });
     }
 
     openGoogleMerchantDeleteConfirmation() {

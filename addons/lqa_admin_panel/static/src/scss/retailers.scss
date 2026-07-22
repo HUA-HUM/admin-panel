@@ -190,6 +190,7 @@
         text-transform: uppercase;
     }
 
+    .form-control,
     .form-select {
         min-height: 42px;
         border-color: #d6dee8;
@@ -209,6 +210,44 @@
 
     i {
         margin-right: 6px;
+    }
+}
+
+.o_lqa_retailers_bulk_file {
+    position: relative;
+    min-height: 86px;
+    justify-content: center;
+    padding: 14px;
+    border: 1px dashed #b9c6d8;
+    border-radius: 8px;
+    background: #f8fafc;
+    cursor: pointer;
+
+    input {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        cursor: pointer;
+    }
+
+    strong {
+        display: block;
+        color: #314158;
+        font-size: 14px;
+        font-weight: 900;
+        overflow-wrap: anywhere;
+        text-transform: none;
+    }
+}
+
+.o_lqa_retailers_bulk_form__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+
+    .btn {
+        min-height: 42px;
+        font-weight: 800;
     }
 }
 

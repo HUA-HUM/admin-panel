@@ -156,6 +156,165 @@
                         </div>
                     </dl>
                 </article>
+
+                <article class="o_lqa_retailers_bulk_card">
+                    <div>
+                        <small>SKU puntual</small>
+                        <h2>Actualizar un producto</h2>
+                        <p>
+                            Fuerza la actualizacion de precio, estado y stock de un SKU publicado
+                            en el marketplace seleccionado.
+                        </p>
+                    </div>
+                    <form class="o_lqa_retailers_bulk_form" t-on-submit.prevent="submitRefreshSku">
+                        <label>
+                            <span>Marketplace</span>
+                            <select class="form-select" t-model="state.refreshSkuForm.marketplace">
+                                <option
+                                    t-foreach="state.actionMarketplaces"
+                                    t-as="marketplace"
+                                    t-key="marketplace.id"
+                                    t-att-value="marketplace.id"
+                                    t-esc="marketplace.name"
+                                />
+                            </select>
+                        </label>
+                        <label>
+                            <span>SKU</span>
+                            <input
+                                type="text"
+                                class="form-control"
+                                placeholder="B0C33CHG99"
+                                t-model="state.refreshSkuForm.sku"
+                            />
+                        </label>
+                        <button
+                            type="submit"
+                            class="btn btn-primary"
+                            t-att-disabled="state.refreshingSku"
+                        >
+                            <i class="fa fa-refresh"/>
+                            <t t-if="state.refreshingSku">Enviando...</t>
+                            <t t-else="">Actualizar SKU</t>
+                        </button>
+                    </form>
+                </article>
+
+                <article t-if="state.refreshSkuResult" class="o_lqa_retailers_bulk_result">
+                    <div>
+                        <small>Refresh puntual enviado</small>
+                        <h2 t-esc="state.refreshSkuResult.sku"/>
+                    </div>
+                    <dl>
+                        <div>
+                            <dt>Marketplace</dt>
+                            <dd t-esc="state.refreshSkuResult.marketplace_name"/>
+                        </div>
+                        <div>
+                            <dt>Estado</dt>
+                            <dd t-esc="statusLabel(state.refreshSkuResult.status)"/>
+                        </div>
+                        <div>
+                            <dt>Fecha</dt>
+                            <dd t-esc="formatDateTime(state.refreshSkuResult.triggered_at)"/>
+                        </div>
+                    </dl>
+                </article>
+
+                <article class="o_lqa_retailers_bulk_card">
+                    <div>
+                        <small>Bulk con BullMQ</small>
+                        <h2>Actualizar SKUs desde archivo</h2>
+                        <p>
+                            Carga un CSV o Excel con una columna <strong>sku</strong>.
+                            El panel no limita la cantidad de SKUs; Products API controla el proceso.
+                        </p>
+                    </div>
+                    <form class="o_lqa_retailers_bulk_form" t-on-submit.prevent="submitRefreshBulk">
+                        <label>
+                            <span>Marketplace</span>
+                            <select class="form-select" t-model="state.refreshBulkForm.marketplace">
+                                <option
+                                    t-foreach="state.actionMarketplaces"
+                                    t-as="marketplace"
+                                    t-key="marketplace.id"
+                                    t-att-value="marketplace.id"
+                                    t-esc="marketplace.name"
+                                />
+                            </select>
+                        </label>
+                        <label>
+                            <span>Run ID opcional</span>
+                            <input
+                                type="text"
+                                class="form-control"
+                                placeholder="refresh-fravega-manual"
+                                t-model="state.refreshBulkForm.runId"
+                            />
+                        </label>
+                        <label class="o_lqa_retailers_bulk_file">
+                            <span>Archivo CSV / XLSX</span>
+                            <input
+                                type="file"
+                                accept=".csv,.xlsx"
+                                t-on-change="onRefreshBulkFileChange"
+                            />
+                            <strong t-esc="state.refreshBulkForm.filename || 'Seleccionar archivo'"/>
+                        </label>
+                        <div class="o_lqa_retailers_bulk_form__actions">
+                            <button
+                                type="button"
+                                class="btn btn-secondary"
+                                t-att-disabled="!state.refreshBulkForm.content || state.refreshingBulk"
+                                t-on-click="clearRefreshBulkFile"
+                            >
+                                Limpiar
+                            </button>
+                            <button
+                                type="submit"
+                                class="btn btn-primary"
+                                t-att-disabled="!state.refreshBulkForm.content || state.refreshingBulk"
+                            >
+                                <i class="fa fa-upload"/>
+                                <t t-if="state.refreshingBulk">Enviando...</t>
+                                <t t-else="">Enviar bulk</t>
+                            </button>
+                        </div>
+                    </form>
+                </article>
+
+                <article t-if="state.refreshBulkResult" class="o_lqa_retailers_bulk_result">
+                    <div>
+                        <small>Bulk enviado</small>
+                        <h2 t-esc="state.refreshBulkResult.run_id"/>
+                    </div>
+                    <dl>
+                        <div>
+                            <dt>Marketplace</dt>
+                            <dd t-esc="state.refreshBulkResult.marketplace_name"/>
+                        </div>
+                        <div>
+                            <dt>SKUs</dt>
+                            <dd t-esc="formatNumber(state.refreshBulkResult.sku_count)"/>
+                        </div>
+                        <div>
+                            <dt>Estado</dt>
+                            <dd t-esc="statusLabel(state.refreshBulkResult.status)"/>
+                        </div>
+                        <div>
+                            <dt>Archivo</dt>
+                            <dd t-esc="state.refreshBulkResult.filename || '-'"/>
+                        </div>
+                        <div>
+                            <dt>Job API</dt>
+                            <dd t-esc="state.refreshBulkResult.job_id || '-'"/>
+                        </div>
+                        <div>
+                            <dt>Fecha</dt>
+                            <dd t-esc="formatDateTime(state.refreshBulkResult.triggered_at)"/>
+                        </div>
+                    </dl>
+                </article>
             </section>
 
             <section t-if="showMarketplaceDetail" class="o_lqa_retailers_detail">

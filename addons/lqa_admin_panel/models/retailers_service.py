@@ -1,6 +1,13 @@
+import base64
+import csv
+import io
 import json
 import os
+import posixpath
+import re
+import zipfile
 from urllib.parse import quote, urlsplit, urlunsplit
+from xml.etree import ElementTree
 
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError
@@ -295,6 +302,59 @@ class LqaRetailersService(models.AbstractModel):
             "raw": payload,
         }
 
+    @api.model
+    def refresh_published_sku(self, marketplace_id, sku):
+        self._check_access()
+        marketplace_id = self._validate_refresh_marketplace(marketplace_id)
+        sku = self._clean(sku)
+        if not sku:
+            raise UserError(_("Ingresa un SKU para actualizar."))
+
+        response = self.env["lqa.api.client"].request_absolute_json(
+            "POST",
+            self._join_url(
+                self._products_base_url(),
+                (
+                    "/api/internal/marketplace-changes/refresh-published/"
+                    f"{marketplace_id}/{quote(sku, safe='')}"
+                ),
+            ),
+            timeout=self._timeout(),
+        )
+        return self._normalize_refresh_result(
+            marketplace_id,
+            response,
+            action="sku",
+            extra={"sku": sku, "sku_count": 1},
+        )
+
+    @api.model
+    def refresh_published_bulk(self, marketplace_id, filename, content_base64, run_id=""):
+        self._check_access()
+        marketplace_id = self._validate_refresh_marketplace(marketplace_id)
+        skus = self._parse_refresh_sku_file(filename, content_base64)
+        run_id = self._clean(run_id) or self._default_refresh_run_id(marketplace_id)
+
+        response = self.env["lqa.api.client"].request_absolute_json(
+            "POST",
+            self._join_url(
+                self._products_base_url(),
+                f"/api/internal/marketplace-changes/refresh-published/{marketplace_id}/bulk",
+            ),
+            payload={"runId": run_id, "skus": skus},
+            timeout=self._timeout(),
+        )
+        return self._normalize_refresh_result(
+            marketplace_id,
+            response,
+            action="bulk",
+            extra={
+                "run_id": run_id,
+                "sku_count": len(skus),
+                "filename": self._clean(filename),
+            },
+        )
+
     def _check_access(self):
         if not self.env.user.has_group("lqa_admin_panel.group_lqa_commercial_user"):
             raise AccessError(_("No tenes permisos para consultar retailers."))
@@ -304,6 +364,203 @@ class LqaRetailersService(models.AbstractModel):
         if marketplace_id not in self.MARKETPLACES:
             raise UserError(_("Marketplace no valido."))
         return marketplace_id
+
+    def _validate_refresh_marketplace(self, marketplace_id):
+        marketplace_id = self._clean(marketplace_id).lower()
+        if marketplace_id not in self.REFRESH_PUBLISHED_MARKETPLACES:
+            raise UserError(_("Marketplace no disponible para actualizacion."))
+        return marketplace_id
+
+    def _normalize_refresh_result(self, marketplace_id, response, action="", extra=None):
+        payload = response if isinstance(response, dict) else {}
+        marketplace = self.MARKETPLACES.get(marketplace_id, {})
+        result = {
+            "action": action,
+            "marketplace": marketplace_id,
+            "marketplace_name": marketplace.get("name") or marketplace_id,
+            "status": self._clean(
+                payload.get("status")
+                or payload.get("state")
+                or payload.get("result")
+                or "QUEUED"
+            ),
+            "message": self._clean(
+                payload.get("message")
+                or payload.get("detail")
+                or payload.get("description")
+            ),
+            "job_id": self._clean(
+                payload.get("jobId")
+                or payload.get("job_id")
+                or payload.get("id")
+            ),
+            "triggered_at": fields.Datetime.to_string(fields.Datetime.now()),
+            "raw": payload,
+        }
+        result.update(extra or {})
+        return result
+
+    def _default_refresh_run_id(self, marketplace_id):
+        now = fields.Datetime.now()
+        return f"refresh-{marketplace_id}-manual-{now.strftime('%Y%m%d%H%M%S')}"
+
+    def _parse_refresh_sku_file(self, filename, content_base64):
+        filename = self._clean(filename)
+        if not filename:
+            raise UserError(_("Selecciona un archivo con SKUs."))
+        try:
+            content = base64.b64decode(content_base64 or "", validate=True)
+        except (TypeError, ValueError) as error:
+            raise UserError(_("El archivo recibido no es valido.")) from error
+        if not content:
+            raise UserError(_("El archivo esta vacio."))
+
+        extension = os.path.splitext(filename.lower())[1]
+        if extension == ".csv":
+            rows = self._read_csv_rows(content)
+        elif extension == ".xlsx":
+            rows = self._read_xlsx_rows(content)
+        else:
+            raise UserError(_("Usa un archivo CSV o Excel XLSX."))
+        return self._skus_from_rows(rows)
+
+    def _skus_from_rows(self, rows):
+        clean_rows = [
+            [self._clean(cell) for cell in row]
+            for row in rows
+            if any(self._clean(cell) for cell in row)
+        ]
+        if not clean_rows:
+            raise UserError(_("El archivo no contiene SKUs."))
+
+        headers = [self._normalize_header(cell) for cell in clean_rows[0]]
+        sku_index = self._find_header_index(
+            headers,
+            {
+                "sku",
+                "sellerSku",
+                "sellersku",
+                "seller_sku",
+                "seller",
+                "asin",
+            },
+        )
+        data_rows = clean_rows[1:] if sku_index >= 0 else clean_rows
+        if sku_index < 0:
+            sku_index = 0
+
+        skus = []
+        seen = set()
+        for row in data_rows:
+            sku = self._cell(row, sku_index)
+            if not sku:
+                continue
+            normalized = sku.upper()
+            if normalized in seen:
+                continue
+            seen.add(normalized)
+            skus.append(sku)
+        if not skus:
+            raise UserError(_("No encontre SKUs validos en el archivo."))
+        return skus
+
+    def _read_csv_rows(self, content):
+        try:
+            text = content.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            text = content.decode("latin-1")
+        sample = text[:4096]
+        try:
+            dialect = csv.Sniffer().sniff(sample, delimiters=",;\t")
+        except csv.Error:
+            dialect = csv.excel_tab if "\t" in sample else csv.excel
+        return list(csv.reader(io.StringIO(text), dialect))
+
+    def _read_xlsx_rows(self, content):
+        try:
+            workbook = zipfile.ZipFile(io.BytesIO(content))
+        except zipfile.BadZipFile as error:
+            raise UserError(_("El archivo XLSX no es valido.")) from error
+        with workbook:
+            shared_strings = self._xlsx_shared_strings(workbook)
+            sheet_path = self._xlsx_first_sheet_path(workbook)
+            if not sheet_path:
+                raise UserError(_("El XLSX no contiene hojas."))
+            try:
+                sheet_root = ElementTree.fromstring(workbook.read(sheet_path))
+            except (KeyError, ElementTree.ParseError) as error:
+                raise UserError(_("No se pudo leer la primera hoja del XLSX.")) from error
+
+        namespace = {"x": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+        rows = []
+        for row in sheet_root.findall(".//x:sheetData/x:row", namespace):
+            values = {}
+            max_column = -1
+            for cell in row.findall("x:c", namespace):
+                column = self._xlsx_column_index(cell.get("r", ""))
+                if column < 0:
+                    continue
+                values[column] = self._xlsx_cell_value(cell, shared_strings, namespace)
+                max_column = max(max_column, column)
+            if max_column >= 0:
+                rows.append([values.get(index, "") for index in range(max_column + 1)])
+        return rows
+
+    def _xlsx_shared_strings(self, workbook):
+        path = "xl/sharedStrings.xml"
+        if path not in workbook.namelist():
+            return []
+        try:
+            root = ElementTree.fromstring(workbook.read(path))
+        except ElementTree.ParseError:
+            return []
+        namespace = {"x": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+        return [
+            "".join(node.text or "" for node in item.findall(".//x:t", namespace))
+            for item in root.findall("x:si", namespace)
+        ]
+
+    def _xlsx_first_sheet_path(self, workbook):
+        namespace = {
+            "x": "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
+            "r": "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+            "p": "http://schemas.openxmlformats.org/package/2006/relationships",
+        }
+        try:
+            workbook_root = ElementTree.fromstring(workbook.read("xl/workbook.xml"))
+            relationships_root = ElementTree.fromstring(
+                workbook.read("xl/_rels/workbook.xml.rels")
+            )
+        except (KeyError, ElementTree.ParseError):
+            return ""
+        sheet = workbook_root.find("x:sheets/x:sheet", namespace)
+        if sheet is None:
+            return ""
+        relationship_id = sheet.get(f"{{{namespace['r']}}}id")
+        for relationship in relationships_root.findall("p:Relationship", namespace):
+            if relationship.get("Id") == relationship_id:
+                target = (relationship.get("Target") or "").lstrip("/")
+                return (
+                    target
+                    if target.startswith("xl/")
+                    else posixpath.normpath(f"xl/{target}")
+                )
+        return ""
+
+    def _xlsx_cell_value(self, cell, shared_strings, namespace):
+        cell_type = cell.get("t", "")
+        if cell_type == "inlineStr":
+            return "".join(
+                node.text or "" for node in cell.findall(".//x:t", namespace)
+            )
+        value_node = cell.find("x:v", namespace)
+        value = value_node.text if value_node is not None else ""
+        if cell_type == "s":
+            index = self._as_int(value, -1)
+            return shared_strings[index] if 0 <= index < len(shared_strings) else ""
+        if cell_type == "b":
+            return "true" if value == "1" else "false"
+        return value
 
     def _madre_base_url(self):
         params = self.env["ir.config_parameter"].sudo()
@@ -1325,6 +1582,35 @@ class LqaRetailersService(models.AbstractModel):
         if isinstance(error, (dict, list)):
             return json.dumps(error, ensure_ascii=False)
         return str(error or "")
+
+    @staticmethod
+    def _normalize_header(value):
+        return re.sub(r"[^a-z0-9]", "", str(value or "").strip().lower())
+
+    @staticmethod
+    def _find_header_index(headers, candidates):
+        normalized_candidates = {
+            re.sub(r"[^a-z0-9]", "", str(candidate or "").strip().lower())
+            for candidate in candidates
+        }
+        for index, header in enumerate(headers):
+            if header in normalized_candidates:
+                return index
+        return -1
+
+    @classmethod
+    def _cell(cls, row, index):
+        return cls._clean(row[index]) if index < len(row) else ""
+
+    @staticmethod
+    def _xlsx_column_index(reference):
+        match = re.match(r"([A-Z]+)", str(reference or "").upper())
+        if not match:
+            return -1
+        index = 0
+        for character in match.group(1):
+            index = index * 26 + ord(character) - ord("A") + 1
+        return index - 1
 
     @staticmethod
     def _clean(value):
