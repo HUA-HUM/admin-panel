@@ -145,6 +145,53 @@
     gap: 14px;
 }
 
+.o_lqa_retailers_bulk_tabs {
+    display: flex;
+    gap: 8px;
+    padding: 6px;
+    border: 1px solid #d9e1ec;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+
+    button {
+        display: inline-flex;
+        min-height: 42px;
+        flex: 1;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 0 14px;
+        border: 1px solid transparent;
+        border-radius: 7px;
+        background: transparent;
+        color: #405064;
+        font-weight: 800;
+        transition:
+            border-color 0.15s ease,
+            background 0.15s ease,
+            color 0.15s ease;
+    }
+
+    button:hover,
+    button.is-active {
+        border-color: #ff4f5a;
+        background: #fff1f2;
+        color: #e11d48;
+    }
+
+    button.is-active {
+        background: #ff4f5a;
+        color: #fff;
+    }
+}
+
+.o_lqa_retailers_bulk_stack {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
 .o_lqa_retailers_bulk_card {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(320px, 520px);
@@ -1231,6 +1278,7 @@
     .o_lqa_retailers_import_head,
     .o_lqa_retailers_status_head,
     .o_lqa_retailers_pager,
+    .o_lqa_retailers_bulk_tabs,
     .o_lqa_retailers_tabs {
         align-items: stretch;
         flex-direction: column;
