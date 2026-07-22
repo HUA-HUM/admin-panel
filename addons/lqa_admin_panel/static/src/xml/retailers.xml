@@ -393,6 +393,55 @@
                         </button>
                     </div>
 
+                    <div t-if="activeImportRun" class="o_lqa_retailers_import_progress">
+                        <div class="o_lqa_retailers_import_progress__title">
+                            <span
+                                t-att-class="'o_lqa_retailers_badge ' + statusClass(activeImportRun.status)"
+                                t-esc="statusLabel(activeImportRun.status)"
+                            />
+                            <div>
+                                <h3>Import en ejecucion</h3>
+                                <small>
+                                    Run
+                                    <t t-esc="activeImportRun.id || '-'"/>
+                                    desde
+                                    <t t-esc="formatDateTime(activeImportRun.started_at)"/>
+                                </small>
+                            </div>
+                        </div>
+                        <div class="o_lqa_retailers_import_progress__metrics">
+                            <article>
+                                <small>Lotes procesados</small>
+                                <strong t-esc="formatNumber(activeImportRun.batches_processed)"/>
+                            </article>
+                            <article>
+                                <small>Items procesados</small>
+                                <strong t-esc="formatNumber(activeImportRun.items_processed)"/>
+                            </article>
+                            <article t-att-class="activeImportRun.items_failed ? 'has-error' : ''">
+                                <small>Items fallidos</small>
+                                <strong t-esc="formatNumber(activeImportRun.items_failed)"/>
+                            </article>
+                        </div>
+                        <div
+                            t-att-class="'o_lqa_retailers_import_meter ' + (activeImportRun.total ? '' : 'is-indeterminate')"
+                            role="progressbar"
+                            t-att-aria-valuenow="importRunProgressPercent(activeImportRun)"
+                            aria-valuemin="0"
+                            aria-valuemax="100"
+                        >
+                            <span t-att-style="'width: ' + importRunProgressPercent(activeImportRun) + '%'"/>
+                        </div>
+                        <small class="o_lqa_retailers_import_progress__caption">
+                            <t t-esc="importRunProgressCaption(activeImportRun)"/>
+                            <t t-if="activeImportRun.items_failed">
+                                ·
+                                <t t-esc="formatNumber(activeImportRun.items_failed)"/>
+                                fallidos
+                            </t>
+                        </small>
+                    </div>
+
                     <div class="o_lqa_retailers_table_head">
                         <div>
                             <h2>Historial de ejecuciones</h2>
@@ -422,6 +471,9 @@
                                     <th>Run</th>
                                     <th>Estado</th>
                                     <th>Progreso</th>
+                                    <th>Lotes</th>
+                                    <th>Procesados</th>
+                                    <th>Fallidos</th>
                                     <th>Inicio</th>
                                     <th>Fin</th>
                                     <th>Detalle</th>
@@ -441,13 +493,18 @@
                                     </td>
                                     <td>
                                         <strong>
-                                            <t t-esc="run.progress || 0"/>%
+                                            <t t-esc="run.progress !== null &amp;&amp; run.progress !== undefined ? run.progress : '-'"/>
+                                            <t t-if="run.progress !== null &amp;&amp; run.progress !== undefined">%</t>
                                         </strong>
-                                        <small>
-                                            <t t-esc="formatNumber(run.processed)"/>
-                                            /
-                                            <t t-esc="formatNumber(run.total)"/>
-                                        </small>
+                                        <small t-esc="importRunProgressCaption(run)"/>
+                                    </td>
+                                    <td t-esc="formatNumber(run.batches_processed)"/>
+                                    <td t-esc="formatNumber(run.items_processed)"/>
+                                    <td>
+                                        <span
+                                            t-att-class="'o_lqa_retailers_badge ' + (run.items_failed ? 'is-red' : 'is-green')"
+                                            t-esc="formatNumber(run.items_failed)"
+                                        />
                                     </td>
                                     <td t-esc="formatDateTime(run.started_at)"/>
                                     <td t-esc="formatDateTime(run.finished_at)"/>

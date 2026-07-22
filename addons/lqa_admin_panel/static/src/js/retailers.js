@@ -132,6 +132,13 @@ export class LqaRetailers extends Component {
         );
     }
 
+    get activeImportRun() {
+        return (
+            this.state.imports.items.find((run) => this.isImportRunActive(run)) ||
+            null
+        );
+    }
+
     get canDeleteGoogleMerchantProduct() {
         return (
             Boolean(this.state.googleMerchantProductToDelete) &&
@@ -638,6 +645,7 @@ export class LqaRetailers extends Component {
                 DELETED: "Eliminado",
                 QUEUED: "En cola",
                 STARTED: "Iniciado",
+                RUNNING: "En progreso",
                 SUCCESS: "Correcto",
                 FAILED: "Fallido",
             }[String(value || "").toUpperCase()] || this.humanizeStatus(value)
@@ -652,7 +660,7 @@ export class LqaRetailers extends Component {
         if (["ERROR", "FAILED"].includes(normalized)) {
             return "is-red";
         }
-        if (["QUEUED", "STARTED", "PENDING", "EN_REVISION"].includes(normalized)) {
+        if (["QUEUED", "STARTED", "RUNNING", "PENDING", "EN_REVISION"].includes(normalized)) {
             return "is-blue";
         }
         return "is-gray";
@@ -660,6 +668,34 @@ export class LqaRetailers extends Component {
 
     importStatusLabel(value) {
         return this.statusLabel(value);
+    }
+
+    isImportRunActive(run) {
+        return ["QUEUED", "STARTED", "RUNNING", "PENDING"].includes(
+            String(run?.status || "").toUpperCase()
+        );
+    }
+
+    importRunProgressCaption(run) {
+        const processed = Number(run?.processed || run?.items_processed || 0);
+        const total = Number(run?.total || 0);
+        if (Number.isFinite(total) && total > 0) {
+            return `${this.formatNumber(processed)} de ${this.formatNumber(total)} items`;
+        }
+        return `${this.formatNumber(processed)} items procesados`;
+    }
+
+    importRunProgressPercent(run) {
+        const progress = Number(run?.progress);
+        if (Number.isFinite(progress)) {
+            return Math.max(0, Math.min(100, progress));
+        }
+        const processed = Number(run?.processed || run?.items_processed || 0);
+        const total = Number(run?.total || 0);
+        if (Number.isFinite(total) && total > 0) {
+            return Math.max(0, Math.min(100, (processed / total) * 100));
+        }
+        return 0;
     }
 
     humanizeStatus(value) {

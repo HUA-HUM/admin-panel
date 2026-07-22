@@ -1199,11 +1199,36 @@ class LqaRetailersService(models.AbstractModel):
         item = item if isinstance(item, dict) else {}
         status = item.get("status") or item.get("state") or ""
         processed = self._as_int(
-            item.get("processed") or item.get("processedItems") or item.get("itemsProcessed"),
+            self._first_number(
+                item,
+                (
+                    "items_processed",
+                    "itemsProcessed",
+                    "processed",
+                    "processedItems",
+                ),
+            ),
             0,
         )
-        total = self._as_int(item.get("total") or item.get("totalItems"), 0)
-        progress = self._as_float(item.get("progress") or item.get("progressPercent"), None)
+        failed = self._as_int(
+            self._first_number(
+                item,
+                ("items_failed", "itemsFailed", "failed", "failedItems"),
+            ),
+            0,
+        )
+        batches = self._as_int(
+            self._first_number(
+                item,
+                ("batches_processed", "batchesProcessed", "processedBatches"),
+            ),
+            0,
+        )
+        total = self._as_int(
+            self._first_number(item, ("total", "totalItems", "items_total", "itemsTotal")),
+            0,
+        )
+        progress = self._first_number(item, ("progress", "progressPercent"))
         if progress is None and total:
             progress = round((processed / total) * 100, 2)
         return {
@@ -1213,9 +1238,18 @@ class LqaRetailersService(models.AbstractModel):
             "started_at": item.get("started_at") or item.get("startedAt") or item.get("createdAt") or "",
             "finished_at": item.get("finished_at") or item.get("finishedAt") or "",
             "processed": processed,
+            "items_processed": processed,
+            "items_failed": failed,
+            "batches_processed": batches,
             "total": total,
             "progress": progress,
-            "message": item.get("message") or item.get("error") or item.get("errorMessage") or "",
+            "message": (
+                item.get("message")
+                or item.get("error_message")
+                or item.get("error")
+                or item.get("errorMessage")
+                or ""
+            ),
         }
 
     def _normalize_status(self, response):
