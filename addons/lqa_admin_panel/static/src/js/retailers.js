@@ -106,7 +106,7 @@ export class LqaRetailers extends Component {
             googleMerchantDeleteConfirmation: "",
             dashboardOrders: emptyOrdersOverview(),
             dashboardError: "",
-            bulkActionTab: "refresh",
+            bulkActionTab: "auto",
             refreshForm: {
                 marketplace: "fravega",
                 note: "",
@@ -230,6 +230,14 @@ export class LqaRetailers extends Component {
 
     get dashboardErrorsCount() {
         return (this.state.dashboardOrders.errors || []).length;
+    }
+
+    get bulkActionRunsAuto() {
+        return (this.state.bulkActionRuns || []).filter((run) => run.action_type === "published");
+    }
+
+    get bulkActionRunsManual() {
+        return (this.state.bulkActionRuns || []).filter((run) => run.action_type !== "published");
     }
 
     get canDeleteGoogleMerchantCatalog() {

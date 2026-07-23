@@ -106,11 +106,19 @@
                 <nav class="o_lqa_retailers_bulk_tabs">
                     <button
                         type="button"
-                        t-att-class="state.bulkActionTab === 'refresh' ? 'is-active' : ''"
-                        t-on-click="() => this.setBulkActionTab('refresh')"
+                        t-att-class="state.bulkActionTab === 'auto' ? 'is-active' : ''"
+                        t-on-click="() => this.setBulkActionTab('auto')"
                     >
                         <i class="fa fa-refresh"/>
-                        Actualizaciones
+                        Actualizaciones automaticas
+                    </button>
+                    <button
+                        type="button"
+                        t-att-class="state.bulkActionTab === 'manual' ? 'is-active' : ''"
+                        t-on-click="() => this.setBulkActionTab('manual')"
+                    >
+                        <i class="fa fa-bolt"/>
+                        Actualizaciones puntuales
                     </button>
                     <button
                         type="button"
@@ -122,13 +130,13 @@
                     </button>
                 </nav>
 
-                <div t-if="state.bulkActionTab === 'refresh'" class="o_lqa_retailers_bulk_sections is-compact">
+                <div t-if="state.bulkActionTab === 'auto'" class="o_lqa_retailers_bulk_sections">
                     <section class="o_lqa_retailers_bulk_section is-primary">
                         <header class="o_lqa_retailers_bulk_section__head">
                             <div>
-                                <small>Proceso general</small>
+                                <small>Automatico</small>
                                 <h2>
-                                    Publicaciones publicadas
+                                    Actualizaciones automaticas
                                     <span
                                         class="o_lqa_retailers_help"
                                         title="Refresca precio, estado y stock de publicaciones ya conectadas para el marketplace seleccionado."
@@ -136,6 +144,7 @@
                                         <i class="fa fa-question"/>
                                     </span>
                                 </h2>
+                                <p>Dispara el proceso completo de actualizacion de publicaciones para todo un marketplace.</p>
                             </div>
                         </header>
                         <div class="o_lqa_retailers_bulk_section_grid is-published">
@@ -199,12 +208,99 @@
                         </div>
                     </section>
 
+                    <section class="o_lqa_retailers_bulk_history">
+                        <div class="o_lqa_retailers_table_head o_lqa_retailers_bulk_history__head">
+                            <div class="o_lqa_retailers_bulk_history__title">
+                                <span class="o_lqa_retailers_bulk_history__icon">
+                                    <i class="fa fa-clock-o"/>
+                                </span>
+                                <div>
+                                    <h2>Registros de ejecucion</h2>
+                                    <span>Ultimas actualizaciones automaticas disparadas por marketplace.</span>
+                                </div>
+                            </div>
+                            <div class="o_lqa_retailers_bulk_history__actions">
+                                <span class="o_lqa_retailers_bulk_history__count">
+                                    <strong t-esc="bulkActionRunsAuto.length"/>
+                                    registros
+                                </span>
+                                <button
+                                    type="button"
+                                    class="btn btn-secondary"
+                                    t-att-disabled="state.loadingBulkActionRuns"
+                                    t-on-click="loadBulkActionRuns"
+                                >
+                                    <i class="fa fa-refresh"/>
+                                    Actualizar
+                                </button>
+                            </div>
+                        </div>
+                        <div t-if="state.loadingBulkActionRuns" class="o_lqa_retailers_empty">
+                            Cargando registros...
+                        </div>
+                        <div t-elif="!bulkActionRunsAuto.length" class="o_lqa_retailers_empty">
+                            Todavia no hay ejecuciones automaticas registradas.
+                        </div>
+                        <div t-else="" class="o_lqa_retailers_table_wrap">
+                            <table class="o_lqa_retailers_table o_lqa_retailers_bulk_history_table">
+                                <thead>
+                                    <tr>
+                                        <th>Ejecucion</th>
+                                        <th>Proceso</th>
+                                        <th>Marketplace</th>
+                                        <th>Detalle</th>
+                                        <th>Estado</th>
+                                        <th>Nota</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="bulkActionRunsAuto" t-as="run" t-key="run.id">
+                                        <td>
+                                            <strong class="o_lqa_retailers_bulk_history__date" t-esc="formatDateTime(run.triggered_at)"/>
+                                            <small>
+                                                <i class="fa fa-user"/>
+                                                <t t-esc="run.user_name || '-'"/>
+                                            </small>
+                                        </td>
+                                        <td>
+                                            <span class="o_lqa_retailers_bulk_history__process">
+                                                <i t-att-class="'fa ' + bulkActionIcon(run.action_type)"/>
+                                                <strong t-esc="bulkActionLabel(run.action_type)"/>
+                                            </span>
+                                            <small t-if="run.run_id" t-esc="run.run_id"/>
+                                            <small t-if="!run.run_id &amp;&amp; run.job_id" t-esc="run.job_id"/>
+                                        </td>
+                                        <td>
+                                            <span class="o_lqa_retailers_bulk_history__marketplace" t-esc="run.marketplace_name || marketplaceName(run.marketplace)"/>
+                                        </td>
+                                        <td>
+                                            <strong class="o_lqa_retailers_bulk_history__detail" t-esc="bulkActionDetail(run)"/>
+                                        </td>
+                                        <td>
+                                            <span
+                                                t-att-class="'o_lqa_retailers_badge ' + statusClass(run.status)"
+                                                t-esc="statusLabel(run.status)"
+                                            />
+                                        </td>
+                                        <td class="o_lqa_retailers_bulk_history__note">
+                                            <span t-if="run.note" t-esc="run.note"/>
+                                            <span t-else="" class="is-muted">Sin nota</span>
+                                            <small t-if="run.message" t-esc="run.message"/>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+
+                <div t-if="state.bulkActionTab === 'manual'" class="o_lqa_retailers_bulk_sections">
                     <section class="o_lqa_retailers_bulk_section is-manual">
                         <header class="o_lqa_retailers_bulk_section__head">
                             <div>
-                                <small>Actualizaciones manuales</small>
+                                <small>Manual</small>
                                 <h2>
-                                    Correcciones puntuales
+                                    Actualizaciones puntuales
                                     <span
                                         class="o_lqa_retailers_help"
                                         title="Usa estas acciones cuando quieras refrescar uno o varios SKUs sin ejecutar la actualizacion completa del marketplace."
@@ -212,6 +308,7 @@
                                         <i class="fa fa-question"/>
                                     </span>
                                 </h2>
+                                <p>Correcciones acotadas a uno o varios SKUs, sin disparar el proceso completo del marketplace.</p>
                             </div>
                         </header>
                         <div class="o_lqa_retailers_bulk_section_grid is-manual">
@@ -413,12 +510,12 @@
                                 </span>
                                 <div>
                                     <h2>Registros de ejecucion</h2>
-                                    <span>Ultimas acciones disparadas, usuario responsable y nota operativa.</span>
+                                    <span>Ultimas correcciones puntuales, usuario responsable y nota operativa.</span>
                                 </div>
                             </div>
                             <div class="o_lqa_retailers_bulk_history__actions">
                                 <span class="o_lqa_retailers_bulk_history__count">
-                                    <strong t-esc="state.bulkActionRuns.length"/>
+                                    <strong t-esc="bulkActionRunsManual.length"/>
                                     registros
                                 </span>
                                 <button
@@ -435,8 +532,8 @@
                         <div t-if="state.loadingBulkActionRuns" class="o_lqa_retailers_empty">
                             Cargando registros...
                         </div>
-                        <div t-elif="!state.bulkActionRuns.length" class="o_lqa_retailers_empty">
-                            Todavia no hay ejecuciones registradas.
+                        <div t-elif="!bulkActionRunsManual.length" class="o_lqa_retailers_empty">
+                            Todavia no hay correcciones puntuales registradas.
                         </div>
                         <div t-else="" class="o_lqa_retailers_table_wrap">
                             <table class="o_lqa_retailers_table o_lqa_retailers_bulk_history_table">
@@ -451,7 +548,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr t-foreach="state.bulkActionRuns" t-as="run" t-key="run.id">
+                                    <tr t-foreach="bulkActionRunsManual" t-as="run" t-key="run.id">
                                         <td>
                                             <strong class="o_lqa_retailers_bulk_history__date" t-esc="formatDateTime(run.triggered_at)"/>
                                             <small>
