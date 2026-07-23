@@ -200,11 +200,119 @@
     }
 }
 
+.o_lqa_retailers_bulk_sections {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.o_lqa_retailers_bulk_section {
+    overflow: hidden;
+    border: 1px solid #d9e1ec;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 14px 32px rgba(15, 23, 42, 0.05);
+
+    &.is-primary {
+        border-top: 3px solid #ff4f5a;
+    }
+
+    &.is-manual {
+        border-top: 3px solid #2563eb;
+    }
+}
+
+.o_lqa_retailers_bulk_section__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 20px;
+    border-bottom: 1px solid #edf1f6;
+    background:
+        radial-gradient(circle at 0% 0%, rgba(255, 79, 90, 0.1) 0%, rgba(255, 255, 255, 0) 34%),
+        linear-gradient(180deg, #fff 0%, #fbfcfe 100%);
+
+    small {
+        display: block;
+        color: #ff4f5a;
+        font-size: 11px;
+        font-weight: 900;
+        text-transform: uppercase;
+    }
+
+    h2 {
+        margin: 5px 0 0;
+        color: #1f2937;
+        font-size: 22px;
+        font-weight: 900;
+        line-height: 1.15;
+    }
+
+    p {
+        max-width: 760px;
+        margin: 6px 0 0;
+        color: #607086;
+        line-height: 1.45;
+    }
+}
+
+.o_lqa_retailers_bulk_section__badge {
+    display: inline-flex;
+    min-height: 28px;
+    align-items: center;
+    padding: 0 10px;
+    border: 1px solid #fed7dc;
+    border-radius: 999px;
+    background: #fff1f3;
+    color: #e11d48;
+    font-size: 11px;
+    font-weight: 900;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.o_lqa_retailers_bulk_section_grid {
+    display: grid;
+    gap: 14px;
+    padding: 16px;
+
+    &.is-published {
+        grid-template-columns: minmax(340px, 430px) minmax(0, 1fr);
+    }
+
+    &.is-manual {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    > .o_lqa_retailers_bulk_result {
+        min-height: 0;
+    }
+}
+
+.o_lqa_retailers_bulk_section_grid.is-published > .o_lqa_retailers_bulk_card:only-child {
+    display: grid;
+    min-height: 0;
+    grid-column: 1 / -1;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 420px);
+
+    > div:first-child {
+        min-height: 0;
+        border-right: 1px solid #edf1f6;
+        border-bottom: 0;
+    }
+
+    .o_lqa_retailers_bulk_form {
+        align-content: end;
+        margin-top: 0;
+    }
+}
+
 .o_lqa_retailers_bulk_card {
     position: relative;
     overflow: hidden;
     display: flex;
-    min-height: 292px;
+    min-height: 260px;
     flex-direction: column;
     padding: 0;
     border-color: #dce4ef;
@@ -232,7 +340,7 @@
     }
 
     > div:first-child {
-        min-height: 154px;
+        min-height: 132px;
         padding: 20px 20px 16px;
         border-bottom: 1px solid #edf1f6;
         background: linear-gradient(180deg, #fff 0%, #fbfcfe 100%);
@@ -394,7 +502,7 @@
 
 .o_lqa_retailers_bulk_result {
     display: flex;
-    min-height: 292px;
+    min-height: 260px;
     flex-direction: column;
     gap: 14px;
     padding: 16px;
@@ -1384,6 +1492,10 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
+    .o_lqa_retailers_bulk_section_grid.is-published {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
     .o_lqa_status_grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -1396,6 +1508,7 @@
 
     .o_lqa_retailers__header,
     .o_lqa_retailers__actions,
+    .o_lqa_retailers_bulk_section__head,
     .o_lqa_retailers_bulk_card,
     .o_lqa_retailers_bulk_result,
     .o_lqa_retailers_toolbar,
@@ -1417,6 +1530,7 @@
     .o_lqa_retailers_grid,
     .o_lqa_retailers_dashboard,
     .o_lqa_retailers_bulk_stack,
+    .o_lqa_retailers_bulk_section_grid,
     .o_lqa_retailers_bulk_result dl,
     .o_lqa_products_grid,
     .o_lqa_status_grid {
@@ -1425,6 +1539,15 @@
 
     .o_lqa_retailers_toolbar .form-select {
         width: 100%;
+    }
+
+    .o_lqa_retailers_bulk_section_grid.is-published > .o_lqa_retailers_bulk_card:only-child {
+        grid-template-columns: 1fr;
+
+        > div:first-child {
+            border-right: 0;
+            border-bottom: 1px solid #edf1f6;
+        }
     }
 
     .o_lqa_retailers_selection_bar > div:last-child {
