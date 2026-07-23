@@ -122,22 +122,26 @@
                     </button>
                 </nav>
 
-                <div t-if="state.bulkActionTab === 'refresh'" class="o_lqa_retailers_bulk_sections">
+                <div t-if="state.bulkActionTab === 'refresh'" class="o_lqa_retailers_bulk_sections is-compact">
                     <section class="o_lqa_retailers_bulk_section is-primary">
                         <header class="o_lqa_retailers_bulk_section__head">
                             <div>
                                 <small>Proceso general</small>
-                                <h2>Actualizar publicaciones publicadas</h2>
-                                <p>Proceso global por marketplace para refrescar precio, estado y stock de publicaciones ya conectadas.</p>
+                                <h2>
+                                    Publicaciones publicadas
+                                    <span
+                                        class="o_lqa_retailers_help"
+                                        title="Refresca precio, estado y stock de publicaciones ya conectadas para el marketplace seleccionado."
+                                    >
+                                        <i class="fa fa-question"/>
+                                    </span>
+                                </h2>
                             </div>
                         </header>
                         <div class="o_lqa_retailers_bulk_section_grid is-published">
                             <article class="o_lqa_retailers_bulk_card is-primary">
-                                <div>
-                                    <h2>Ejecucion por marketplace</h2>
-                                    <p>
-                                        Selecciona el marketplace y dispara la actualizacion completa de sus publicaciones.
-                                    </p>
+                                <div class="o_lqa_retailers_bulk_card_intro">
+                                    <h2>Actualizar por marketplace</h2>
                                 </div>
                                 <form class="o_lqa_retailers_bulk_form" t-on-submit.prevent="openRefreshConfirmation">
                                     <label>
@@ -158,7 +162,7 @@
                                         t-att-disabled="state.refreshingPublished"
                                     >
                                         <i class="fa fa-refresh"/>
-                                        Actualizar precio, estado y stock
+                                        Actualizar publicaciones
                                     </button>
                                 </form>
                             </article>
@@ -190,18 +194,29 @@
                         <header class="o_lqa_retailers_bulk_section__head">
                             <div>
                                 <small>Actualizaciones manuales</small>
-                                <h2>SKU puntual o carga por archivo</h2>
-                                <p>Herramientas para corregir productos especificos sin ejecutar el proceso completo del marketplace.</p>
+                                <h2>
+                                    Correcciones puntuales
+                                    <span
+                                        class="o_lqa_retailers_help"
+                                        title="Usa estas acciones cuando quieras refrescar uno o varios SKUs sin ejecutar la actualizacion completa del marketplace."
+                                    >
+                                        <i class="fa fa-question"/>
+                                    </span>
+                                </h2>
                             </div>
                         </header>
                         <div class="o_lqa_retailers_bulk_section_grid is-manual">
                             <article class="o_lqa_retailers_bulk_card is-secondary">
-                                <div>
-                                    <h2>Actualizar un producto</h2>
-                                    <p>
-                                        Fuerza la actualizacion de precio, estado y stock de un SKU publicado
-                                        en el marketplace seleccionado.
-                                    </p>
+                                <div class="o_lqa_retailers_bulk_card_intro">
+                                    <h2>
+                                        SKU puntual
+                                        <span
+                                            class="o_lqa_retailers_help"
+                                            title="Envia un unico SKU al endpoint de refresh del marketplace seleccionado."
+                                        >
+                                            <i class="fa fa-question"/>
+                                        </span>
+                                    </h2>
                                 </div>
                                 <form class="o_lqa_retailers_bulk_form" t-on-submit.prevent="submitRefreshSku">
                                     <label>
@@ -238,12 +253,16 @@
                             </article>
 
                             <article class="o_lqa_retailers_bulk_card is-accent">
-                                <div>
-                                    <h2>Actualizar SKUs desde archivo</h2>
-                                    <p>
-                                        Carga un CSV o Excel con una columna <strong>sku</strong>.
-                                        El panel no limita la cantidad de SKUs; Products API controla el proceso.
-                                    </p>
+                                <div class="o_lqa_retailers_bulk_card_intro">
+                                    <h2>
+                                        Archivo de SKUs
+                                        <span
+                                            class="o_lqa_retailers_help"
+                                            title="Carga un CSV o Excel con una columna sku. Products API controla el volumen y la ejecucion del proceso."
+                                        >
+                                            <i class="fa fa-question"/>
+                                        </span>
+                                    </h2>
                                 </div>
                                 <form class="o_lqa_retailers_bulk_form" t-on-submit.prevent="submitRefreshBulk">
                                     <label>
@@ -257,15 +276,6 @@
                                                 t-esc="marketplace.name"
                                             />
                                         </select>
-                                    </label>
-                                    <label>
-                                        <span>Run ID opcional</span>
-                                        <input
-                                            type="text"
-                                            class="form-control"
-                                            placeholder="refresh-fravega-manual"
-                                            t-model="state.refreshBulkForm.runId"
-                                        />
                                     </label>
                                     <label class="o_lqa_retailers_bulk_file">
                                         <span>Archivo CSV / XLSX</span>
@@ -292,7 +302,7 @@
                                         >
                                             <i class="fa fa-upload"/>
                                             <t t-if="state.refreshingBulk">Enviando...</t>
-                                            <t t-else="">Enviar bulk</t>
+                                            <t t-else="">Enviar archivo</t>
                                         </button>
                                     </div>
                                 </form>
