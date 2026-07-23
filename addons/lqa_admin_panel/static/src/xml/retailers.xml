@@ -123,8 +123,11 @@
                 </nav>
 
                 <div t-if="state.bulkActionTab === 'refresh'" class="o_lqa_retailers_bulk_stack">
-                    <article class="o_lqa_retailers_bulk_card">
+                    <article class="o_lqa_retailers_bulk_card is-primary">
                     <div>
+                        <span class="o_lqa_retailers_bulk_card__icon">
+                            <i class="fa fa-refresh"/>
+                        </span>
                         <small>Precio, estado y stock</small>
                         <h2>Actualizar publicaciones publicadas</h2>
                         <p>
@@ -177,8 +180,11 @@
                     </dl>
                 </article>
 
-                <article class="o_lqa_retailers_bulk_card">
+                <article class="o_lqa_retailers_bulk_card is-secondary">
                     <div>
+                        <span class="o_lqa_retailers_bulk_card__icon">
+                            <i class="fa fa-barcode"/>
+                        </span>
                         <small>SKU puntual</small>
                         <h2>Actualizar un producto</h2>
                         <p>
@@ -241,8 +247,11 @@
                     </dl>
                 </article>
 
-                <article class="o_lqa_retailers_bulk_card">
+                <article class="o_lqa_retailers_bulk_card is-accent">
                     <div>
+                        <span class="o_lqa_retailers_bulk_card__icon">
+                            <i class="fa fa-cloud-upload"/>
+                        </span>
                         <small>Bulk con BullMQ</small>
                         <h2>Actualizar SKUs desde archivo</h2>
                         <p>
@@ -338,8 +347,11 @@
                 </div>
 
                 <div t-if="state.bulkActionTab === 'paused'" class="o_lqa_retailers_bulk_stack">
-                    <article class="o_lqa_retailers_bulk_card">
+                    <article class="o_lqa_retailers_bulk_card is-muted">
                         <div>
+                            <span class="o_lqa_retailers_bulk_card__icon">
+                                <i class="fa fa-pause-circle-o"/>
+                            </span>
                             <small>Madre DB</small>
                             <h2>Administrar SKUs pausados</h2>
                             <p>
@@ -386,8 +398,11 @@
                         </form>
                     </article>
 
-                    <article class="o_lqa_retailers_bulk_card">
+                    <article class="o_lqa_retailers_bulk_card is-accent">
                         <div>
+                            <span class="o_lqa_retailers_bulk_card__icon">
+                                <i class="fa fa-cloud-upload"/>
+                            </span>
                             <small>Bulk upsert</small>
                             <h2>Cargar SKUs desde archivo</h2>
                             <p>

@@ -142,28 +142,28 @@
 .o_lqa_retailers_bulk {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 16px;
 }
 
 .o_lqa_retailers_bulk_tabs {
     display: flex;
-    gap: 8px;
-    padding: 6px;
+    gap: 6px;
+    padding: 5px;
     border: 1px solid #d9e1ec;
-    border-radius: 8px;
+    border-radius: 10px;
     background: #fff;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
 
     button {
         display: inline-flex;
-        min-height: 42px;
+        min-height: 46px;
         flex: 1;
         align-items: center;
         justify-content: center;
         gap: 8px;
         padding: 0 14px;
         border: 1px solid transparent;
-        border-radius: 7px;
+        border-radius: 8px;
         background: transparent;
         color: #405064;
         font-weight: 800;
@@ -176,28 +176,67 @@
     button:hover,
     button.is-active {
         border-color: #ff4f5a;
-        background: #fff1f2;
+        background: #fff1f3;
         color: #e11d48;
     }
 
     button.is-active {
-        background: #ff4f5a;
+        background: linear-gradient(135deg, #ff4f5a 0%, #ef3d55 100%);
         color: #fff;
+        box-shadow: 0 10px 18px rgba(255, 79, 90, 0.2);
     }
 }
 
 .o_lqa_retailers_bulk_stack {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 16px;
+
+    > .o_lqa_retailers_table_head,
+    > .o_lqa_retailers_table_wrap,
+    > .o_lqa_retailers_empty {
+        grid-column: 1 / -1;
+    }
 }
 
 .o_lqa_retailers_bulk_card {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(320px, 520px);
-    gap: 22px;
-    align-items: end;
-    padding: 18px;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    min-height: 292px;
+    flex-direction: column;
+    padding: 0;
+    border-color: #dce4ef;
+    border-radius: 10px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+    transition:
+        border-color 0.15s ease,
+        box-shadow 0.15s ease,
+        transform 0.15s ease;
+
+    &:hover {
+        border-color: #ffc0c6;
+        box-shadow: 0 18px 36px rgba(15, 23, 42, 0.08);
+        transform: translateY(-1px);
+    }
+
+    &::before {
+        position: absolute;
+        top: 0;
+        right: 0;
+        left: 0;
+        height: 3px;
+        background: #ff4f5a;
+        content: "";
+    }
+
+    > div:first-child {
+        min-height: 154px;
+        padding: 20px 20px 16px;
+        border-bottom: 1px solid #edf1f6;
+        background: linear-gradient(180deg, #fff 0%, #fbfcfe 100%);
+    }
 
     small {
         display: block;
@@ -210,21 +249,64 @@
     h2 {
         margin: 6px 0 0;
         color: #1f2937;
-        font-size: 22px;
+        font-size: 20px;
         font-weight: 800;
+        line-height: 1.18;
     }
 
     p {
-        max-width: 620px;
-        margin: 10px 0 0;
+        margin: 8px 0 0;
         color: #607086;
+        line-height: 1.5;
     }
+
+    &.is-secondary::before {
+        background: #2563eb;
+    }
+
+    &.is-accent::before {
+        background: #0f9f6e;
+    }
+
+    &.is-muted::before {
+        background: #64748b;
+    }
+}
+
+.o_lqa_retailers_bulk_card__icon {
+    display: inline-flex;
+    width: 42px;
+    height: 42px;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+    border-radius: 8px;
+    background: #fff1f3;
+    color: #ff4f5a;
+    font-size: 18px;
+}
+
+.o_lqa_retailers_bulk_card.is-secondary .o_lqa_retailers_bulk_card__icon {
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.o_lqa_retailers_bulk_card.is-accent .o_lqa_retailers_bulk_card__icon {
+    background: #ecfdf5;
+    color: #0f9f6e;
+}
+
+.o_lqa_retailers_bulk_card.is-muted .o_lqa_retailers_bulk_card__icon {
+    background: #f1f5f9;
+    color: #64748b;
 }
 
 .o_lqa_retailers_bulk_form {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     gap: 10px;
+    margin-top: auto;
+    padding: 16px 18px 18px;
 
     label {
         display: flex;
@@ -241,11 +323,18 @@
     .form-select {
         min-height: 42px;
         border-color: #d6dee8;
-        border-radius: 8px;
+        border-radius: 7px;
+        background-color: #fff;
         color: #253348;
         font-size: 14px;
         font-weight: 600;
         text-transform: none;
+    }
+
+    .form-control:focus,
+    .form-select:focus {
+        border-color: #ff8b94;
+        box-shadow: 0 0 0 3px rgba(255, 79, 90, 0.12);
     }
 
     .btn-primary {
@@ -255,6 +344,10 @@
         font-weight: 800;
     }
 
+    .btn-primary:not(:disabled) {
+        box-shadow: 0 8px 16px rgba(255, 79, 90, 0.18);
+    }
+
     i {
         margin-right: 6px;
     }
@@ -262,7 +355,7 @@
 
 .o_lqa_retailers_bulk_file {
     position: relative;
-    min-height: 86px;
+    min-height: 76px;
     justify-content: center;
     padding: 14px;
     border: 1px dashed #b9c6d8;
@@ -294,15 +387,22 @@
 
     .btn {
         min-height: 42px;
+        flex: 1;
         font-weight: 800;
     }
 }
 
 .o_lqa_retailers_bulk_result {
-    display: grid;
-    grid-template-columns: minmax(220px, 320px) minmax(0, 1fr);
-    gap: 16px;
+    display: flex;
+    min-height: 292px;
+    flex-direction: column;
+    gap: 14px;
     padding: 16px;
+    border-radius: 10px;
+    background:
+        linear-gradient(180deg, rgba(255, 241, 243, 0.7) 0%, rgba(255, 255, 255, 0) 42%),
+        #fff;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
 
     small {
         display: block;
@@ -315,15 +415,17 @@
     h2 {
         margin: 6px 0 0;
         color: #1f2937;
-        font-size: 20px;
+        font-size: 18px;
         font-weight: 800;
+        line-height: 1.22;
+        overflow-wrap: anywhere;
     }
 
     dl {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 10px;
-        margin: 0;
+        margin: auto 0 0;
     }
 
     div {
@@ -342,6 +444,17 @@
         color: #263243;
         font-weight: 800;
         overflow-wrap: anywhere;
+    }
+}
+
+.o_lqa_retailers_bulk_result {
+    border-color: #ffd6dc;
+
+    dl > div {
+        padding: 10px;
+        border: 1px solid #edf1f6;
+        border-radius: 8px;
+        background: #fff;
     }
 }
 
@@ -1037,6 +1150,7 @@
 
 .o_lqa_retailers_table_wrap {
     overflow: auto;
+    border-radius: 10px;
 }
 
 .o_lqa_retailers_table {
@@ -1061,6 +1175,14 @@
         font-size: 11px;
         font-weight: 800;
         text-transform: uppercase;
+    }
+
+    tbody tr {
+        transition: background 0.12s ease;
+    }
+
+    tbody tr:hover {
+        background: #fff7f8;
     }
 
     strong,
@@ -1258,6 +1380,10 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
+    .o_lqa_retailers_bulk_stack {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .o_lqa_status_grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -1290,6 +1416,7 @@
 
     .o_lqa_retailers_grid,
     .o_lqa_retailers_dashboard,
+    .o_lqa_retailers_bulk_stack,
     .o_lqa_retailers_bulk_result dl,
     .o_lqa_products_grid,
     .o_lqa_status_grid {
