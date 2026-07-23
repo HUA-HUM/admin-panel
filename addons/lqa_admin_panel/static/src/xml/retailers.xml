@@ -156,6 +156,15 @@
                                             />
                                         </select>
                                     </label>
+                                    <label>
+                                        <span>Nota</span>
+                                        <input
+                                            type="text"
+                                            class="form-control"
+                                            placeholder="Ej: refresh semanal"
+                                            t-model="state.refreshForm.note"
+                                        />
+                                    </label>
                                     <button
                                         type="submit"
                                         class="btn btn-primary"
@@ -240,6 +249,15 @@
                                             t-model="state.refreshSkuForm.sku"
                                         />
                                     </label>
+                                    <label>
+                                        <span>Nota</span>
+                                        <input
+                                            type="text"
+                                            class="form-control"
+                                            placeholder="Motivo de la correccion"
+                                            t-model="state.refreshSkuForm.note"
+                                        />
+                                    </label>
                                     <button
                                         type="submit"
                                         class="btn btn-primary"
@@ -285,6 +303,15 @@
                                             t-on-change="onRefreshBulkFileChange"
                                         />
                                         <strong t-esc="state.refreshBulkForm.filename || 'Seleccionar archivo'"/>
+                                    </label>
+                                    <label>
+                                        <span>Nota</span>
+                                        <input
+                                            type="text"
+                                            class="form-control"
+                                            placeholder="Ej: listado de precios revisado"
+                                            t-model="state.refreshBulkForm.note"
+                                        />
                                     </label>
                                     <div class="o_lqa_retailers_bulk_form__actions">
                                         <button
@@ -361,6 +388,67 @@
                                     </div>
                                 </dl>
                             </article>
+                        </div>
+                    </section>
+
+                    <section class="o_lqa_retailers_bulk_history">
+                        <div class="o_lqa_retailers_table_head">
+                            <div>
+                                <h2>Registros de ejecucion</h2>
+                                <span>Ultimas acciones disparadas, con usuario y nota operativa.</span>
+                            </div>
+                            <button
+                                type="button"
+                                class="btn btn-secondary"
+                                t-att-disabled="state.loadingBulkActionRuns"
+                                t-on-click="loadBulkActionRuns"
+                            >
+                                <i class="fa fa-refresh"/>
+                                Actualizar
+                            </button>
+                        </div>
+                        <div t-if="state.loadingBulkActionRuns" class="o_lqa_retailers_empty">
+                            Cargando registros...
+                        </div>
+                        <div t-elif="!state.bulkActionRuns.length" class="o_lqa_retailers_empty">
+                            Todavia no hay ejecuciones registradas.
+                        </div>
+                        <div t-else="" class="o_lqa_retailers_table_wrap">
+                            <table class="o_lqa_retailers_table o_lqa_retailers_bulk_history_table">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Accion</th>
+                                        <th>Marketplace</th>
+                                        <th>Detalle</th>
+                                        <th>Estado</th>
+                                        <th>Ejecutado por</th>
+                                        <th>Nota</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="state.bulkActionRuns" t-as="run" t-key="run.id">
+                                        <td t-esc="formatDateTime(run.triggered_at)"/>
+                                        <td>
+                                            <strong t-esc="bulkActionLabel(run.action_type)"/>
+                                            <small t-if="run.run_id" t-esc="run.run_id"/>
+                                        </td>
+                                        <td t-esc="run.marketplace_name || marketplaceName(run.marketplace)"/>
+                                        <td t-esc="bulkActionDetail(run)"/>
+                                        <td>
+                                            <span
+                                                t-att-class="'o_lqa_retailers_badge ' + statusClass(run.status)"
+                                                t-esc="statusLabel(run.status)"
+                                            />
+                                        </td>
+                                        <td t-esc="run.user_name || '-'"/>
+                                        <td>
+                                            <span t-esc="run.note || '-'"/>
+                                            <small t-if="run.message" t-esc="run.message"/>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </section>
                 </div>

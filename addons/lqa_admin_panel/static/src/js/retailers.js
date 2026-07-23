@@ -87,6 +87,7 @@ export class LqaRetailers extends Component {
             loadingProducts: false,
             loadingImports: false,
             loadingStatus: false,
+            loadingBulkActionRuns: false,
             loadingPausedSkus: false,
             runningImport: false,
             refreshingPublished: false,
@@ -106,16 +107,19 @@ export class LqaRetailers extends Component {
             bulkActionTab: "refresh",
             refreshForm: {
                 marketplace: "fravega",
+                note: "",
             },
             refreshSkuForm: {
                 marketplace: "fravega",
                 sku: "",
+                note: "",
             },
             refreshBulkForm: {
                 marketplace: "fravega",
                 runId: "",
                 filename: "",
                 content: "",
+                note: "",
             },
             pausedSkuFilters: {
                 sku: "",
@@ -132,6 +136,7 @@ export class LqaRetailers extends Component {
             refreshSkuResult: null,
             refreshBulkResult: null,
             pausedBulkResult: null,
+            bulkActionRuns: [],
             pausedSkus: { items: [], pagination: {} },
             products: { items: [], summary: {}, pagination: {} },
             imports: { items: [], pagination: {} },
@@ -269,8 +274,11 @@ export class LqaRetailers extends Component {
     loadCurrentView() {
         if (this.showDashboard) {
             this.loadDashboard();
-        } else if (this.showBulkActions && this.state.bulkActionTab === "paused") {
-            this.loadPausedSkus();
+        } else if (this.showBulkActions) {
+            this.loadBulkActionRuns();
+            if (this.state.bulkActionTab === "paused") {
+                this.loadPausedSkus();
+            }
         } else if (this.showMarketplaceDetail) {
             this.loadCurrentTab();
         }
@@ -502,10 +510,12 @@ export class LqaRetailers extends Component {
             const result = await this.orm.call(
                 "lqa.retailers.service",
                 "refresh_published",
-                [this.state.refreshForm.marketplace]
+                [this.state.refreshForm.marketplace, this.state.refreshForm.note]
             );
             this.state.refreshResult = result;
+            this.state.refreshForm.note = "";
             this.state.confirmRefresh = false;
+            await this.loadBulkActionRuns();
             this.notification.add(
                 `Actualizacion enviada para ${result.marketplace_name || this.marketplaceName(result.marketplace)}.`,
                 { type: "success" }
@@ -521,6 +531,23 @@ export class LqaRetailers extends Component {
         this.state.bulkActionTab = tab;
         if (tab === "paused") {
             await this.loadPausedSkus();
+        } else {
+            await this.loadBulkActionRuns();
+        }
+    }
+
+    async loadBulkActionRuns() {
+        this.state.loadingBulkActionRuns = true;
+        try {
+            this.state.bulkActionRuns = await this.orm.call(
+                "lqa.retailers.service",
+                "get_bulk_action_runs",
+                [30]
+            );
+        } catch (error) {
+            this.notifyError(error, "No se pudieron cargar los registros de ejecucion.");
+        } finally {
+            this.state.loadingBulkActionRuns = false;
         }
     }
 
@@ -536,9 +563,15 @@ export class LqaRetailers extends Component {
             const result = await this.orm.call(
                 "lqa.retailers.service",
                 "refresh_published_sku",
-                [this.state.refreshSkuForm.marketplace, this.state.refreshSkuForm.sku]
+                [
+                    this.state.refreshSkuForm.marketplace,
+                    this.state.refreshSkuForm.sku,
+                    this.state.refreshSkuForm.note,
+                ]
             );
             this.state.refreshSkuResult = result;
+            this.state.refreshSkuForm.note = "";
+            await this.loadBulkActionRuns();
             this.notification.add(
                 `Actualizacion enviada para ${result.sku} en ${result.marketplace_name}.`,
                 { type: "success" }
@@ -594,10 +627,13 @@ export class LqaRetailers extends Component {
                     this.state.refreshBulkForm.filename,
                     this.state.refreshBulkForm.content,
                     this.state.refreshBulkForm.runId,
+                    this.state.refreshBulkForm.note,
                 ]
             );
             this.state.refreshBulkResult = result;
+            this.state.refreshBulkForm.note = "";
             this.clearRefreshBulkFile();
+            await this.loadBulkActionRuns();
             this.notification.add(
                 `Bulk enviado: ${this.formatNumber(result.sku_count)} SKUs para ${result.marketplace_name}.`,
                 { type: "success" }
@@ -932,6 +968,29 @@ export class LqaRetailers extends Component {
             return "is-blue";
         }
         return "is-gray";
+    }
+
+    bulkActionLabel(value) {
+        return (
+            {
+                published: "Publicaciones",
+                sku: "SKU puntual",
+                bulk: "Archivo de SKUs",
+            }[String(value || "")] || "Accion"
+        );
+    }
+
+    bulkActionDetail(run) {
+        if (run?.sku) {
+            return run.sku;
+        }
+        if (run?.filename) {
+            const count = Number(run.sku_count || 0);
+            return count > 0
+                ? `${run.filename} · ${this.formatNumber(count)} SKUs`
+                : run.filename;
+        }
+        return "Marketplace completo";
     }
 
     pausedLabel(value) {

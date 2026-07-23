@@ -267,7 +267,7 @@ class LqaRetailersService(models.AbstractModel):
         return self._normalize_orders_response(response, mode)
 
     @api.model
-    def refresh_published(self, marketplace_id):
+    def refresh_published(self, marketplace_id, note=""):
         self._check_access()
         marketplace_id = self._clean(marketplace_id).lower()
         if marketplace_id not in self.REFRESH_PUBLISHED_MARKETPLACES:
@@ -282,28 +282,15 @@ class LqaRetailersService(models.AbstractModel):
             payload={},
             timeout=self._timeout(),
         )
-        payload = response if isinstance(response, dict) else {}
-        marketplace = self.MARKETPLACES.get(marketplace_id, {})
-        return {
-            "marketplace": marketplace_id,
-            "marketplace_name": marketplace.get("name") or marketplace_id,
-            "status": self._clean(
-                payload.get("status")
-                or payload.get("state")
-                or payload.get("result")
-                or "QUEUED"
-            ),
-            "message": self._clean(
-                payload.get("message")
-                or payload.get("detail")
-                or payload.get("description")
-            ),
-            "triggered_at": fields.Datetime.to_string(fields.Datetime.now()),
-            "raw": payload,
-        }
+        result = self._normalize_refresh_result(
+            marketplace_id,
+            response,
+            action="published",
+        )
+        return self._store_bulk_action_run(result, "published", note)
 
     @api.model
-    def refresh_published_sku(self, marketplace_id, sku):
+    def refresh_published_sku(self, marketplace_id, sku, note=""):
         self._check_access()
         marketplace_id = self._validate_refresh_marketplace(marketplace_id)
         sku = self._clean(sku)
@@ -321,15 +308,16 @@ class LqaRetailersService(models.AbstractModel):
             ),
             timeout=self._timeout(),
         )
-        return self._normalize_refresh_result(
+        result = self._normalize_refresh_result(
             marketplace_id,
             response,
             action="sku",
             extra={"sku": sku, "sku_count": 1},
         )
+        return self._store_bulk_action_run(result, "sku", note)
 
     @api.model
-    def refresh_published_bulk(self, marketplace_id, filename, content_base64, run_id=""):
+    def refresh_published_bulk(self, marketplace_id, filename, content_base64, run_id="", note=""):
         self._check_access()
         marketplace_id = self._validate_refresh_marketplace(marketplace_id)
         skus = self._parse_refresh_sku_file(filename, content_base64)
@@ -344,7 +332,7 @@ class LqaRetailersService(models.AbstractModel):
             payload={"runId": run_id, "skus": skus},
             timeout=self._timeout(),
         )
-        return self._normalize_refresh_result(
+        result = self._normalize_refresh_result(
             marketplace_id,
             response,
             action="bulk",
@@ -354,6 +342,17 @@ class LqaRetailersService(models.AbstractModel):
                 "filename": self._clean(filename),
             },
         )
+        return self._store_bulk_action_run(result, "bulk", note)
+
+    @api.model
+    def get_bulk_action_runs(self, limit=20):
+        self._check_access()
+        limit = min(max(self._as_int(limit, 20), 1), 100)
+        records = self.env["lqa.retailers.bulk.action.run"].sudo().search(
+            [],
+            limit=limit,
+        )
+        return [record.to_panel_dict() for record in records]
 
     @api.model
     def get_paused_skus(self, filters=None):
@@ -525,6 +524,29 @@ class LqaRetailersService(models.AbstractModel):
         }
         result.update(extra or {})
         return result
+
+    def _store_bulk_action_run(self, result, action_type, note=""):
+        values = {
+            "user_id": self.env.user.id,
+            "action_type": action_type,
+            "marketplace": result.get("marketplace") or "",
+            "marketplace_name": result.get("marketplace_name") or "",
+            "sku": result.get("sku") or "",
+            "sku_count": self._as_int(result.get("sku_count"), 0),
+            "filename": result.get("filename") or "",
+            "run_id": result.get("run_id") or "",
+            "job_id": result.get("job_id") or "",
+            "status": result.get("status") or "",
+            "message": result.get("message") or "",
+            "note": self._clean(note)[:1000],
+            "response_json": json.dumps(
+                result.get("raw") if isinstance(result.get("raw"), dict) else {},
+                ensure_ascii=False,
+            ),
+        }
+        record = self.env["lqa.retailers.bulk.action.run"].sudo().create(values)
+        panel_result = record.to_panel_dict()
+        return {**result, **panel_result}
 
     def _default_refresh_run_id(self, marketplace_id):
         now = fields.Datetime.now()

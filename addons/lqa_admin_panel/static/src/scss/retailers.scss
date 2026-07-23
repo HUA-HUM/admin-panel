@@ -634,6 +634,73 @@
     }
 }
 
+.o_lqa_retailers_bulk_history {
+    overflow: hidden;
+    border: 1px solid #d9e1ec;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+
+    .o_lqa_retailers_table_head {
+        margin: 0;
+        border: 0;
+        border-bottom: 1px solid #edf1f6;
+        border-radius: 0;
+        box-shadow: none;
+
+        h2 {
+            margin: 0;
+            font-size: 18px;
+        }
+    }
+
+    .o_lqa_retailers_empty {
+        margin: 0;
+        border: 0;
+        border-radius: 0;
+        background: #fff;
+    }
+}
+
+.o_lqa_retailers_bulk_history_table {
+    min-width: 1120px;
+
+    td {
+        vertical-align: top;
+    }
+
+    td:nth-child(1) {
+        width: 150px;
+        color: #475569;
+        font-weight: 700;
+    }
+
+    td:nth-child(2),
+    td:nth-child(4),
+    td:nth-child(7) {
+        max-width: 260px;
+    }
+
+    strong {
+        display: block;
+        color: #1f2937;
+        font-weight: 900;
+    }
+
+    small {
+        display: block;
+        margin-top: 4px;
+        color: #64748b;
+        font-size: 11px;
+        line-height: 1.35;
+        overflow-wrap: anywhere;
+    }
+
+    span {
+        overflow-wrap: anywhere;
+    }
+}
+
 .o_lqa_retailer_card {
     overflow: hidden;
     min-height: 330px;
