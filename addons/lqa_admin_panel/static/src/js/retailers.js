@@ -88,11 +88,13 @@ export class LqaRetailers extends Component {
             loadingImports: false,
             loadingStatus: false,
             loadingBulkActionRuns: false,
+            loadingPausedSkuRuns: false,
             loadingPausedSkus: false,
             runningImport: false,
             refreshingPublished: false,
             refreshingSku: false,
             refreshingBulk: false,
+            upsertingPausedSku: false,
             upsertingPausedSkus: false,
             deletingPausedSku: "",
             confirmImport: false,
@@ -127,16 +129,24 @@ export class LqaRetailers extends Component {
                 offset: 0,
                 limit: "100",
             },
+            pausedSingleForm: {
+                sku: "",
+                paused: "true",
+                note: "",
+            },
             pausedBulkForm: {
                 filename: "",
                 content: "",
                 defaultPaused: "true",
+                note: "",
             },
             refreshResult: null,
             refreshSkuResult: null,
             refreshBulkResult: null,
+            pausedSingleResult: null,
             pausedBulkResult: null,
             bulkActionRuns: [],
+            pausedSkuRuns: [],
             pausedSkus: { items: [], pagination: {} },
             products: { items: [], summary: {}, pagination: {} },
             imports: { items: [], pagination: {} },
@@ -275,9 +285,11 @@ export class LqaRetailers extends Component {
         if (this.showDashboard) {
             this.loadDashboard();
         } else if (this.showBulkActions) {
-            this.loadBulkActionRuns();
             if (this.state.bulkActionTab === "paused") {
                 this.loadPausedSkus();
+                this.loadPausedSkuRuns();
+            } else {
+                this.loadBulkActionRuns();
             }
         } else if (this.showMarketplaceDetail) {
             this.loadCurrentTab();
@@ -530,7 +542,7 @@ export class LqaRetailers extends Component {
     async setBulkActionTab(tab) {
         this.state.bulkActionTab = tab;
         if (tab === "paused") {
-            await this.loadPausedSkus();
+            await Promise.all([this.loadPausedSkus(), this.loadPausedSkuRuns()]);
         } else {
             await this.loadBulkActionRuns();
         }
@@ -548,6 +560,21 @@ export class LqaRetailers extends Component {
             this.notifyError(error, "No se pudieron cargar los registros de ejecucion.");
         } finally {
             this.state.loadingBulkActionRuns = false;
+        }
+    }
+
+    async loadPausedSkuRuns() {
+        this.state.loadingPausedSkuRuns = true;
+        try {
+            this.state.pausedSkuRuns = await this.orm.call(
+                "lqa.retailers.service",
+                "get_paused_sku_action_runs",
+                [30]
+            );
+        } catch (error) {
+            this.notifyError(error, "No se pudieron cargar los registros de SKUs pausados.");
+        } finally {
+            this.state.loadingPausedSkuRuns = false;
         }
     }
 
@@ -697,6 +724,39 @@ export class LqaRetailers extends Component {
         await this.loadPausedSkus();
     }
 
+    async submitPausedSingle() {
+        if (!this.state.pausedSingleForm.sku.trim()) {
+            this.notification.add("Ingresa un SKU para guardar.", {
+                type: "warning",
+            });
+            return;
+        }
+        this.state.upsertingPausedSku = true;
+        try {
+            const result = await this.orm.call(
+                "lqa.retailers.service",
+                "upsert_paused_sku",
+                [
+                    this.state.pausedSingleForm.sku,
+                    this.state.pausedSingleForm.paused === "true",
+                    this.state.pausedSingleForm.note,
+                ]
+            );
+            this.state.pausedSingleResult = result;
+            this.state.pausedSingleForm.sku = "";
+            this.state.pausedSingleForm.note = "";
+            await Promise.all([this.loadPausedSkus(), this.loadPausedSkuRuns()]);
+            this.notification.add(
+                `${result.sku} guardado como ${this.pausedLabel(result.paused_count > 0)}.`,
+                { type: "success" }
+            );
+        } catch (error) {
+            this.notifyError(error, "No se pudo guardar el SKU pausado.");
+        } finally {
+            this.state.upsertingPausedSku = false;
+        }
+    }
+
     async deletePausedSku(item) {
         const sku = String(item?.sku || "").trim();
         if (!sku) {
@@ -770,11 +830,13 @@ export class LqaRetailers extends Component {
                     this.state.pausedBulkForm.filename,
                     this.state.pausedBulkForm.content,
                     this.state.pausedBulkForm.defaultPaused === "true",
+                    this.state.pausedBulkForm.note,
                 ]
             );
             this.state.pausedBulkResult = result;
+            this.state.pausedBulkForm.note = "";
             this.clearPausedBulkFile();
-            await this.loadPausedSkus();
+            await Promise.all([this.loadPausedSkus(), this.loadPausedSkuRuns()]);
             this.notification.add(
                 `Bulk enviado: ${this.formatNumber(result.sku_count)} SKUs procesados.`,
                 { type: "success" }
@@ -952,6 +1014,7 @@ export class LqaRetailers extends Component {
                 RUNNING: "En progreso",
                 SUCCESS: "Correcto",
                 FAILED: "Fallido",
+                UPDATED: "Actualizado",
             }[String(value || "").toUpperCase()] || this.humanizeStatus(value)
         );
     }
@@ -964,7 +1027,7 @@ export class LqaRetailers extends Component {
         if (["ERROR", "FAILED"].includes(normalized)) {
             return "is-red";
         }
-        if (["QUEUED", "STARTED", "RUNNING", "PENDING", "EN_REVISION"].includes(normalized)) {
+        if (["QUEUED", "STARTED", "RUNNING", "PENDING", "EN_REVISION", "UPDATED"].includes(normalized)) {
             return "is-blue";
         }
         return "is-gray";
@@ -976,6 +1039,8 @@ export class LqaRetailers extends Component {
                 published: "Publicaciones",
                 sku: "SKU puntual",
                 bulk: "Archivo de SKUs",
+                paused_single: "SKU pausado",
+                paused_bulk: "Archivo pausados",
             }[String(value || "")] || "Accion"
         );
     }
@@ -986,6 +1051,8 @@ export class LqaRetailers extends Component {
                 published: "fa-refresh",
                 sku: "fa-barcode",
                 bulk: "fa-file-excel-o",
+                paused_single: "fa-pause-circle-o",
+                paused_bulk: "fa-cloud-upload",
             }[String(value || "")] || "fa-history"
         );
     }

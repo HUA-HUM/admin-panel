@@ -491,17 +491,17 @@
                     </section>
                 </div>
 
-                <div t-if="state.bulkActionTab === 'paused'" class="o_lqa_retailers_bulk_stack">
+                <div t-if="state.bulkActionTab === 'paused'" class="o_lqa_retailers_bulk_stack is-paused">
                     <article class="o_lqa_retailers_bulk_card is-muted">
                         <div>
                             <span class="o_lqa_retailers_bulk_card__icon">
                                 <i class="fa fa-pause-circle-o"/>
                             </span>
                             <small>Madre DB</small>
-                            <h2>Administrar SKUs pausados</h2>
+                            <h2>Consultar SKUs</h2>
                             <p>
-                                Consulta, filtra y mantiene el listado de SKUs que quedan pausados
-                                para procesos internos de marketplaces.
+                                Filtra el listado de SKUs pausados o activos que usa Madre DB para
+                                procesos internos de marketplaces.
                             </p>
                         </div>
                         <form class="o_lqa_retailers_bulk_form" t-on-submit.prevent="applyPausedSkuFilters">
@@ -543,13 +543,67 @@
                         </form>
                     </article>
 
+                    <article class="o_lqa_retailers_bulk_card">
+                        <div>
+                            <span class="o_lqa_retailers_bulk_card__icon">
+                                <i class="fa fa-keyboard-o"/>
+                            </span>
+                            <small>Alta manual</small>
+                            <h2>Insertar SKU</h2>
+                            <p>
+                                Guarda un SKU puntual como pausado o activo y deja registrado quien
+                                ejecuto el cambio.
+                            </p>
+                        </div>
+                        <form class="o_lqa_retailers_bulk_form" t-on-submit.prevent="submitPausedSingle">
+                            <label>
+                                <span>SKU</span>
+                                <input
+                                    type="text"
+                                    class="form-control"
+                                    placeholder="B0C33CHG99"
+                                    t-model="state.pausedSingleForm.sku"
+                                />
+                            </label>
+                            <label>
+                                <span>Estado</span>
+                                <select class="form-select" t-model="state.pausedSingleForm.paused">
+                                    <option value="true">Pausado</option>
+                                    <option value="false">Activo</option>
+                                </select>
+                            </label>
+                            <label>
+                                <span>Nota</span>
+                                <input
+                                    type="text"
+                                    class="form-control"
+                                    placeholder="Motivo o referencia interna"
+                                    t-model="state.pausedSingleForm.note"
+                                />
+                            </label>
+                            <button
+                                type="submit"
+                                class="btn btn-primary"
+                                t-att-disabled="state.upsertingPausedSku"
+                            >
+                                <i
+                                    t-att-class="state.upsertingPausedSku
+                                        ? 'fa fa-spinner fa-spin'
+                                        : 'fa fa-save'"
+                                />
+                                <t t-if="state.upsertingPausedSku">Guardando...</t>
+                                <t t-else="">Guardar SKU</t>
+                            </button>
+                        </form>
+                    </article>
+
                     <article class="o_lqa_retailers_bulk_card is-accent">
                         <div>
                             <span class="o_lqa_retailers_bulk_card__icon">
                                 <i class="fa fa-cloud-upload"/>
                             </span>
                             <small>Bulk upsert</small>
-                            <h2>Cargar SKUs desde archivo</h2>
+                            <h2>Insertar desde archivo</h2>
                             <p>
                                 Sube un CSV o Excel con columna <strong>sku</strong>. Si el archivo tiene
                                 columna <strong>paused</strong>, se respeta; si no, usa el estado por defecto.
@@ -562,6 +616,15 @@
                                     <option value="true">Pausado</option>
                                     <option value="false">Activo</option>
                                 </select>
+                            </label>
+                            <label>
+                                <span>Nota</span>
+                                <input
+                                    type="text"
+                                    class="form-control"
+                                    placeholder="Ej: lista revisada por compras"
+                                    t-model="state.pausedBulkForm.note"
+                                />
                             </label>
                             <label class="o_lqa_retailers_bulk_file">
                                 <span>Archivo CSV / XLSX</span>
@@ -594,9 +657,34 @@
                         </form>
                     </article>
 
+                    <article t-if="state.pausedSingleResult" class="o_lqa_retailers_bulk_result">
+                        <div>
+                            <small>Ultimo SKU guardado</small>
+                            <h2 t-esc="state.pausedSingleResult.sku"/>
+                        </div>
+                        <dl>
+                            <div>
+                                <dt>Estado aplicado</dt>
+                                <dd t-esc="state.pausedSingleResult.paused_count ? 'Pausado' : 'Activo'"/>
+                            </div>
+                            <div>
+                                <dt>API</dt>
+                                <dd t-esc="formatNumber(state.pausedSingleResult.api_count)"/>
+                            </div>
+                            <div>
+                                <dt>Resultado</dt>
+                                <dd t-esc="statusLabel(state.pausedSingleResult.status)"/>
+                            </div>
+                            <div>
+                                <dt>Fecha</dt>
+                                <dd t-esc="formatDateTime(state.pausedSingleResult.triggered_at)"/>
+                            </div>
+                        </dl>
+                    </article>
+
                     <article t-if="state.pausedBulkResult" class="o_lqa_retailers_bulk_result">
                         <div>
-                            <small>Ultimo bulk pausados</small>
+                            <small>Ultimo archivo guardado</small>
                             <h2 t-esc="state.pausedBulkResult.filename"/>
                         </div>
                         <dl>
@@ -626,6 +714,86 @@
                             </div>
                         </dl>
                     </article>
+
+                    <section class="o_lqa_retailers_bulk_history">
+                        <div class="o_lqa_retailers_table_head o_lqa_retailers_bulk_history__head">
+                            <div class="o_lqa_retailers_bulk_history__title">
+                                <span class="o_lqa_retailers_bulk_history__icon">
+                                    <i class="fa fa-history"/>
+                                </span>
+                                <div>
+                                    <h2>Registros de inserts</h2>
+                                    <span>Altas manuales y cargas por archivo, con usuario y nota operativa.</span>
+                                </div>
+                            </div>
+                            <div class="o_lqa_retailers_bulk_history__actions">
+                                <span class="o_lqa_retailers_bulk_history__count">
+                                    <strong t-esc="state.pausedSkuRuns.length"/>
+                                    registros
+                                </span>
+                                <button
+                                    type="button"
+                                    class="btn btn-secondary"
+                                    t-att-disabled="state.loadingPausedSkuRuns"
+                                    t-on-click="loadPausedSkuRuns"
+                                >
+                                    <i class="fa fa-refresh"/>
+                                    Actualizar
+                                </button>
+                            </div>
+                        </div>
+                        <div t-if="state.loadingPausedSkuRuns" class="o_lqa_retailers_empty">
+                            Cargando registros...
+                        </div>
+                        <div t-elif="!state.pausedSkuRuns.length" class="o_lqa_retailers_empty">
+                            Todavia no hay inserts registrados.
+                        </div>
+                        <div t-else="" class="o_lqa_retailers_table_wrap">
+                            <table class="o_lqa_retailers_table o_lqa_retailers_bulk_history_table">
+                                <thead>
+                                    <tr>
+                                        <th>Ejecucion</th>
+                                        <th>Proceso</th>
+                                        <th>Detalle</th>
+                                        <th>Estado</th>
+                                        <th>Usuario</th>
+                                        <th>Nota</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="state.pausedSkuRuns" t-as="run" t-key="run.id">
+                                        <td>
+                                            <strong class="o_lqa_retailers_bulk_history__date" t-esc="formatDateTime(run.triggered_at)"/>
+                                            <small t-if="run.job_id" t-esc="run.job_id"/>
+                                        </td>
+                                        <td>
+                                            <span class="o_lqa_retailers_bulk_history__process">
+                                                <i t-att-class="'fa ' + bulkActionIcon(run.action_type)"/>
+                                                <strong t-esc="bulkActionLabel(run.action_type)"/>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <strong class="o_lqa_retailers_bulk_history__detail" t-esc="bulkActionDetail(run)"/>
+                                        </td>
+                                        <td>
+                                            <span
+                                                t-att-class="'o_lqa_retailers_badge ' + statusClass(run.status)"
+                                                t-esc="statusLabel(run.status)"
+                                            />
+                                        </td>
+                                        <td>
+                                            <span class="o_lqa_retailers_bulk_history__marketplace" t-esc="run.user_name || '-'"/>
+                                        </td>
+                                        <td class="o_lqa_retailers_bulk_history__note">
+                                            <span t-if="run.note" t-esc="run.note"/>
+                                            <span t-else="" class="is-muted">Sin nota</span>
+                                            <small t-if="run.message" t-esc="run.message"/>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
 
                     <div class="o_lqa_retailers_table_head">
                         <div>

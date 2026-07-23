@@ -349,7 +349,17 @@ class LqaRetailersService(models.AbstractModel):
         self._check_access()
         limit = min(max(self._as_int(limit, 20), 1), 100)
         records = self.env["lqa.retailers.bulk.action.run"].sudo().search(
-            [],
+            [("action_type", "in", ["published", "sku", "bulk"])],
+            limit=limit,
+        )
+        return [record.to_panel_dict() for record in records]
+
+    @api.model
+    def get_paused_sku_action_runs(self, limit=20):
+        self._check_access()
+        limit = min(max(self._as_int(limit, 20), 1), 100)
+        records = self.env["lqa.retailers.bulk.action.run"].sudo().search(
+            [("action_type", "in", ["paused_single", "paused_bulk"])],
             limit=limit,
         )
         return [record.to_panel_dict() for record in records]
@@ -438,7 +448,31 @@ class LqaRetailersService(models.AbstractModel):
         }
 
     @api.model
-    def upsert_paused_skus_bulk(self, filename, content_base64, default_paused=True):
+    def upsert_paused_sku(self, sku, paused=True, note=""):
+        self._check_access()
+        sku = self._clean(sku)
+        if not sku:
+            raise UserError(_("Ingresa un SKU para guardar."))
+        items = [{"sku": sku, "paused": self._as_bool(paused, True)}]
+        response = self.env["lqa.api.client"].request_absolute_json(
+            "PUT",
+            self._join_url(
+                self._madre_base_url(),
+                "/api/internal/marketplace/products/paused-skus/bulk",
+            ),
+            payload={"items": items},
+            headers=self._madre_internal_headers(),
+            timeout=self._timeout(),
+        )
+        result = self._normalize_paused_sku_upsert_result(
+            response,
+            items,
+            extra={"sku": sku},
+        )
+        return self._store_bulk_action_run(result, "paused_single", note)
+
+    @api.model
+    def upsert_paused_skus_bulk(self, filename, content_base64, default_paused=True, note=""):
         self._check_access()
         items = self._parse_paused_sku_file(filename, content_base64, default_paused)
         response = self.env["lqa.api.client"].request_absolute_json(
@@ -451,9 +485,21 @@ class LqaRetailersService(models.AbstractModel):
             headers=self._madre_internal_headers(),
             timeout=self._timeout(),
         )
+        result = self._normalize_paused_sku_upsert_result(
+            response,
+            items,
+            extra={
+                "filename": self._clean(filename),
+            },
+        )
+        return self._store_bulk_action_run(result, "paused_bulk", note)
+
+    def _normalize_paused_sku_upsert_result(self, response, items, extra=None):
         payload = response if isinstance(response, dict) else {}
         response_items = self._response_items(response)
-        return {
+        result = {
+            "marketplace": "paused-skus",
+            "marketplace_name": "SKUs pausados",
             "status": self._clean(
                 payload.get("status")
                 or payload.get("state")
@@ -465,7 +511,6 @@ class LqaRetailersService(models.AbstractModel):
                 or payload.get("detail")
                 or payload.get("description")
             ),
-            "filename": self._clean(filename),
             "sku_count": len(items),
             "paused_count": sum(1 for item in items if item["paused"]),
             "active_count": sum(1 for item in items if not item["paused"]),
@@ -479,6 +524,8 @@ class LqaRetailersService(models.AbstractModel):
             "triggered_at": fields.Datetime.to_string(fields.Datetime.now()),
             "raw": payload,
         }
+        result.update(extra or {})
+        return result
 
     def _check_access(self):
         if not self.env.user.has_group("lqa_admin_panel.group_lqa_commercial_user"):

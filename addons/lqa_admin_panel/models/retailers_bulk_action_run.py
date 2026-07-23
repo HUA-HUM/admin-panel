@@ -20,6 +20,8 @@ class LqaRetailersBulkActionRun(models.Model):
             ("published", "Publicaciones publicadas"),
             ("sku", "SKU puntual"),
             ("bulk", "Archivo de SKUs"),
+            ("paused_single", "SKU pausado"),
+            ("paused_bulk", "Archivo de SKUs pausados"),
         ],
         string="Accion",
         required=True,
