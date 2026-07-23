@@ -150,13 +150,13 @@
     gap: 6px;
     padding: 5px;
     border: 1px solid #d9e1ec;
-    border-radius: 10px;
+    border-radius: 8px;
     background: #fff;
-    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
 
     button {
         display: inline-flex;
-        min-height: 46px;
+        min-height: 40px;
         flex: 1;
         align-items: center;
         justify-content: center;
@@ -181,9 +181,9 @@
     }
 
     button.is-active {
-        background: linear-gradient(135deg, #ff4f5a 0%, #ef3d55 100%);
-        color: #fff;
-        box-shadow: 0 10px 18px rgba(255, 79, 90, 0.2);
+        background: #fff;
+        color: #c72536;
+        box-shadow: inset 0 0 0 1px #ff4f5a;
     }
 }
 
@@ -203,22 +203,19 @@
 .o_lqa_retailers_bulk_sections {
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 14px;
 }
 
 .o_lqa_retailers_bulk_section {
     overflow: hidden;
     border: 1px solid #d9e1ec;
-    border-radius: 12px;
+    border-radius: 8px;
     background: #fff;
-    box-shadow: 0 14px 32px rgba(15, 23, 42, 0.05);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
 
-    &.is-primary {
-        border-top: 3px solid #ff4f5a;
-    }
-
+    &.is-primary,
     &.is-manual {
-        border-top: 3px solid #2563eb;
+        border-color: #d9e1ec;
     }
 }
 
@@ -227,15 +224,13 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 16px;
-    padding: 18px 20px;
+    padding: 16px 18px;
     border-bottom: 1px solid #edf1f6;
-    background:
-        radial-gradient(circle at 0% 0%, rgba(255, 79, 90, 0.1) 0%, rgba(255, 255, 255, 0) 34%),
-        linear-gradient(180deg, #fff 0%, #fbfcfe 100%);
+    background: #fff;
 
     small {
         display: block;
-        color: #ff4f5a;
+        color: #718096;
         font-size: 11px;
         font-weight: 900;
         text-transform: uppercase;
@@ -244,7 +239,7 @@
     h2 {
         margin: 5px 0 0;
         color: #1f2937;
-        font-size: 22px;
+        font-size: 20px;
         font-weight: 900;
         line-height: 1.15;
     }
@@ -258,7 +253,7 @@
 }
 
 .o_lqa_retailers_bulk_section__badge {
-    display: inline-flex;
+    display: none;
     min-height: 28px;
     align-items: center;
     padding: 0 10px;
@@ -274,8 +269,8 @@
 
 .o_lqa_retailers_bulk_section_grid {
     display: grid;
-    gap: 14px;
-    padding: 16px;
+    gap: 12px;
+    padding: 14px;
 
     &.is-published {
         grid-template-columns: minmax(340px, 430px) minmax(0, 1fr);
@@ -312,52 +307,45 @@
     position: relative;
     overflow: hidden;
     display: flex;
-    min-height: 260px;
+    min-height: 218px;
     flex-direction: column;
     padding: 0;
     border-color: #dce4ef;
-    border-radius: 10px;
-    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
     transition:
         border-color 0.15s ease,
-        box-shadow 0.15s ease,
-        transform 0.15s ease;
+        box-shadow 0.15s ease;
 
     &:hover {
-        border-color: #ffc0c6;
-        box-shadow: 0 18px 36px rgba(15, 23, 42, 0.08);
-        transform: translateY(-1px);
+        border-color: #cbd5e1;
+        box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
     }
 
     &::before {
-        position: absolute;
-        top: 0;
-        right: 0;
-        left: 0;
-        height: 3px;
-        background: #ff4f5a;
+        display: none;
         content: "";
     }
 
     > div:first-child {
-        min-height: 132px;
-        padding: 20px 20px 16px;
+        min-height: 108px;
+        padding: 18px 18px 14px;
         border-bottom: 1px solid #edf1f6;
-        background: linear-gradient(180deg, #fff 0%, #fbfcfe 100%);
+        background: #fff;
     }
 
     small {
         display: block;
-        color: #ff4f5a;
+        color: #718096;
         font-size: 11px;
         font-weight: 800;
         text-transform: uppercase;
     }
 
     h2 {
-        margin: 6px 0 0;
+        margin: 0;
         color: #1f2937;
-        font-size: 20px;
+        font-size: 18px;
         font-weight: 800;
         line-height: 1.18;
     }
@@ -383,25 +371,25 @@
 
 .o_lqa_retailers_bulk_card__icon {
     display: inline-flex;
-    width: 42px;
-    height: 42px;
+    width: 36px;
+    height: 36px;
     align-items: center;
     justify-content: center;
-    margin-bottom: 14px;
+    margin-bottom: 12px;
     border-radius: 8px;
-    background: #fff1f3;
-    color: #ff4f5a;
-    font-size: 18px;
+    background: #f1f5f9;
+    color: #64748b;
+    font-size: 16px;
 }
 
 .o_lqa_retailers_bulk_card.is-secondary .o_lqa_retailers_bulk_card__icon {
-    background: #eff6ff;
-    color: #2563eb;
+    background: #f1f5f9;
+    color: #64748b;
 }
 
 .o_lqa_retailers_bulk_card.is-accent .o_lqa_retailers_bulk_card__icon {
-    background: #ecfdf5;
-    color: #0f9f6e;
+    background: #f1f5f9;
+    color: #64748b;
 }
 
 .o_lqa_retailers_bulk_card.is-muted .o_lqa_retailers_bulk_card__icon {
@@ -414,7 +402,7 @@
     grid-template-columns: minmax(0, 1fr);
     gap: 10px;
     margin-top: auto;
-    padding: 16px 18px 18px;
+    padding: 14px 16px 16px;
 
     label {
         display: flex;
@@ -453,7 +441,7 @@
     }
 
     .btn-primary:not(:disabled) {
-        box-shadow: 0 8px 16px rgba(255, 79, 90, 0.18);
+        box-shadow: none;
     }
 
     i {
@@ -502,15 +490,14 @@
 
 .o_lqa_retailers_bulk_result {
     display: flex;
-    min-height: 260px;
+    min-height: 218px;
     flex-direction: column;
     gap: 14px;
     padding: 16px;
-    border-radius: 10px;
-    background:
-        linear-gradient(180deg, rgba(255, 241, 243, 0.7) 0%, rgba(255, 255, 255, 0) 42%),
-        #fff;
-    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+    border: 1px solid #d9e1ec;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
 
     small {
         display: block;
@@ -556,7 +543,7 @@
 }
 
 .o_lqa_retailers_bulk_result {
-    border-color: #ffd6dc;
+    border-color: #d9e1ec;
 
     dl > div {
         padding: 10px;
