@@ -335,10 +335,20 @@
                                 </form>
                             </article>
 
-                            <article t-if="state.refreshSkuResult" class="o_lqa_retailers_bulk_result">
-                                <div>
-                                    <small>Refresh puntual enviado</small>
-                                    <h2 t-esc="state.refreshSkuResult.sku"/>
+                            <article t-if="state.refreshSkuResult" class="o_lqa_retailers_bulk_result o_lqa_retailers_refresh_receipt">
+                                <div class="o_lqa_retailers_refresh_receipt__summary">
+                                    <span class="o_lqa_retailers_refresh_receipt__icon">
+                                        <i class="fa fa-check"/>
+                                    </span>
+                                    <div>
+                                        <small>Refresh puntual enviado</small>
+                                        <h2 t-esc="state.refreshSkuResult.sku"/>
+                                        <span>La solicitud quedo registrada para seguimiento operativo.</span>
+                                    </div>
+                                    <span
+                                        t-att-class="'o_lqa_retailers_badge ' + statusClass(state.refreshSkuResult.status)"
+                                        t-esc="statusLabel(state.refreshSkuResult.status)"
+                                    />
                                 </div>
                                 <dl>
                                     <div>
@@ -346,12 +356,16 @@
                                         <dd t-esc="state.refreshSkuResult.marketplace_name"/>
                                     </div>
                                     <div>
-                                        <dt>Estado</dt>
-                                        <dd t-esc="statusLabel(state.refreshSkuResult.status)"/>
+                                        <dt>Ejecutado por</dt>
+                                        <dd t-esc="state.refreshSkuResult.user_name || '-'"/>
                                     </div>
                                     <div>
                                         <dt>Fecha</dt>
                                         <dd t-esc="formatDateTime(state.refreshSkuResult.triggered_at)"/>
+                                    </div>
+                                    <div t-if="state.refreshSkuResult.note" class="is-wide">
+                                        <dt>Nota</dt>
+                                        <dd t-esc="state.refreshSkuResult.note"/>
                                     </div>
                                 </dl>
                             </article>
@@ -392,20 +406,31 @@
                     </section>
 
                     <section class="o_lqa_retailers_bulk_history">
-                        <div class="o_lqa_retailers_table_head">
-                            <div>
-                                <h2>Registros de ejecucion</h2>
-                                <span>Ultimas acciones disparadas, con usuario y nota operativa.</span>
+                        <div class="o_lqa_retailers_table_head o_lqa_retailers_bulk_history__head">
+                            <div class="o_lqa_retailers_bulk_history__title">
+                                <span class="o_lqa_retailers_bulk_history__icon">
+                                    <i class="fa fa-clock-o"/>
+                                </span>
+                                <div>
+                                    <h2>Registros de ejecucion</h2>
+                                    <span>Ultimas acciones disparadas, usuario responsable y nota operativa.</span>
+                                </div>
                             </div>
-                            <button
-                                type="button"
-                                class="btn btn-secondary"
-                                t-att-disabled="state.loadingBulkActionRuns"
-                                t-on-click="loadBulkActionRuns"
-                            >
-                                <i class="fa fa-refresh"/>
-                                Actualizar
-                            </button>
+                            <div class="o_lqa_retailers_bulk_history__actions">
+                                <span class="o_lqa_retailers_bulk_history__count">
+                                    <strong t-esc="state.bulkActionRuns.length"/>
+                                    registros
+                                </span>
+                                <button
+                                    type="button"
+                                    class="btn btn-secondary"
+                                    t-att-disabled="state.loadingBulkActionRuns"
+                                    t-on-click="loadBulkActionRuns"
+                                >
+                                    <i class="fa fa-refresh"/>
+                                    Actualizar
+                                </button>
+                            </div>
                         </div>
                         <div t-if="state.loadingBulkActionRuns" class="o_lqa_retailers_empty">
                             Cargando registros...
@@ -417,33 +442,46 @@
                             <table class="o_lqa_retailers_table o_lqa_retailers_bulk_history_table">
                                 <thead>
                                     <tr>
-                                        <th>Fecha</th>
-                                        <th>Accion</th>
+                                        <th>Ejecucion</th>
+                                        <th>Proceso</th>
                                         <th>Marketplace</th>
                                         <th>Detalle</th>
                                         <th>Estado</th>
-                                        <th>Ejecutado por</th>
                                         <th>Nota</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr t-foreach="state.bulkActionRuns" t-as="run" t-key="run.id">
-                                        <td t-esc="formatDateTime(run.triggered_at)"/>
                                         <td>
-                                            <strong t-esc="bulkActionLabel(run.action_type)"/>
-                                            <small t-if="run.run_id" t-esc="run.run_id"/>
+                                            <strong class="o_lqa_retailers_bulk_history__date" t-esc="formatDateTime(run.triggered_at)"/>
+                                            <small>
+                                                <i class="fa fa-user"/>
+                                                <t t-esc="run.user_name || '-'"/>
+                                            </small>
                                         </td>
-                                        <td t-esc="run.marketplace_name || marketplaceName(run.marketplace)"/>
-                                        <td t-esc="bulkActionDetail(run)"/>
+                                        <td>
+                                            <span class="o_lqa_retailers_bulk_history__process">
+                                                <i t-att-class="'fa ' + bulkActionIcon(run.action_type)"/>
+                                                <strong t-esc="bulkActionLabel(run.action_type)"/>
+                                            </span>
+                                            <small t-if="run.run_id" t-esc="run.run_id"/>
+                                            <small t-if="!run.run_id &amp;&amp; run.job_id" t-esc="run.job_id"/>
+                                        </td>
+                                        <td>
+                                            <span class="o_lqa_retailers_bulk_history__marketplace" t-esc="run.marketplace_name || marketplaceName(run.marketplace)"/>
+                                        </td>
+                                        <td>
+                                            <strong class="o_lqa_retailers_bulk_history__detail" t-esc="bulkActionDetail(run)"/>
+                                        </td>
                                         <td>
                                             <span
                                                 t-att-class="'o_lqa_retailers_badge ' + statusClass(run.status)"
                                                 t-esc="statusLabel(run.status)"
                                             />
                                         </td>
-                                        <td t-esc="run.user_name || '-'"/>
-                                        <td>
-                                            <span t-esc="run.note || '-'"/>
+                                        <td class="o_lqa_retailers_bulk_history__note">
+                                            <span t-if="run.note" t-esc="run.note"/>
+                                            <span t-else="" class="is-muted">Sin nota</span>
                                             <small t-if="run.message" t-esc="run.message"/>
                                         </td>
                                     </tr>

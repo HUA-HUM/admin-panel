@@ -980,6 +980,16 @@ export class LqaRetailers extends Component {
         );
     }
 
+    bulkActionIcon(value) {
+        return (
+            {
+                published: "fa-refresh",
+                sku: "fa-barcode",
+                bulk: "fa-file-excel-o",
+            }[String(value || "")] || "fa-history"
+        );
+    }
+
     bulkActionDetail(run) {
         if (run?.sku) {
             return run.sku;

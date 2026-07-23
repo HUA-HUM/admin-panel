@@ -364,6 +364,10 @@
     > .o_lqa_retailers_bulk_result {
         min-height: 0;
     }
+
+    > .o_lqa_retailers_refresh_receipt {
+        grid-column: 1 / -1;
+    }
 }
 
 .o_lqa_retailers_bulk_section_grid.is-published > .o_lqa_retailers_bulk_card:only-child {
@@ -634,6 +638,68 @@
     }
 }
 
+.o_lqa_retailers_refresh_receipt {
+    min-height: 0;
+    gap: 12px;
+    padding: 14px;
+    border-color: #cbd5e1;
+    background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+
+    dl {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        margin: 0;
+    }
+
+    dl > div {
+        background: #fff;
+    }
+
+    dl > div.is-wide {
+        grid-column: 1 / -1;
+    }
+}
+
+.o_lqa_retailers_refresh_receipt__summary {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+
+    > div {
+        min-width: 0;
+    }
+
+    small {
+        color: #64748b;
+    }
+
+    h2 {
+        margin-top: 2px;
+        font-size: 20px;
+    }
+
+    span:not(.o_lqa_retailers_badge):not(.o_lqa_retailers_refresh_receipt__icon) {
+        display: block;
+        margin-top: 3px;
+        color: #64748b;
+        font-size: 13px;
+        line-height: 1.35;
+    }
+}
+
+.o_lqa_retailers_refresh_receipt__icon {
+    display: inline-flex;
+    width: 42px;
+    height: 42px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #bbf7d0;
+    border-radius: 8px;
+    background: #ecfdf5;
+    color: #047857;
+    font-size: 16px;
+}
+
 .o_lqa_retailers_bulk_history {
     overflow: hidden;
     border: 1px solid #d9e1ec;
@@ -650,8 +716,14 @@
 
         h2 {
             margin: 0;
-            font-size: 18px;
+            font-size: 19px;
         }
+    }
+
+    .o_lqa_retailers_table_wrap {
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
     }
 
     .o_lqa_retailers_empty {
@@ -662,42 +734,178 @@
     }
 }
 
+.o_lqa_retailers_bulk_history__head {
+    background: #fff;
+}
+
+.o_lqa_retailers_bulk_history__title,
+.o_lqa_retailers_bulk_history__actions,
+.o_lqa_retailers_bulk_history__process {
+    display: flex;
+    align-items: center;
+}
+
+.o_lqa_retailers_bulk_history__title {
+    min-width: 0;
+    gap: 12px;
+}
+
+.o_lqa_retailers_bulk_history__icon {
+    display: inline-flex;
+    width: 38px;
+    height: 38px;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #f8fafc;
+    color: #475569;
+    font-size: 15px;
+}
+
+.o_lqa_retailers_bulk_history__actions {
+    flex: 0 0 auto;
+    gap: 10px;
+}
+
+.o_lqa_retailers_bulk_history__count {
+    display: inline-flex;
+    min-height: 34px;
+    align-items: center;
+    gap: 6px;
+    padding: 0 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 999px;
+    background: #f8fafc;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 800;
+
+    strong {
+        color: #1f2937;
+        font-size: 14px;
+    }
+}
+
 .o_lqa_retailers_bulk_history_table {
-    min-width: 1120px;
+    min-width: 1180px;
+
+    th {
+        background: #f8fafc;
+        color: #64748b;
+        letter-spacing: 0;
+    }
 
     td {
-        vertical-align: top;
+        padding-top: 15px;
+        padding-bottom: 15px;
+        vertical-align: middle;
+    }
+
+    tbody tr:hover {
+        background: #f8fafc;
     }
 
     td:nth-child(1) {
-        width: 150px;
-        color: #475569;
-        font-weight: 700;
+        width: 185px;
     }
 
-    td:nth-child(2),
-    td:nth-child(4),
-    td:nth-child(7) {
-        max-width: 260px;
+    td:nth-child(2) {
+        width: 220px;
     }
 
-    strong {
-        display: block;
-        color: #1f2937;
-        font-weight: 900;
+    td:nth-child(3) {
+        width: 160px;
+    }
+
+    td:nth-child(4) {
+        max-width: 330px;
+    }
+
+    td:nth-child(5) {
+        width: 130px;
+    }
+
+    td:nth-child(6) {
+        min-width: 280px;
+        max-width: 420px;
+    }
+
+    span {
+        overflow-wrap: anywhere;
     }
 
     small {
-        display: block;
-        margin-top: 4px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        margin-top: 5px;
         color: #64748b;
         font-size: 11px;
         line-height: 1.35;
         overflow-wrap: anywhere;
     }
+}
 
+.o_lqa_retailers_bulk_history__date,
+.o_lqa_retailers_bulk_history__detail {
+    display: block;
+    color: #1f2937;
+    font-weight: 900;
+    overflow-wrap: anywhere;
+}
+
+.o_lqa_retailers_bulk_history__process {
+    gap: 8px;
+    color: #1f2937;
+    font-weight: 900;
+
+    i {
+        display: inline-flex;
+        width: 28px;
+        height: 28px;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        background: #f8fafc;
+        color: #475569;
+        font-size: 12px;
+    }
+}
+
+.o_lqa_retailers_bulk_history__marketplace {
+    display: inline-flex;
+    min-height: 28px;
+    align-items: center;
+    padding: 0 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 999px;
+    background: #fff;
+    color: #334155;
+    font-weight: 800;
+}
+
+.o_lqa_retailers_bulk_history__note {
     span {
-        overflow-wrap: anywhere;
+        display: block;
+        padding: 8px 10px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        background: #fff;
+        color: #334155;
+        line-height: 1.35;
+    }
+
+    span.is-muted {
+        background: #f8fafc;
+        color: #94a3b8;
+        font-style: italic;
+    }
+
+    small {
+        margin-top: 7px;
     }
 }
 
@@ -1674,6 +1882,28 @@
 
     .o_lqa_retailers_toolbar .form-select {
         width: 100%;
+    }
+
+    .o_lqa_retailers_refresh_receipt__summary {
+        grid-template-columns: auto minmax(0, 1fr);
+
+        .o_lqa_retailers_badge {
+            grid-column: 1 / -1;
+            justify-self: start;
+        }
+    }
+
+    .o_lqa_retailers_bulk_history__head,
+    .o_lqa_retailers_bulk_history__actions {
+        align-items: stretch;
+    }
+
+    .o_lqa_retailers_bulk_history__actions {
+        flex-direction: column;
+    }
+
+    .o_lqa_retailers_bulk_history__count {
+        justify-content: center;
     }
 
     .o_lqa_retailers_bulk_section_grid.is-published > .o_lqa_retailers_bulk_card:only-child {
