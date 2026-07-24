@@ -293,8 +293,9 @@ export class LqaRetailers extends Component {
         if (this.showDashboard) {
             this.loadDashboard();
         } else if (this.showBulkActions) {
-            if (this.state.bulkActionTab === "paused") {
+            if (this.state.bulkActionTab === "paused_list") {
                 this.loadPausedSkus();
+            } else if (this.state.bulkActionTab === "paused_insert") {
                 this.loadPausedSkuRuns();
             } else {
                 this.loadBulkActionRuns();
@@ -549,8 +550,10 @@ export class LqaRetailers extends Component {
 
     async setBulkActionTab(tab) {
         this.state.bulkActionTab = tab;
-        if (tab === "paused") {
-            await Promise.all([this.loadPausedSkus(), this.loadPausedSkuRuns()]);
+        if (tab === "paused_list") {
+            await this.loadPausedSkus();
+        } else if (tab === "paused_insert") {
+            await this.loadPausedSkuRuns();
         } else {
             await this.loadBulkActionRuns();
         }
@@ -702,18 +705,6 @@ export class LqaRetailers extends Component {
         } finally {
             this.state.loadingPausedSkus = false;
         }
-    }
-
-    async applyPausedSkuFilters() {
-        this.state.pausedSkuFilters.offset = 0;
-        await this.loadPausedSkus();
-    }
-
-    clearPausedSkuFilters() {
-        this.state.pausedSkuFilters.sku = "";
-        this.state.pausedSkuFilters.paused = "";
-        this.state.pausedSkuFilters.offset = 0;
-        this.loadPausedSkus();
     }
 
     async previousPausedSkusPage() {

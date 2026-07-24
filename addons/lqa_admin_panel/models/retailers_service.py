@@ -385,7 +385,7 @@ class LqaRetailersService(models.AbstractModel):
             "GET",
             self._join_url(
                 self._madre_base_url(),
-                "/api/internal/marketplace/products/paused-skus",
+                "/api/internal/marketplace/paused-skus",
             ),
             params=params,
             headers=self._madre_internal_headers(),
