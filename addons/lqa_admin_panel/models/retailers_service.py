@@ -26,6 +26,7 @@ class LqaRetailersService(models.AbstractModel):
     DEFAULT_ORDERS_TIMEOUT_SECONDS = 90
     ORDER_MARKETPLACES = ("fravega", "megatone", "oncity")
     REFRESH_PUBLISHED_MARKETPLACES = ("fravega", "megatone", "oncity")
+    REFRESH_BULK_CHUNK_SIZE = 1000
     MARKETPLACES = {
         "oncity": {
             "name": "OnCity",
@@ -322,16 +323,53 @@ class LqaRetailersService(models.AbstractModel):
         marketplace_id = self._validate_refresh_marketplace(marketplace_id)
         skus = self._parse_refresh_sku_file(filename, content_base64)
         run_id = self._clean(run_id) or self._default_refresh_run_id(marketplace_id)
-
-        response = self.env["lqa.api.client"].request_absolute_json(
-            "POST",
-            self._join_url(
-                self._products_base_url(),
-                f"/api/internal/marketplace-changes/refresh-published/{marketplace_id}/bulk",
-            ),
-            payload={"runId": run_id, "skus": skus},
-            timeout=self._timeout(),
+        chunks = list(self._iter_chunks(skus, self.REFRESH_BULK_CHUNK_SIZE))
+        endpoint = self._join_url(
+            self._products_base_url(),
+            f"/api/internal/marketplace-changes/refresh-published/{marketplace_id}/bulk",
         )
+
+        chunk_results = []
+        queued = 0
+        skipped_duplicates = 0
+        for index, chunk in enumerate(chunks, start=1):
+            response = self.env["lqa.api.client"].request_absolute_json(
+                "POST",
+                endpoint,
+                payload={"runId": run_id, "skus": chunk},
+                timeout=self._timeout(),
+            )
+            payload = response if isinstance(response, dict) else {}
+            chunk_queued = self._as_int(payload.get("queued"), len(chunk))
+            chunk_skipped = self._as_int(payload.get("skippedDuplicates"), 0)
+            queued += chunk_queued
+            skipped_duplicates += chunk_skipped
+            chunk_results.append(
+                {
+                    "index": index,
+                    "skuCount": len(chunk),
+                    "queued": chunk_queued,
+                    "skippedDuplicates": chunk_skipped,
+                    "response": self._summarize_refresh_bulk_response(payload),
+                }
+            )
+
+        chunk_count = len(chunk_results)
+        response = {
+            "status": "QUEUED",
+            "runId": run_id,
+            "marketplace": marketplace_id,
+            "skuCount": len(skus),
+            "queued": queued,
+            "skippedDuplicates": skipped_duplicates,
+            "chunkSize": self.REFRESH_BULK_CHUNK_SIZE,
+            "chunkCount": chunk_count,
+            "message": (
+                f"Se enviaron {len(skus)} SKUs en {chunk_count} "
+                f"lote{'s' if chunk_count != 1 else ''}."
+            ),
+            "chunks": chunk_results,
+        }
         result = self._normalize_refresh_result(
             marketplace_id,
             response,
@@ -340,6 +378,9 @@ class LqaRetailersService(models.AbstractModel):
                 "run_id": run_id,
                 "sku_count": len(skus),
                 "filename": self._clean(filename),
+                "chunk_count": chunk_count,
+                "chunk_size": self.REFRESH_BULK_CHUNK_SIZE,
+                "job_id": f"{chunk_count} lote{'s' if chunk_count != 1 else ''}",
             },
         )
         return self._store_bulk_action_run(result, "bulk", note)
@@ -598,6 +639,32 @@ class LqaRetailersService(models.AbstractModel):
     def _default_refresh_run_id(self, marketplace_id):
         now = fields.Datetime.now()
         return f"refresh-{marketplace_id}-manual-{now.strftime('%Y%m%d%H%M%S')}"
+
+    def _iter_chunks(self, items, chunk_size):
+        chunk_size = max(self._as_int(chunk_size, 1000), 1)
+        for index in range(0, len(items), chunk_size):
+            yield items[index : index + chunk_size]
+
+    def _summarize_refresh_bulk_response(self, payload):
+        if not isinstance(payload, dict):
+            return {}
+        summary = {
+            "runId": payload.get("runId"),
+            "marketplace": payload.get("marketplace"),
+            "queued": payload.get("queued"),
+            "skippedDuplicates": payload.get("skippedDuplicates"),
+            "status": payload.get("status"),
+            "message": payload.get("message"),
+        }
+        items = payload.get("items")
+        if isinstance(items, list):
+            summary["itemsCount"] = len(items)
+            summary["sampleItems"] = items[:3]
+        return {
+            key: value
+            for key, value in summary.items()
+            if value not in (None, "", [], {})
+        }
 
     def _parse_refresh_sku_file(self, filename, content_base64):
         filename = self._clean(filename)

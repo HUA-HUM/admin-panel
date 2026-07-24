@@ -490,6 +490,15 @@
                                         <dd t-esc="formatNumber(state.refreshBulkResult.sku_count)"/>
                                     </div>
                                     <div>
+                                        <dt>Lotes</dt>
+                                        <dd>
+                                            <t t-esc="formatNumber(state.refreshBulkResult.chunk_count || 1)"/>
+                                            <small t-if="state.refreshBulkResult.chunk_size">
+                                                de hasta <t t-esc="formatNumber(state.refreshBulkResult.chunk_size)"/>
+                                            </small>
+                                        </dd>
+                                    </div>
+                                    <div>
                                         <dt>Estado</dt>
                                         <dd t-esc="statusLabel(state.refreshBulkResult.status)"/>
                                     </div>
