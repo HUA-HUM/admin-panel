@@ -57,91 +57,128 @@
                         </div>
                     </section>
 
-                    <section class="o_lqa_dashboard_areas">
-                        <div class="o_lqa_dashboard_favorites__head">
-                            <div>
-                                <p>Panel principal</p>
-                                <h2>Areas de trabajo</h2>
-                            </div>
-                            <span>
-                                <i class="fa fa-cubes"/>
-                                <t t-esc="state.areas.length"/>
-                            </span>
-                        </div>
-                        <div class="o_lqa_dashboard_areas__grid">
-                            <button
-                                type="button"
-                                t-foreach="state.areas"
-                                t-as="area"
-                                t-key="area.code"
-                                t-att-class="areaCardClass(area)"
-                                t-on-click="() => this.openArea(area)"
-                            >
-                                <span class="o_lqa_dashboard_area_icon">
-                                    <i t-att-class="areaIcon(area)"/>
+                    <div class="o_lqa_dashboard_bento">
+                        <section class="o_lqa_dashboard_areas">
+                            <div class="o_lqa_dashboard_favorites__head">
+                                <div>
+                                    <p>Panel principal</p>
+                                    <h2>Areas de trabajo</h2>
+                                </div>
+                                <span>
+                                    <i class="fa fa-cubes"/>
+                                    <t t-esc="state.areas.length"/>
                                 </span>
-                                <span class="o_lqa_dashboard_area_content">
-                                    <small t-esc="areaSummary(area)"/>
-                                    <strong t-esc="area.name"/>
-                                    <p t-esc="area.description"/>
-                                    <span class="o_lqa_dashboard_area_meta">
-                                        <span t-if="area.module_count">
-                                            <t t-esc="area.module_count"/>
-                                            modulos
-                                        </span>
-                                        <span t-if="area.section_count">
-                                            <t t-esc="area.section_count"/>
-                                            secciones
-                                        </span>
-                                        <span t-if="!area.module_count and !area.section_count">
-                                            Acceso directo
+                            </div>
+                            <div class="o_lqa_dashboard_areas__grid">
+                                <button
+                                    type="button"
+                                    t-foreach="state.areas"
+                                    t-as="area"
+                                    t-key="area.code"
+                                    t-att-class="areaCardClass(area)"
+                                    t-on-click="() => this.openArea(area)"
+                                >
+                                    <span class="o_lqa_dashboard_area_icon">
+                                        <i t-att-class="areaIcon(area)"/>
+                                    </span>
+                                    <span class="o_lqa_dashboard_area_content">
+                                        <small t-esc="areaSummary(area)"/>
+                                        <strong t-esc="area.name"/>
+                                        <p t-esc="area.description"/>
+                                        <span class="o_lqa_dashboard_area_meta">
+                                            <span t-if="area.module_count">
+                                                <t t-esc="area.module_count"/>
+                                                modulos
+                                            </span>
+                                            <span t-if="area.section_count">
+                                                <t t-esc="area.section_count"/>
+                                                secciones
+                                            </span>
+                                            <span t-if="!area.module_count and !area.section_count">
+                                                Acceso directo
+                                            </span>
                                         </span>
                                     </span>
-                                </span>
-                                <i class="fa fa-arrow-right"/>
-                            </button>
-                        </div>
-                    </section>
-
-                    <section class="o_lqa_dashboard_favorites">
-                        <div class="o_lqa_dashboard_favorites__head">
-                            <div>
-                                <p>Espacio personal</p>
-                                <h2>Accesos favoritos</h2>
+                                    <i class="fa fa-arrow-right"/>
+                                </button>
                             </div>
-                            <span>
-                                <i class="fa fa-star"/>
-                                <t t-esc="state.favorites.length"/>
-                            </span>
-                        </div>
-                        <div
-                            t-if="!state.favorites.length"
-                            class="o_lqa_dashboard_favorites__empty"
-                        >
-                            <span>
-                                <i class="fa fa-star-o"/>
-                            </span>
-                            <strong>No hay secciones favoritas</strong>
-                        </div>
-                        <div t-else="" class="o_lqa_dashboard_favorites__grid">
-                            <button
-                                type="button"
-                                t-foreach="state.favorites"
-                                t-as="favorite"
-                                t-key="favorite.menu_id"
-                                t-on-click="() => this.openFavorite(favorite)"
-                            >
-                                <span class="o_lqa_dashboard_favorite_icon">
-                                    <i t-att-class="favoriteIcon(favorite)"/>
-                                </span>
-                                <span>
-                                    <small t-esc="favorite.path || 'Panel Interno'"/>
-                                    <strong t-esc="favorite.name"/>
-                                </span>
-                                <i class="fa fa-arrow-right"/>
-                            </button>
-                        </div>
-                    </section>
+                        </section>
+
+                        <aside class="o_lqa_dashboard_rail">
+                            <section class="o_lqa_dashboard_summary">
+                                <div class="o_lqa_dashboard_summary__item">
+                                    <span class="is-favorites">
+                                        <i class="fa fa-star"/>
+                                    </span>
+                                    <div>
+                                        <small>Favoritos</small>
+                                        <strong t-esc="state.favorites.length"/>
+                                        <p>Accesos personales</p>
+                                    </div>
+                                </div>
+                                <div class="o_lqa_dashboard_summary__item">
+                                    <span class="is-sections">
+                                        <i class="fa fa-th-large"/>
+                                    </span>
+                                    <div>
+                                        <small>Herramientas</small>
+                                        <strong t-esc="availableSectionsCount"/>
+                                        <p>Secciones disponibles</p>
+                                    </div>
+                                </div>
+                                <div class="o_lqa_dashboard_summary__item">
+                                    <span class="is-modules">
+                                        <i class="fa fa-cubes"/>
+                                    </span>
+                                    <div>
+                                        <small>Areas</small>
+                                        <strong t-esc="activeModulesCount"/>
+                                        <p>Áreas activas</p>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section class="o_lqa_dashboard_favorites">
+                                <div class="o_lqa_dashboard_favorites__head">
+                                    <div>
+                                        <p>Espacio personal</p>
+                                        <h2>Accesos favoritos</h2>
+                                    </div>
+                                    <span>
+                                        <i class="fa fa-star"/>
+                                        <t t-esc="state.favorites.length"/>
+                                    </span>
+                                </div>
+                                <div
+                                    t-if="!state.favorites.length"
+                                    class="o_lqa_dashboard_favorites__empty"
+                                >
+                                    <span>
+                                        <i class="fa fa-star-o"/>
+                                    </span>
+                                    <strong>No hay secciones favoritas</strong>
+                                </div>
+                                <div t-else="" class="o_lqa_dashboard_favorites__grid">
+                                    <button
+                                        type="button"
+                                        t-foreach="state.favorites"
+                                        t-as="favorite"
+                                        t-key="favorite.menu_id"
+                                        t-on-click="() => this.openFavorite(favorite)"
+                                    >
+                                        <span class="o_lqa_dashboard_favorite_icon">
+                                            <i t-att-class="favoriteIcon(favorite)"/>
+                                        </span>
+                                        <span>
+                                            <small t-esc="favorite.path || 'Panel Interno'"/>
+                                            <strong t-esc="favorite.name"/>
+                                        </span>
+                                        <i class="fa fa-arrow-right"/>
+                                    </button>
+                                </div>
+                            </section>
+                        </aside>
+                    </div>
                 </t>
 
                 <div
