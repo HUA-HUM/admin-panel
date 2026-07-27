@@ -1056,11 +1056,11 @@
                                 class="btn btn-outline-primary"
                                 t-att-disabled="state.downloadingMarketplaceSkus"
                                 t-on-click="downloadMarketplaceSkus"
-                                title="Descarga todos los SKUs del marketplace en Excel"
+                                title="Descarga sku, salePrice y salesChannel del marketplace en Excel"
                             >
                                 <i t-att-class="state.downloadingMarketplaceSkus ? 'fa fa-spinner fa-spin' : 'fa fa-download'"/>
                                 <t t-if="state.downloadingMarketplaceSkus">Generando...</t>
-                                <t t-else="">Descargar SKUs</t>
+                                <t t-else="">Descargar pricing</t>
                             </button>
                             <div class="o_lqa_retailers_pager">
                                 <button type="button" class="btn btn-secondary" t-att-disabled="!state.products.pagination.has_previous" t-on-click="previousProductsPage">Anterior</button>

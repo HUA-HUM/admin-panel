@@ -483,10 +483,10 @@ export class LqaRetailers extends Component {
                 result.filename,
                 result.content,
                 result.mimetype,
-                "marketplace-skus.xlsx"
+                "marketplace-catalogo-pricing.xlsx"
             );
             this.notification.add(
-                `Excel generado con ${this.formatNumber(result.total || 0)} SKUs.`,
+                `Excel generado con ${this.formatNumber(result.total || 0)} productos.`,
                 { type: "success" }
             );
         } catch (error) {

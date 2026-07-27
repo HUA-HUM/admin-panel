@@ -175,29 +175,30 @@ class LqaRetailersService(models.AbstractModel):
     def download_marketplace_skus_xlsx(self, marketplace_id):
         self._check_access()
         marketplace_id = self._validate_marketplace(marketplace_id)
-        skus = self._fetch_marketplace_skus(marketplace_id)
-        workbook_content = self._build_marketplace_skus_xlsx(marketplace_id, skus)
+        rows = self._fetch_marketplace_catalog_export_rows(marketplace_id)
+        workbook_content = self._build_marketplace_catalog_xlsx(rows)
         return {
-            "filename": f"{marketplace_id}-catalogo-skus.xlsx",
+            "filename": f"{marketplace_id}-catalogo-pricing.xlsx",
             "content": base64.b64encode(workbook_content).decode("ascii"),
             "mimetype": (
                 "application/vnd.openxmlformats-officedocument."
                 "spreadsheetml.sheet"
             ),
-            "total": len(skus),
+            "total": len(rows),
         }
 
-    def _fetch_marketplace_skus(self, marketplace_id):
+    def _fetch_marketplace_catalog_export_rows(self, marketplace_id):
         endpoint = self._join_url(
             self._madre_base_url(),
             "/api/internal/marketplace/products/items/all",
         )
         limit = self.MARKETPLACE_SKU_EXPORT_PAGE_SIZE
         offset = 0
-        skus = []
+        rows = []
         seen = set()
+        sales_channel = marketplace_id.lower()
 
-        while len(skus) < self.MARKETPLACE_SKU_EXPORT_MAX_ROWS:
+        while len(rows) < self.MARKETPLACE_SKU_EXPORT_MAX_ROWS:
             response = self.env["lqa.api.client"].request_absolute_json(
                 "GET",
                 endpoint,
@@ -219,7 +220,13 @@ class LqaRetailersService(models.AbstractModel):
                 if normalized_sku in seen:
                     continue
                 seen.add(normalized_sku)
-                skus.append(sku)
+                rows.append(
+                    {
+                        "sku": sku,
+                        "salePrice": product.get("price"),
+                        "salesChannel": sales_channel,
+                    }
+                )
 
             has_next = bool(payload.get("hasNext"))
             next_offset = self._as_int(payload.get("nextOffset"), offset + limit)
@@ -232,9 +239,9 @@ class LqaRetailersService(models.AbstractModel):
                 next_offset = offset + max(len(items), 1)
             offset = next_offset
 
-        return skus
+        return rows
 
-    def _build_marketplace_skus_xlsx(self, marketplace_id, skus):
+    def _build_marketplace_catalog_xlsx(self, rows):
         output = io.BytesIO()
         workbook = xlsxwriter.Workbook(
             output,
@@ -255,12 +262,23 @@ class LqaRetailersService(models.AbstractModel):
             }
         )
         text_format = workbook.add_format({"num_format": "@"})
+        price_format = workbook.add_format({"num_format": "#,##0.00"})
         worksheet.write_string(0, 0, "sku", header_format)
+        worksheet.write_string(0, 1, "salePrice", header_format)
+        worksheet.write_string(0, 2, "salesChannel", header_format)
         worksheet.set_column(0, 0, 28, text_format)
-        for row_index, sku in enumerate(skus, start=1):
-            worksheet.write_string(row_index, 0, sku, text_format)
+        worksheet.set_column(1, 1, 16, price_format)
+        worksheet.set_column(2, 2, 18, text_format)
+        for row_index, row in enumerate(rows, start=1):
+            worksheet.write_string(row_index, 0, row["sku"], text_format)
+            sale_price = row.get("salePrice")
+            if sale_price is None:
+                worksheet.write_blank(row_index, 1, None, price_format)
+            else:
+                worksheet.write_number(row_index, 1, self._as_float(sale_price, 0), price_format)
+            worksheet.write_string(row_index, 2, row["salesChannel"], text_format)
         worksheet.freeze_panes(1, 0)
-        worksheet.autofilter(0, 0, max(len(skus), 1), 0)
+        worksheet.autofilter(0, 0, max(len(rows), 1), 2)
         workbook.close()
         output.seek(0)
         return output.read()
