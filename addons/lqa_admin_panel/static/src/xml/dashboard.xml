@@ -201,11 +201,18 @@
                             t-attf-id="lqa-module-{{module.code}}"
                         >
                             <div class="o_lqa_module__head">
+                                <img
+                                    t-if="moduleLogo(module)"
+                                    class="o_lqa_module__logo"
+                                    t-att-src="moduleLogo(module)"
+                                    t-att-alt="module.name"
+                                />
+                                <span t-else="" class="o_lqa_module__icon">
+                                    <i t-att-class="moduleIcon(module)"/>
+                                </span>
+
                                 <div class="o_lqa_module__heading">
-                                    <h2>
-                                        <i t-att-class="moduleIcon(module)"/>
-                                        <t t-esc="module.name"/>
-                                    </h2>
+                                    <h2 t-esc="module.name"/>
                                     <p
                                         class="o_lqa_module__description"
                                         t-esc="module.description"

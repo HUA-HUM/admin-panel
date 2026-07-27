@@ -176,6 +176,16 @@ export class LqaAdminDashboard extends Component {
         return "fa fa-cube";
     }
 
+    moduleLogo(module) {
+        if (module.code === "mercadolibre") {
+            return "/lqa_admin_panel/static/src/img/mercadolibre-logo.png";
+        }
+        if (module.code === "automeli") {
+            return "/lqa_admin_panel/static/src/img/automeli-logo.png";
+        }
+        return false;
+    }
+
     sectionBadgeClass(section) {
         const badge = String(section.badge || "").toLowerCase();
         return badge.includes("nuevo")
