@@ -490,7 +490,12 @@ class LqaRetailersPricingService(models.AbstractModel):
             try:
                 parsed.append(self._normalize_row(values))
             except UserError as error:
-                raise UserError(_("Fila %s: %s") % (row_number, error)) from error
+                parsed.append(
+                    self._failed_input_row(
+                        values,
+                        _("Fila %s omitida: %s") % (row_number, error),
+                    )
+                )
             if len(parsed) > self.MAX_ITEMS:
                 raise UserError(
                     _("El Excel supera el limite de %s filas.") % self.MAX_ITEMS
@@ -527,16 +532,49 @@ class LqaRetailersPricingService(models.AbstractModel):
         }
 
     def _line_values(self, row, index):
-        return {
+        values = {
             "sequence": index,
-            "sku": row["sku"],
-            "sale_price": row["salePrice"],
-            "sales_channel": row["salesChannel"],
+            "sku": row.get("sku") or "",
+            "sale_price": self._as_float(row.get("salePrice"), 0) or 0,
+            "sales_channel": row.get("salesChannel") or "",
             "input_payload_json": json.dumps(
-                row,
+                {
+                    "sku": row.get("sku") or "",
+                    "salePrice": row.get("salePrice"),
+                    "salesChannel": row.get("salesChannel") or "",
+                },
                 ensure_ascii=False,
                 default=str,
             ),
+        }
+        if row.get("state") == "failed":
+            values.update(
+                {
+                    "state": "failed",
+                    "error_message": row.get("errorMessage") or "",
+                }
+            )
+        return values
+
+    def _failed_input_row(self, row, message):
+        return {
+            "sku": self._clean(self._pick(row, "sku")),
+            "salePrice": self._as_float(
+                self._pick(row, "salePrice", "sale_price", "precio", "price"),
+                0,
+            )
+            or 0,
+            "salesChannel": self._clean(
+                self._pick(
+                    row,
+                    "salesChannel",
+                    "sales_channel",
+                    "canal",
+                    "marketplace",
+                )
+            ).lower(),
+            "state": "failed",
+            "errorMessage": self._clean(message),
         }
 
     def _build_result_xlsx(self, job):
