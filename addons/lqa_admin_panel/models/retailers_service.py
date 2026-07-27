@@ -220,10 +220,14 @@ class LqaRetailersService(models.AbstractModel):
                 if normalized_sku in seen:
                     continue
                 seen.add(normalized_sku)
+                list_price = product.get("list_price")
+                sale_price = product.get("sale_price")
+                fallback_price = product.get("price")
                 rows.append(
                     {
                         "sku": sku,
-                        "salePrice": product.get("price"),
+                        "listPrice": list_price if list_price is not None else fallback_price,
+                        "salePrice": sale_price if sale_price is not None else fallback_price,
                         "salesChannel": sales_channel,
                     }
                 )
@@ -264,21 +268,37 @@ class LqaRetailersService(models.AbstractModel):
         text_format = workbook.add_format({"num_format": "@"})
         price_format = workbook.add_format({"num_format": "#,##0.00"})
         worksheet.write_string(0, 0, "sku", header_format)
-        worksheet.write_string(0, 1, "salePrice", header_format)
-        worksheet.write_string(0, 2, "salesChannel", header_format)
+        worksheet.write_string(0, 1, "listPrice", header_format)
+        worksheet.write_string(0, 2, "salePrice", header_format)
+        worksheet.write_string(0, 3, "salesChannel", header_format)
         worksheet.set_column(0, 0, 28, text_format)
-        worksheet.set_column(1, 1, 16, price_format)
-        worksheet.set_column(2, 2, 18, text_format)
+        worksheet.set_column(1, 2, 16, price_format)
+        worksheet.set_column(3, 3, 18, text_format)
         for row_index, row in enumerate(rows, start=1):
             worksheet.write_string(row_index, 0, row["sku"], text_format)
+            list_price = row.get("listPrice")
             sale_price = row.get("salePrice")
-            if sale_price is None:
+            if list_price is None:
                 worksheet.write_blank(row_index, 1, None, price_format)
             else:
-                worksheet.write_number(row_index, 1, self._as_float(sale_price, 0), price_format)
-            worksheet.write_string(row_index, 2, row["salesChannel"], text_format)
+                worksheet.write_number(
+                    row_index,
+                    1,
+                    self._as_float(list_price, 0),
+                    price_format,
+                )
+            if sale_price is None:
+                worksheet.write_blank(row_index, 2, None, price_format)
+            else:
+                worksheet.write_number(
+                    row_index,
+                    2,
+                    self._as_float(sale_price, 0),
+                    price_format,
+                )
+            worksheet.write_string(row_index, 3, row["salesChannel"], text_format)
         worksheet.freeze_panes(1, 0)
-        worksheet.autofilter(0, 0, max(len(rows), 1), 2)
+        worksheet.autofilter(0, 0, max(len(rows), 1), 3)
         workbook.close()
         output.seek(0)
         return output.read()

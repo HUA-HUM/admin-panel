@@ -160,6 +160,29 @@ export class LqaAdminDashboard extends Component {
         return `o_lqa_dashboard_area is-${area.code || "default"}`;
     }
 
+    moduleIcon(module) {
+        if (module.code === "mercadolibre") {
+            return "fa fa-shopping-bag";
+        }
+        if (module.code === "automeli") {
+            return "fa fa-cubes";
+        }
+        if (module.code === "retailers") {
+            return "fa fa-building-o";
+        }
+        if (module.code === "administracion") {
+            return "fa fa-calculator";
+        }
+        return "fa fa-cube";
+    }
+
+    sectionBadgeClass(section) {
+        const badge = String(section.badge || "").toLowerCase();
+        return badge.includes("nuevo")
+            ? "o_lqa_section__badge is-new"
+            : "o_lqa_section__badge";
+    }
+
     areaSummary(area) {
         if (area.summary) {
             return area.summary;
