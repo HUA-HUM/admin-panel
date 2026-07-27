@@ -1,11 +1,20 @@
 $lqa-sidebar-width: 248px;
 $lqa-navbar-height: 48px;
 
+$lqa-sidebar-red: #ff4f5a;
+$lqa-sidebar-red-soft: rgba(255, 79, 90, 0.16);
+$lqa-sidebar-text: #b9c4da;
+$lqa-sidebar-text-strong: #f4f7fb;
+$lqa-sidebar-icon: #8492a8;
+$lqa-sidebar-hover: rgba(255, 255, 255, 0.06);
+$lqa-sidebar-hover-strong: rgba(255, 255, 255, 0.1);
+$lqa-sidebar-line: rgba(255, 255, 255, 0.08);
+
 .o_main_navbar {
     min-height: $lqa-navbar-height;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid #e4e9f1;
     background: #fff !important;
-    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
     color: #1f2937;
 
     .o_menu_systray {
@@ -31,9 +40,10 @@ $lqa-navbar-height: 48px;
     align-items: center;
     align-self: stretch;
     flex: 0 0 auto;
-    padding: 5px 16px;
+    padding: 5px 18px;
     background: #fff;
     border-right: 1px solid #eef2f7;
+    transition: background-color 0.15s ease;
 
     img {
         display: block;
@@ -42,16 +52,28 @@ $lqa-navbar-height: 48px;
         max-width: 108px;
         object-fit: contain;
     }
+
+    &:hover {
+        background: #fafbfd;
+    }
 }
 
 .o_lqa_mobile_menu {
     display: none;
     width: 42px;
     border: 0;
-    border-right: 1px solid #e2e8f0;
+    border-right: 1px solid #e4e9f1;
     background: transparent;
-    color: #475569;
-    font-size: 17px;
+    color: #55647a;
+    font-size: 16px;
+    transition:
+        background-color 0.15s ease,
+        color 0.15s ease;
+
+    &:hover {
+        background: #f6f7fa;
+        color: #1f2937;
+    }
 }
 
 .o_lqa_sidebar {
@@ -64,10 +86,10 @@ $lqa-navbar-height: 48px;
     width: $lqa-sidebar-width;
     overflow: hidden;
     flex-direction: column;
-    border-right: 1px solid #dce3eb;
-    background: #172033;
-    color: #dbe4f0;
-    box-shadow: 5px 0 18px rgba(15, 23, 42, 0.06);
+    border-right: 1px solid rgba(255, 255, 255, 0.04);
+    background: linear-gradient(180deg, #182238 0%, #121a2c 100%);
+    color: $lqa-sidebar-text;
+    box-shadow: 6px 0 24px rgba(10, 14, 24, 0.14);
 }
 
 .o_lqa_sidebar__brand {
@@ -77,7 +99,26 @@ $lqa-navbar-height: 48px;
 .o_lqa_sidebar__nav {
     flex: 1 1 auto;
     overflow-y: auto;
-    padding: 18px 12px;
+    padding: 18px 10px 14px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+
+    &::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.14);
+    }
+
+    &::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.24);
+    }
 }
 
 .o_lqa_sidebar__home,
@@ -91,15 +132,18 @@ $lqa-navbar-height: 48px;
     width: 100%;
     min-height: 40px;
     border: 0;
-    border-radius: 6px;
+    border-radius: 9px;
     background: transparent;
     color: inherit;
     font-weight: 600;
     text-align: left;
+    transition:
+        background-color 0.15s ease,
+        color 0.15s ease;
 
     &:hover {
-        background: rgba(255, 255, 255, 0.08);
-        color: #fff;
+        background: $lqa-sidebar-hover;
+        color: $lqa-sidebar-text-strong;
     }
 }
 
@@ -128,13 +172,16 @@ $lqa-navbar-height: 48px;
     justify-content: center;
     padding: 0;
     border: 0;
-    border-radius: 6px;
+    border-radius: 8px;
     background: transparent;
-    color: #718096;
-    font-size: 13px;
+    color: #71809a;
+    font-size: 12.5px;
+    transition:
+        background-color 0.15s ease,
+        color 0.15s ease;
 
     &:hover {
-        background: rgba(255, 255, 255, 0.08);
+        background: $lqa-sidebar-hover-strong;
         color: #f8fafc;
     }
 
@@ -172,75 +219,111 @@ $lqa-navbar-height: 48px;
 
 .o_lqa_sidebar__home {
     gap: 11px;
-    margin-bottom: 16px;
-    padding: 0 12px;
-    background: rgba(255, 255, 255, 0.08);
+    margin-bottom: 18px;
+    padding: 0 11px;
+    background: $lqa-sidebar-red-soft;
     color: #fff;
 
     i {
-        width: 18px;
+        display: inline-flex;
+        width: 26px;
+        height: 26px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 7px;
+        background: rgba(255, 255, 255, 0.14);
+        color: #ff9aa1;
+        font-size: 12.5px;
         text-align: center;
+    }
+
+    &:hover {
+        background: rgba(255, 79, 90, 0.24);
+        color: #fff;
     }
 }
 
 .o_lqa_sidebar__group {
-    margin-bottom: 6px;
+    margin-bottom: 8px;
 }
 
 .o_lqa_sidebar__group-toggle {
     justify-content: space-between;
-    padding: 0 10px;
-    color: #f1f5f9;
+    padding: 0 9px;
+    color: #eef2f8;
 
     > span {
         display: flex;
         align-items: center;
         min-width: 0;
-        gap: 11px;
+        gap: 10px;
     }
 
     > span i {
-        width: 18px;
-        color: #98a8bd;
+        display: inline-flex;
+        width: 26px;
+        height: 26px;
+        flex-shrink: 0;
+        align-items: center;
+        justify-content: center;
+        border-radius: 7px;
+        background: rgba(255, 255, 255, 0.05);
+        color: $lqa-sidebar-icon;
+        font-size: 12px;
         text-align: center;
+        transition:
+            background-color 0.15s ease,
+            color 0.15s ease;
     }
 
     > i {
-        color: #718096;
+        flex-shrink: 0;
+        color: #64738c;
         font-size: 10px;
+    }
+
+    &:hover > span i {
+        background: rgba(255, 255, 255, 0.1);
+        color: #dbe4f0;
     }
 }
 
 .o_lqa_sidebar__children {
     position: relative;
-    margin: 2px 0 8px 18px;
-    padding-left: 12px;
+    margin: 3px 0 10px 21px;
+    padding-left: 13px;
 
     &::before {
         position: absolute;
-        top: 2px;
-        bottom: 2px;
+        top: 3px;
+        bottom: 3px;
         left: 0;
         width: 1px;
-        background: #344158;
+        background: $lqa-sidebar-line;
         content: "";
     }
 
     .o_lqa_sidebar__menu-link,
     .o_lqa_sidebar__child-toggle {
         gap: 10px;
-        min-height: 36px;
+        min-height: 35px;
         padding: 0 10px;
-        color: #aebbc9;
-        font-size: 13px;
+        color: #a7b3c8;
+        font-size: 12.5px;
         font-weight: 500;
     }
 
     .o_lqa_sidebar__menu-link > i,
     .o_lqa_sidebar__child-toggle > span > i {
         width: 15px;
-        color: #718096;
+        color: #6d7c93;
         text-align: center;
+        transition: color 0.15s ease;
+    }
+
+    .o_lqa_sidebar__menu-link:hover > i,
+    .o_lqa_sidebar__child-toggle:hover > span > i {
+        color: #c3cee0;
     }
 }
 
@@ -256,6 +339,8 @@ $lqa-navbar-height: 48px;
 
     > i {
         width: auto;
+        flex-shrink: 0;
+        color: #64738c;
         font-size: 10px;
     }
 }
@@ -278,13 +363,14 @@ $lqa-navbar-height: 48px;
 
     > span > i {
         width: 14px;
-        color: #718096;
+        color: #6d7c93;
         text-align: center;
     }
 
     > i {
         width: auto;
-        color: #718096;
+        flex-shrink: 0;
+        color: #64738c;
         font-size: 9px;
     }
 }
@@ -313,14 +399,14 @@ $lqa-navbar-height: 48px;
     display: grid;
     gap: 2px;
     margin: 2px 0 6px 16px;
-    padding-left: 8px;
-    border-left: 1px solid #344158;
+    padding-left: 9px;
+    border-left: 1px solid $lqa-sidebar-line;
 
     .o_lqa_sidebar__menu-link {
         min-height: 30px;
         padding: 0 7px;
         color: #8798ae;
-        font-size: 11px;
+        font-size: 11.5px;
         font-weight: 500;
     }
 
@@ -341,20 +427,37 @@ $lqa-navbar-height: 48px;
 
 .o_lqa_sidebar__single {
     gap: 11px;
-    padding: 0 10px;
+    padding: 0 9px;
 
     i {
-        width: 18px;
-        color: #98a8bd;
+        display: inline-flex;
+        width: 26px;
+        height: 26px;
+        flex-shrink: 0;
+        align-items: center;
+        justify-content: center;
+        border-radius: 7px;
+        background: rgba(255, 255, 255, 0.05);
+        color: $lqa-sidebar-icon;
+        font-size: 12px;
         text-align: center;
+        transition:
+            background-color 0.15s ease,
+            color 0.15s ease;
+    }
+
+    &:hover i {
+        background: rgba(255, 255, 255, 0.1);
+        color: #dbe4f0;
     }
 }
 
 .o_lqa_sidebar__footer {
+    position: relative;
     flex: 0 0 auto;
-    padding: 16px 22px;
-    border-top: 1px solid #2d3a50;
-    background: #141c2d;
+    padding: 15px 20px;
+    border-top: 1px solid $lqa-sidebar-line;
+    background: rgba(0, 0, 0, 0.16);
 
     span,
     small {
@@ -362,13 +465,26 @@ $lqa-navbar-height: 48px;
     }
 
     span {
-        color: #f8fafc;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        color: #f4f7fb;
         font-size: 12px;
         font-weight: 700;
+
+        &::before {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 999px;
+            background: $lqa-sidebar-red;
+            content: "";
+        }
     }
 
     small {
-        margin-top: 2px;
+        margin-top: 3px;
+        margin-left: 13px;
         color: #7f90a5;
         font-size: 11px;
     }
@@ -413,7 +529,7 @@ body.o_lqa_root_dashboard {
         width: 84vw;
         max-width: 286px;
         transform: translateX(-100%);
-        transition: transform 180ms ease;
+        transition: transform 200ms ease;
     }
 
     .o_lqa_sidebar.is-mobile-open {
@@ -426,7 +542,7 @@ body.o_lqa_root_dashboard {
         justify-content: space-between;
         min-height: 62px;
         padding: 9px 12px 9px 18px;
-        border-bottom: 1px solid #2d3a50;
+        border-bottom: 1px solid $lqa-sidebar-line;
         background: #fff;
 
         img {
@@ -436,12 +552,23 @@ body.o_lqa_root_dashboard {
         }
 
         button {
+            display: inline-flex;
             width: 38px;
             height: 38px;
+            align-items: center;
+            justify-content: center;
             border: 0;
-            border-radius: 6px;
+            border-radius: 8px;
             background: #eef2f7;
-            color: #475569;
+            color: #55647a;
+            transition:
+                background-color 0.15s ease,
+                color 0.15s ease;
+
+            &:hover {
+                background: #e4e9f1;
+                color: #1f2937;
+            }
         }
     }
 
@@ -451,7 +578,8 @@ body.o_lqa_root_dashboard {
         inset: 0;
         display: block;
         border: 0;
-        background: rgba(15, 23, 42, 0.48);
+        background: rgba(10, 14, 24, 0.5);
+        backdrop-filter: blur(1px);
     }
 
     .o_web_client > .o_action_manager {

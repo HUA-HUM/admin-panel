@@ -105,6 +105,7 @@ export class LqaRetailers extends Component {
             deletingGoogleMerchantProductKey: "",
             googleMerchantProductToDelete: null,
             googleMerchantDeleteConfirmation: "",
+            productDetail: null,
             dashboardOrders: emptyOrdersOverview(),
             dashboardError: "",
             bulkActionTab: "auto",
@@ -1021,6 +1022,37 @@ export class LqaRetailers extends Component {
 
     productCardClass(product) {
         return "o_lqa_product_card";
+    }
+
+    openProductDetail(product) {
+        this.state.productDetail = product;
+    }
+
+    closeProductDetail() {
+        this.state.productDetail = null;
+    }
+
+    productDetailImages(product) {
+        const images = product?.details?.images;
+        if (Array.isArray(images) && images.length) {
+            return images;
+        }
+        return product?.image ? [product.image] : [];
+    }
+
+    productDimensionsLabel(product) {
+        const dimensions = product?.details?.dimensions || {};
+        const parts = [dimensions.length, dimensions.width, dimensions.height]
+            .filter((value) => Number.isFinite(Number(value)) && Number(value) > 0)
+            .map((value) => this.formatNumber(value));
+        if (!parts.length) {
+            return "";
+        }
+        const size = `${parts.join(" x ")} cm`;
+        if (Number.isFinite(Number(dimensions.weight)) && Number(dimensions.weight) > 0) {
+            return `${size} · ${this.formatNumber(dimensions.weight)} kg`;
+        }
+        return size;
     }
 
     hasProductListPrice(product) {

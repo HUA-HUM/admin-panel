@@ -1082,6 +1082,7 @@
                             t-foreach="state.products.items"
                             t-as="product"
                             t-key="productCardKey(product)"
+                            t-on-click="() => this.openProductDetail(product)"
                         >
                             <button
                                 t-if="isGoogleMerchantDetail"
@@ -1090,7 +1091,7 @@
                                 t-att-disabled="!googleMerchantProductSku(product) || isDeletingGoogleMerchantProduct(product)"
                                 t-att-title="'Eliminar ' + (googleMerchantProductSku(product) || 'producto')"
                                 t-att-aria-label="'Eliminar ' + (googleMerchantProductSku(product) || 'producto')"
-                                t-on-click="() => this.openGoogleMerchantProductDelete(product)"
+                                t-on-click.stop="() => this.openGoogleMerchantProductDelete(product)"
                             >
                                 <i
                                     t-att-class="isDeletingGoogleMerchantProduct(product)
@@ -1158,6 +1159,7 @@
                                         t-att-href="product.publication_url"
                                         target="_blank"
                                         rel="noreferrer"
+                                        t-on-click.stop="() => {}"
                                     >
                                         <i class="fa fa-external-link"/>
                                         Ver publicacion
@@ -1489,6 +1491,163 @@
                             <t t-if="state.deletingGoogleMerchantProducts">Eliminando...</t>
                             <t t-else="">Eliminar catálogo</t>
                         </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="o_lqa_modal_backdrop" t-if="state.productDetail" t-on-click="closeProductDetail">
+                <div class="o_lqa_product_detail_modal" t-on-click.stop="() => {}">
+                    <button
+                        type="button"
+                        class="o_lqa_product_detail_modal__close"
+                        t-on-click="closeProductDetail"
+                        aria-label="Cerrar"
+                    >
+                        <i class="fa fa-times"/>
+                    </button>
+
+                    <div class="o_lqa_product_detail_modal__gallery">
+                        <div class="o_lqa_product_detail_modal__main_image">
+                            <img
+                                t-if="productDetailImages(state.productDetail).length"
+                                t-att-src="productDetailImages(state.productDetail)[0]"
+                                t-att-alt="state.productDetail.title"
+                            />
+                            <span t-else="" class="o_lqa_product_card__placeholder">Sin imagen</span>
+                        </div>
+                        <div
+                            t-if="productDetailImages(state.productDetail).length > 1"
+                            class="o_lqa_product_detail_modal__thumbs"
+                        >
+                            <img
+                                t-foreach="productDetailImages(state.productDetail)"
+                                t-as="detail_image"
+                                t-key="detail_image"
+                                t-att-src="detail_image"
+                                t-att-alt="state.productDetail.title"
+                            />
+                        </div>
+                    </div>
+
+                    <div class="o_lqa_product_detail_modal__info">
+                        <div class="o_lqa_product_card__top">
+                            <span
+                                t-att-class="'o_lqa_retailers_badge ' + statusClass(state.productDetail.status)"
+                                t-esc="statusLabel(state.productDetail.status)"
+                            />
+                            <small t-esc="state.productDetail.external_id"/>
+                        </div>
+
+                        <h2 t-esc="state.productDetail.title"/>
+                        <p
+                            t-if="state.productDetail.details.subtitle"
+                            class="o_lqa_product_detail_modal__subtitle"
+                            t-esc="state.productDetail.details.subtitle"
+                        />
+
+                        <div class="o_lqa_product_card__stats">
+                            <div class="o_lqa_product_card__price">
+                                <s
+                                    t-if="hasProductListPrice(state.productDetail)"
+                                    t-esc="formatCurrency(state.productDetail.list_price)"
+                                />
+                                <strong t-esc="formatCurrency(productSalePrice(state.productDetail))"/>
+                            </div>
+                            <span
+                                t-att-class="'o_lqa_product_card__stock ' + (state.productDetail.stock ? 'is-in-stock' : 'is-empty')"
+                            >
+                                <t t-if="state.productDetail.stock">
+                                    <t t-esc="formatNumber(state.productDetail.stock)"/> en stock
+                                </t>
+                                <t t-else="">Sin stock</t>
+                            </span>
+                        </div>
+
+                        <dl class="o_lqa_product_detail_modal__grid">
+                            <div>
+                                <dt>SKU</dt>
+                                <dd t-esc="state.productDetail.sku || '-'"/>
+                            </div>
+                            <div t-if="state.productDetail.market_sku">
+                                <dt>Market SKU</dt>
+                                <dd t-esc="state.productDetail.market_sku"/>
+                            </div>
+                            <div t-if="state.productDetail.details.ean">
+                                <dt>EAN</dt>
+                                <dd t-esc="state.productDetail.details.ean"/>
+                            </div>
+                            <div t-if="state.productDetail.origin">
+                                <dt>Origen</dt>
+                                <dd t-esc="state.productDetail.origin"/>
+                            </div>
+                            <div t-if="state.productDetail.details.category">
+                                <dt>Categoria</dt>
+                                <dd t-esc="state.productDetail.details.category"/>
+                            </div>
+                            <div t-if="state.productDetail.details.brand">
+                                <dt>Marca</dt>
+                                <dd t-esc="state.productDetail.details.brand"/>
+                            </div>
+                            <div t-if="state.productDetail.details.seller_id">
+                                <dt>Seller ID</dt>
+                                <dd t-esc="state.productDetail.details.seller_id"/>
+                            </div>
+                            <div t-if="productDimensionsLabel(state.productDetail)">
+                                <dt>Dimensiones</dt>
+                                <dd t-esc="productDimensionsLabel(state.productDetail)"/>
+                            </div>
+                            <div t-if="state.productDetail.details.net_price">
+                                <dt>Precio neto</dt>
+                                <dd t-esc="formatCurrency(state.productDetail.details.net_price)"/>
+                            </div>
+                            <div t-if="state.productDetail.details.status_message">
+                                <dt>Estado origen</dt>
+                                <dd t-esc="state.productDetail.details.status_message"/>
+                            </div>
+                            <div>
+                                <dt>Ultima deteccion</dt>
+                                <dd t-esc="formatDateTime(state.productDetail.last_detected_at)"/>
+                            </div>
+                        </dl>
+
+                        <div
+                            t-if="state.productDetail.details.stock_by_warehouse.length"
+                            class="o_lqa_product_detail_modal__warehouses"
+                        >
+                            <h3>Stock por deposito</h3>
+                            <div
+                                t-foreach="state.productDetail.details.stock_by_warehouse"
+                                t-as="warehouse"
+                                t-key="warehouse.warehouse_id"
+                            >
+                                <span t-esc="warehouse.warehouse_id"/>
+                                <strong t-esc="formatNumber(warehouse.quantity)"/>
+                            </div>
+                        </div>
+
+                        <div
+                            t-if="state.productDetail.details.description"
+                            class="o_lqa_product_detail_modal__description"
+                        >
+                            <h3>Descripcion</h3>
+                            <p t-esc="state.productDetail.details.description"/>
+                        </div>
+
+                        <div class="o_lqa_retailers_modal__actions">
+                            <a
+                                t-if="state.productDetail.publication_url"
+                                class="btn btn-primary"
+                                t-att-href="state.productDetail.publication_url"
+                                target="_blank"
+                                rel="noreferrer"
+                            >
+                                <i class="fa fa-external-link"/>
+                                Ver publicacion
+                            </a>
+                            <button type="button" class="btn btn-secondary" t-on-click="closeProductDetail">
+                                Cerrar
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

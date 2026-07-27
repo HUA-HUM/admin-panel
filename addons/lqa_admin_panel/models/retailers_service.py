@@ -1632,6 +1632,66 @@ class LqaRetailersService(models.AbstractModel):
             or raw_product.get("images")
         )
         images_count = len(images_source) if isinstance(images_source, list) else (1 if image else 0)
+        raw_status = raw_payload.get("status") if isinstance(raw_payload.get("status"), dict) else {}
+        raw_dimensions = raw_payload.get("dimensions") if isinstance(raw_payload.get("dimensions"), dict) else {}
+        raw_stock_by_wh = raw_payload.get("stockByWh") if isinstance(raw_payload.get("stockByWh"), list) else []
+        all_images = images_source if isinstance(images_source, list) else ([image] if image else [])
+        gallery = []
+        seen_images = set()
+        for raw_image in all_images:
+            normalized_image = self._normalize_product_image(marketplace, raw_image)
+            if normalized_image and normalized_image not in seen_images:
+                seen_images.add(normalized_image)
+                gallery.append(normalized_image)
+        details = {
+            "description": self._clean(
+                raw_payload.get("description")
+                or raw_product.get("description")
+                or product_attributes.get("description")
+                or raw_attributes.get("description")
+            ),
+            "subtitle": self._clean(raw_payload.get("subTitle") or raw_payload.get("subtitle")),
+            "ean": self._clean(
+                raw_payload.get("ean")
+                or raw_payload.get("gtin")
+                or raw_payload.get("barcode")
+                or raw_product.get("ean")
+            ),
+            "brand": self._clean(
+                raw_payload.get("brandId")
+                or raw_payload.get("brand")
+                or raw_payload.get("brandName")
+            ),
+            "category": self._clean(
+                raw_payload.get("primaryCategoryId")
+                or raw_payload.get("categoryId")
+                or raw_payload.get("category")
+            ),
+            "seller_id": self._clean(raw_payload.get("sellerId")),
+            "country": self._clean(raw_payload.get("countryId")) or origin,
+            "item_state": self._clean(raw_payload.get("itemState")) or self._clean(raw_status.get("code")),
+            "status_message": self._clean(raw_status.get("message")),
+            "net_price": self._as_float(raw_price.get("net"), None),
+            "dimensions": {
+                "width": self._as_float(raw_dimensions.get("width"), None),
+                "height": self._as_float(raw_dimensions.get("height"), None),
+                "length": self._as_float(raw_dimensions.get("length"), None),
+                "weight": self._as_float(raw_dimensions.get("weight"), None),
+            }
+            if raw_dimensions
+            else {},
+            "stock_by_warehouse": [
+                {
+                    "warehouse_id": self._clean(
+                        warehouse.get("warehouseId") or warehouse.get("warehouse_id")
+                    ),
+                    "quantity": self._as_int(warehouse.get("quantity"), 0),
+                }
+                for warehouse in raw_stock_by_wh
+                if isinstance(warehouse, dict)
+            ],
+            "images": gallery,
+        }
         return {
             "id": item_id,
             "card_key": google_product_key or item_id,
@@ -1675,6 +1735,7 @@ class LqaRetailersService(models.AbstractModel):
             ),
             "origin": origin or "",
             "images_count": images_count,
+            "details": details,
         }
 
     def _normalize_paused_sku(self, item, index=0):
