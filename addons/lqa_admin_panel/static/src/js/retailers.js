@@ -90,6 +90,7 @@ export class LqaRetailers extends Component {
             loadingBulkActionRuns: false,
             loadingPausedSkuRuns: false,
             loadingPausedSkus: false,
+            downloadingMarketplaceSkus: false,
             runningImport: false,
             refreshingPublished: false,
             refreshingSku: false,
@@ -465,6 +466,34 @@ export class LqaRetailers extends Component {
             this.state.products.pagination.next_offset || 0
         );
         await this.loadProducts();
+    }
+
+    async downloadMarketplaceSkus() {
+        if (!this.state.marketplaceId || this.state.downloadingMarketplaceSkus) {
+            return;
+        }
+        this.state.downloadingMarketplaceSkus = true;
+        try {
+            const result = await this.orm.call(
+                "lqa.retailers.service",
+                "download_marketplace_skus_xlsx",
+                [this.state.marketplaceId]
+            );
+            this.downloadBase64File(
+                result.filename,
+                result.content,
+                result.mimetype,
+                "marketplace-skus.xlsx"
+            );
+            this.notification.add(
+                `Excel generado con ${this.formatNumber(result.total || 0)} SKUs.`,
+                { type: "success" }
+            );
+        } catch (error) {
+            this.notifyError(error, "No se pudo descargar el Excel de SKUs.");
+        } finally {
+            this.state.downloadingMarketplaceSkus = false;
+        }
     }
 
     async previousImportsPage() {
@@ -1155,6 +1184,23 @@ export class LqaRetailers extends Component {
             hour: "2-digit",
             minute: "2-digit",
         }).format(date);
+    }
+
+    downloadBase64File(filename, content, mimetype, fallbackFilename) {
+        const binary = window.atob(content || "");
+        const bytes = new Uint8Array(binary.length);
+        for (let index = 0; index < binary.length; index++) {
+            bytes[index] = binary.charCodeAt(index);
+        }
+        const blob = new Blob([bytes], { type: mimetype || "application/octet-stream" });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = filename || fallbackFilename || "descarga.xlsx";
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        URL.revokeObjectURL(url);
     }
 
     notifyError(error, fallback) {

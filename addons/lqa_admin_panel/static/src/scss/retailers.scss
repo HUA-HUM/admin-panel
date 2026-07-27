@@ -1302,6 +1302,29 @@
     }
 }
 
+.o_lqa_retailers_table_actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+
+    .btn-outline-primary {
+        min-height: 38px;
+        border-color: #cbd5e1;
+        border-radius: var(--lqa-radius-sm);
+        color: #334155;
+        font-weight: 800;
+
+        &:hover,
+        &:focus {
+            border-color: var(--lqa-red);
+            background: var(--lqa-red-soft);
+            color: var(--lqa-red-dark);
+        }
+    }
+}
+
 .o_lqa_retailers_import_progress {
     display: grid;
     grid-template-columns: minmax(260px, 1fr) minmax(360px, 1.35fr);

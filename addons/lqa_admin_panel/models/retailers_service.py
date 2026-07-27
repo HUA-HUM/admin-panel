@@ -9,6 +9,7 @@ import zipfile
 from urllib.parse import quote, urlsplit, urlunsplit
 from xml.etree import ElementTree
 
+import xlsxwriter
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError
 
@@ -27,6 +28,8 @@ class LqaRetailersService(models.AbstractModel):
     ORDER_MARKETPLACES = ("fravega", "megatone", "oncity")
     REFRESH_PUBLISHED_MARKETPLACES = ("fravega", "megatone", "oncity")
     REFRESH_BULK_CHUNK_SIZE = 1000
+    MARKETPLACE_SKU_EXPORT_PAGE_SIZE = 1000
+    MARKETPLACE_SKU_EXPORT_MAX_ROWS = 500000
     MARKETPLACES = {
         "oncity": {
             "name": "OnCity",
@@ -167,6 +170,100 @@ class LqaRetailersService(models.AbstractModel):
                 "page": (offset // limit) + 1 if limit else 1,
             },
         }
+
+    @api.model
+    def download_marketplace_skus_xlsx(self, marketplace_id):
+        self._check_access()
+        marketplace_id = self._validate_marketplace(marketplace_id)
+        skus = self._fetch_marketplace_skus(marketplace_id)
+        workbook_content = self._build_marketplace_skus_xlsx(marketplace_id, skus)
+        return {
+            "filename": f"{marketplace_id}-catalogo-skus.xlsx",
+            "content": base64.b64encode(workbook_content).decode("ascii"),
+            "mimetype": (
+                "application/vnd.openxmlformats-officedocument."
+                "spreadsheetml.sheet"
+            ),
+            "total": len(skus),
+        }
+
+    def _fetch_marketplace_skus(self, marketplace_id):
+        endpoint = self._join_url(
+            self._madre_base_url(),
+            "/api/internal/marketplace/products/items/all",
+        )
+        limit = self.MARKETPLACE_SKU_EXPORT_PAGE_SIZE
+        offset = 0
+        skus = []
+        seen = set()
+
+        while len(skus) < self.MARKETPLACE_SKU_EXPORT_MAX_ROWS:
+            response = self.env["lqa.api.client"].request_absolute_json(
+                "GET",
+                endpoint,
+                params={
+                    "marketplace": marketplace_id,
+                    "offset": offset,
+                    "limit": limit,
+                },
+                timeout=self._timeout(),
+            )
+            payload = response if isinstance(response, dict) else {}
+            items = self._response_items(response)
+            for item in items:
+                product = self._normalize_product(item, marketplace_id)
+                sku = self._clean(product.get("sku"))
+                if not sku:
+                    continue
+                normalized_sku = sku.upper()
+                if normalized_sku in seen:
+                    continue
+                seen.add(normalized_sku)
+                skus.append(sku)
+
+            has_next = bool(payload.get("hasNext"))
+            next_offset = self._as_int(payload.get("nextOffset"), offset + limit)
+            total = self._as_int(payload.get("total"), 0)
+            if not has_next or not items:
+                break
+            if total and next_offset >= total:
+                break
+            if next_offset <= offset:
+                next_offset = offset + max(len(items), 1)
+            offset = next_offset
+
+        return skus
+
+    def _build_marketplace_skus_xlsx(self, marketplace_id, skus):
+        output = io.BytesIO()
+        workbook = xlsxwriter.Workbook(
+            output,
+            {
+                "in_memory": True,
+                "strings_to_formulas": False,
+                "strings_to_urls": False,
+            },
+        )
+        worksheet = workbook.add_worksheet("SKUs")
+        header_format = workbook.add_format(
+            {
+                "bold": True,
+                "bg_color": "#ff4f5a",
+                "font_color": "#ffffff",
+                "border": 1,
+                "border_color": "#ff4f5a",
+            }
+        )
+        text_format = workbook.add_format({"num_format": "@"})
+        worksheet.write_string(0, 0, "sku", header_format)
+        worksheet.set_column(0, 0, 28, text_format)
+        for row_index, sku in enumerate(skus, start=1):
+            worksheet.write_string(row_index, 0, sku, text_format)
+        worksheet.freeze_panes(1, 0)
+        worksheet.autofilter(0, 0, max(len(skus), 1), 0)
+        workbook.close()
+        output.seek(0)
+        return output.read()
 
     @api.model
     def get_import_runs(self, marketplace_id, filters=None):
