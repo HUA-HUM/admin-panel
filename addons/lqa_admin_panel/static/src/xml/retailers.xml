@@ -1100,7 +1100,11 @@
                             </button>
                             <div class="o_lqa_product_card__media">
                                 <img t-if="product.image" t-att-src="product.image" t-att-alt="product.title"/>
-                                <span t-else="">Sin imagen</span>
+                                <span t-else="" class="o_lqa_product_card__placeholder">Sin imagen</span>
+                                <span t-if="product.images_count > 1" class="o_lqa_product_card__gallery">
+                                    <i class="fa fa-image"/>
+                                    <t t-esc="product.images_count"/>
+                                </span>
                             </div>
                             <div class="o_lqa_product_card__body">
                                 <div class="o_lqa_product_card__top">
@@ -1111,63 +1115,54 @@
                                     <small t-esc="product.external_id"/>
                                 </div>
                                 <h3 t-esc="product.title"/>
-                                <a
-                                    t-if="product.publication_url"
-                                    class="o_lqa_product_card__quick_link"
-                                    t-att-href="product.publication_url"
-                                    target="_blank"
-                                    rel="noreferrer"
-                                >
-                                    <i class="fa fa-external-link"/>
-                                    Ver producto
-                                </a>
-                                <dl>
-                                    <div>
-                                        <dt>Seller SKU</dt>
-                                        <dd t-esc="product.sku || '-'"/>
+
+                                <div class="o_lqa_product_card__meta">
+                                    <span class="o_lqa_product_card__chip is-sku">
+                                        <i class="fa fa-barcode"/>
+                                        <t t-esc="product.sku || '-'"/>
+                                    </span>
+                                    <span t-if="product.origin" class="o_lqa_product_card__chip">
+                                        <i class="fa fa-globe"/>
+                                        <t t-esc="product.origin"/>
+                                    </span>
+                                    <span t-if="isGoogleMerchantDetail" class="o_lqa_product_card__chip">
+                                        <b>Offer</b><t t-esc="product.offer_id || '-'"/>
+                                    </span>
+                                    <span t-if="isGoogleMerchantDetail" class="o_lqa_product_card__chip">
+                                        <t t-esc="product.content_language || '-'"/>
+                                    </span>
+                                    <span t-if="isGoogleMerchantDetail" class="o_lqa_product_card__chip">
+                                        <t t-esc="product.feed_label || '-'"/>
+                                    </span>
+                                    <span t-if="product.market_sku" class="o_lqa_product_card__chip">
+                                        <b>Market</b><t t-esc="product.market_sku"/>
+                                    </span>
+                                </div>
+
+                                <div class="o_lqa_product_card__stats">
+                                    <div class="o_lqa_product_card__price">
+                                        <s t-if="hasProductListPrice(product)" t-esc="formatCurrency(product.list_price)"/>
+                                        <strong t-esc="formatCurrency(productSalePrice(product))"/>
                                     </div>
-                                    <div t-if="isGoogleMerchantDetail">
-                                        <dt>Offer ID</dt>
-                                        <dd t-esc="product.offer_id || '-'"/>
-                                    </div>
-                                    <div t-if="isGoogleMerchantDetail">
-                                        <dt>Idioma</dt>
-                                        <dd t-esc="product.content_language || '-'"/>
-                                    </div>
-                                    <div t-if="isGoogleMerchantDetail">
-                                        <dt>Feed label</dt>
-                                        <dd t-esc="product.feed_label || '-'"/>
-                                    </div>
-                                    <div>
-                                        <dt>Market SKU</dt>
-                                        <dd t-esc="product.market_sku || '-'"/>
-                                    </div>
-                                    <div>
-                                        <dt>ID externo</dt>
-                                        <dd t-esc="product.external_id || '-'"/>
-                                    </div>
-                                    <div>
-                                        <dt>Precio</dt>
-                                        <dd t-esc="formatCurrency(product.price)"/>
-                                    </div>
-                                    <div>
-                                        <dt>Stock</dt>
-                                        <dd t-esc="formatNumber(product.stock)"/>
-                                    </div>
-                                    <div>
-                                        <dt>Ultima deteccion</dt>
-                                        <dd t-esc="formatDateTime(product.last_detected_at)"/>
-                                    </div>
-                                </dl>
-                                <a
-                                    t-if="product.publication_url"
-                                    class="o_lqa_product_card__link"
-                                    t-att-href="product.publication_url"
-                                    target="_blank"
-                                    rel="noreferrer"
-                                >
-                                    Abrir publicacion
-                                </a>
+                                    <span t-att-class="'o_lqa_product_card__stock ' + (product.stock ? 'is-in-stock' : 'is-empty')">
+                                        <t t-if="product.stock"><t t-esc="formatNumber(product.stock)"/> en stock</t>
+                                        <t t-else="">Sin stock</t>
+                                    </span>
+                                </div>
+
+                                <div class="o_lqa_product_card__footer">
+                                    <small class="o_lqa_product_card__updated" t-esc="formatDateTime(product.last_detected_at)"/>
+                                    <a
+                                        t-if="product.publication_url"
+                                        class="o_lqa_product_card__link"
+                                        t-att-href="product.publication_url"
+                                        target="_blank"
+                                        rel="noreferrer"
+                                    >
+                                        <i class="fa fa-external-link"/>
+                                        Ver publicacion
+                                    </a>
+                                </div>
                             </div>
                         </article>
                     </div>

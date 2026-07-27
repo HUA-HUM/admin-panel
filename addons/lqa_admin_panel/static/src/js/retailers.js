@@ -1023,6 +1023,18 @@ export class LqaRetailers extends Component {
         return "o_lqa_product_card";
     }
 
+    hasProductListPrice(product) {
+        return Number.isFinite(Number(product?.list_price));
+    }
+
+    hasProductSalePrice(product) {
+        return Number.isFinite(Number(product?.sale_price ?? product?.price));
+    }
+
+    productSalePrice(product) {
+        return product?.sale_price ?? product?.price;
+    }
+
     marketplaceName(value) {
         const marketplace = MARKETPLACES.find((item) => item.id === value);
         return marketplace?.name || this.humanizeStatus(value);

@@ -1444,6 +1444,8 @@ class LqaRetailersService(models.AbstractModel):
             raw_payload.get("additional_image_urls"),
         )
         marketplace = item.get("marketplace") or raw_payload.get("marketplace") or marketplace_id or ""
+        raw_price = raw_payload.get("price") if isinstance(raw_payload.get("price"), dict) else {}
+        item_price = item.get("price") if isinstance(item.get("price"), dict) else {}
         price = (
             item.get("price")
             or item.get("salePrice")
@@ -1458,7 +1460,7 @@ class LqaRetailersService(models.AbstractModel):
             price = (
                 numeric_micros / 1000000
                 if numeric_micros is not None
-                else price.get("amount")
+                else price.get("sale") or price.get("list") or price.get("amount")
             )
         elif price in (None, "", 0, "0", "0.00") and isinstance(
             product_attributes.get("price"), dict
@@ -1594,6 +1596,42 @@ class LqaRetailersService(models.AbstractModel):
             or item.get("externalId")
             or ""
         )
+        list_price = self._as_float(
+            item.get("listPrice")
+            or item.get("list_price")
+            or raw_price.get("list")
+            or raw_price.get("listPrice")
+            or item_price.get("list")
+            or item_price.get("listPrice"),
+            None,
+        )
+        sale_price = self._as_float(
+            item.get("salePrice")
+            or item.get("sale_price")
+            or raw_price.get("sale")
+            or raw_price.get("salePrice")
+            or item_price.get("sale")
+            or item_price.get("salePrice")
+            or price,
+            None,
+        )
+        origin = self._clean(
+            item.get("origin")
+            or item.get("countryOfOrigin")
+            or item.get("country_of_origin")
+            or raw_payload.get("origin")
+            or raw_payload.get("countryOfOrigin")
+            or raw_payload.get("country_of_origin")
+            or raw_product.get("origin")
+            or product_attributes.get("origin")
+        )
+        images_source = (
+            item.get("images")
+            or raw_payload.get("images")
+            or product_attributes.get("images")
+            or raw_product.get("images")
+        )
+        images_count = len(images_source) if isinstance(images_source, list) else (1 if image else 0)
         return {
             "id": item_id,
             "card_key": google_product_key or item_id,
@@ -1602,6 +1640,8 @@ class LqaRetailersService(models.AbstractModel):
             "title": title or "Sin titulo",
             "image": self._normalize_product_image(marketplace, image),
             "price": self._as_float(price, None),
+            "list_price": list_price,
+            "sale_price": sale_price,
             "stock": self._as_int(stock, 0),
             "status": item.get("status") or item.get("publicationStatus") or "",
             "marketplace": marketplace,
@@ -1633,6 +1673,8 @@ class LqaRetailersService(models.AbstractModel):
                 or raw_payload.get("dataSource")
                 or raw_payload.get("data_source")
             ),
+            "origin": origin or "",
+            "images_count": images_count,
         }
 
     def _normalize_paused_sku(self, item, index=0):
