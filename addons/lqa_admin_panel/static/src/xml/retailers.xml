@@ -1056,7 +1056,7 @@
                                 class="btn btn-outline-primary"
                                 t-att-disabled="state.downloadingMarketplaceSkus"
                                 t-on-click="downloadMarketplaceSkus"
-                                title="Descarga sku, salePrice y salesChannel del marketplace en Excel"
+                                title="Descarga sku, listPrice, salePrice y salesChannel del marketplace en Excel"
                             >
                                 <i t-att-class="state.downloadingMarketplaceSkus ? 'fa fa-spinner fa-spin' : 'fa fa-download'"/>
                                 <t t-if="state.downloadingMarketplaceSkus">Generando...</t>

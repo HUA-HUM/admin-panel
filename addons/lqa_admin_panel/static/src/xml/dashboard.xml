@@ -188,12 +188,8 @@
                             t-as="module"
                             t-key="module.code"
                             t-attf-href="#lqa-module-{{module.code}}"
-                        >
-                            <span class="o_lqa_module_nav__icon">
-                                <i t-att-class="moduleIcon(module)"/>
-                            </span>
-                            <t t-esc="module.name"/>
-                        </a>
+                            t-esc="module.name"
+                        />
                     </nav>
 
                     <div class="o_lqa_dashboard__grid">
@@ -204,74 +200,64 @@
                             t-key="module.code"
                             t-attf-id="lqa-module-{{module.code}}"
                         >
-                            <div class="o_lqa_module__body">
-                                <div class="o_lqa_module__head">
-                                    <div class="o_lqa_module__heading">
-                                        <span class="o_lqa_module__icon">
-                                            <i t-att-class="moduleIcon(module)"/>
+                            <div class="o_lqa_module__head">
+                                <div class="o_lqa_module__heading">
+                                    <h2>
+                                        <i t-att-class="moduleIcon(module)"/>
+                                        <t t-esc="module.name"/>
+                                    </h2>
+                                    <p
+                                        class="o_lqa_module__description"
+                                        t-esc="module.description"
+                                    />
+                                    <div class="o_lqa_metrics" t-if="module.metrics.length">
+                                        <span
+                                            class="o_lqa_metric"
+                                            t-foreach="module.metrics"
+                                            t-as="metric"
+                                            t-key="metric.label"
+                                        >
+                                            <strong t-esc="metric.value"/>
+                                            <t t-esc="metric.label"/>
                                         </span>
-                                        <div>
-                                            <p class="o_lqa_module__eyebrow">Modulo interno</p>
-                                            <h2 t-esc="module.name"/>
-                                            <p
-                                                class="o_lqa_module__description"
-                                                t-esc="module.description"
-                                            />
-                                        </div>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        class="o_lqa_module__open"
-                                        t-if="module.action_id"
-                                        t-on-click="() => this.openModule(module)"
-                                    >
-                                        Abrir modulo
-                                        <i class="fa fa-arrow-right"/>
-                                    </button>
-                                </div>
-
-                                <div class="o_lqa_metrics" t-if="module.metrics.length">
-                                    <div
-                                        class="o_lqa_metric"
-                                        t-foreach="module.metrics"
-                                        t-as="metric"
-                                        t-key="metric.label"
-                                    >
-                                        <strong t-esc="metric.value"/>
-                                        <span t-esc="metric.label"/>
                                     </div>
                                 </div>
+                                <button
+                                    type="button"
+                                    class="o_lqa_module__open"
+                                    t-if="module.action_id"
+                                    t-on-click="() => this.openModule(module)"
+                                >
+                                    Abrir modulo
+                                    <i class="fa fa-arrow-right"/>
+                                </button>
                             </div>
 
-                            <div class="o_lqa_sections_wrap" t-if="module.sections.length">
-                                <div class="o_lqa_sections_head">
-                                    <span>Secciones</span>
-                                    <small t-esc="module.sections.length"/>
-                                </div>
-                                <div class="o_lqa_sections">
-                                    <button
-                                        type="button"
-                                        class="o_lqa_section"
-                                        t-foreach="module.sections"
-                                        t-as="section"
-                                        t-key="section.code"
-                                        t-on-click="() => this.openSection(section)"
-                                    >
-                                        <div class="o_lqa_section__top">
-                                            <span
-                                                t-att-class="'o_lqa_section__state is-' + section.status"
-                                            />
+                            <div class="o_lqa_sections" t-if="module.sections.length">
+                                <button
+                                    type="button"
+                                    class="o_lqa_section"
+                                    t-foreach="module.sections"
+                                    t-as="section"
+                                    t-key="section.code"
+                                    t-on-click="() => this.openSection(section)"
+                                >
+                                    <span
+                                        t-att-class="'o_lqa_section__state is-' + section.status"
+                                    />
+                                    <span class="o_lqa_section__text">
+                                        <span class="o_lqa_section__name">
+                                            <strong t-esc="section.name"/>
                                             <small
                                                 t-if="section.badge"
                                                 t-att-class="sectionBadgeClass(section)"
                                                 t-esc="section.badge"
                                             />
-                                        </div>
-                                        <strong t-esc="section.name"/>
+                                        </span>
                                         <p t-esc="section.description"/>
-                                        <i class="fa fa-arrow-right"/>
-                                    </button>
-                                </div>
+                                    </span>
+                                    <i class="fa fa-arrow-right"/>
+                                </button>
                             </div>
                         </section>
                     </div>
