@@ -43,6 +43,7 @@
 .o_lqa_accounting__modules,
 .o_lqa_accounting__tabs,
 .o_lqa_accounting__client_intro,
+.o_lqa_accounting__client_tabs,
 .o_lqa_accounting__grid,
 .o_lqa_accounting__panel,
 .o_lqa_accounting__comprobante_hero,
@@ -566,6 +567,11 @@
             color: var(--lqa-red-dark);
         }
     }
+}
+
+.o_lqa_accounting__client_tabs.is-comprobantes_tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 16px;
 }
 
 .o_lqa_accounting__workflow_section {
@@ -1282,6 +1288,7 @@
 
     .o_lqa_accounting__header,
     .o_lqa_accounting__comprobante_hero,
+    .o_lqa_accounting__client_tabs,
     .o_lqa_accounting__panel {
         max-width: none;
     }
@@ -1289,6 +1296,91 @@
     .o_lqa_accounting__panel.is-comprobantes_table {
         margin-top: 16px;
     }
+}
+
+.o_lqa_accounting__backfill_layout {
+    display: grid;
+    grid-template-columns: minmax(280px, 0.45fr) minmax(0, 1fr);
+    gap: 22px;
+    padding: 22px;
+    border-bottom: 1px solid var(--lqa-border-soft);
+
+    h3,
+    p {
+        margin: 0;
+    }
+
+    h3 {
+        color: var(--lqa-ink);
+        font-size: 18px;
+        font-weight: 800;
+    }
+
+    p {
+        max-width: 420px;
+        margin-top: 8px;
+        color: var(--lqa-muted-strong);
+        font-size: 13.5px;
+        line-height: 1.5;
+    }
+
+    .o_lqa_accounting__filters {
+        padding: 0;
+        border-bottom: 0;
+    }
+}
+
+.o_lqa_accounting__filters.is-backfill {
+    grid-template-columns: repeat(5, minmax(120px, 1fr));
+}
+
+.o_lqa_accounting__backfill_summary {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(120px, 1fr));
+    gap: 10px;
+    padding: 20px 22px;
+    border-bottom: 1px solid var(--lqa-border-soft);
+
+    div {
+        padding: 14px;
+        border: 1px solid var(--lqa-border-soft);
+        border-radius: var(--lqa-radius-sm);
+        background: var(--lqa-bg);
+    }
+
+    small,
+    strong {
+        display: block;
+    }
+
+    small {
+        color: var(--lqa-muted);
+        font-size: 10.5px;
+        font-weight: 800;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+    }
+
+    strong {
+        margin-top: 6px;
+        color: var(--lqa-ink);
+        font-size: 15px;
+        font-weight: 800;
+    }
+}
+
+.o_lqa_accounting__code {
+    max-height: 360px;
+    margin: 0;
+    padding: 18px 22px;
+    overflow: auto;
+    border-radius: 0 0 var(--lqa-radius) var(--lqa-radius);
+    background: #111827;
+    color: #e5e7eb;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 12px;
+    line-height: 1.55;
+    white-space: pre-wrap;
 }
 
 .o_lqa_accounting__export_fields {

@@ -37,6 +37,14 @@ export class LqaAccounting extends Component {
 
     setup() {
         const params = this.props.action?.params || {};
+        const today = new Date();
+        const currentMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+        const inputDate = (date) =>
+            [
+                date.getFullYear(),
+                String(date.getMonth() + 1).padStart(2, "0"),
+                String(date.getDate()).padStart(2, "0"),
+            ].join("-");
         this.notification = useService("notification");
         this.orm = useService("orm");
         this.state = useState({
@@ -73,11 +81,23 @@ export class LqaAccounting extends Component {
                 result: emptyClientIssues(),
             },
             xubio: {
+                activeTab: "list",
                 loading: false,
                 exporting: false,
                 showExportFields: false,
                 exportColumns: [],
                 pdfLoadingTlqv: "",
+                backfill: {
+                    running: false,
+                    result: null,
+                    form: {
+                        fechaDesde: inputDate(currentMonthStart),
+                        fechaHasta: inputDate(today),
+                        batchSize: 10,
+                        windowSizeDays: 1,
+                        xubioLimit: 100,
+                    },
+                },
                 filters: {
                     tlqvCode: "",
                     numeroDocumento: "",
@@ -203,6 +223,13 @@ export class LqaAccounting extends Component {
         this.state.view =
             tab === "comprobantes" ? "arca_billing" : tab === "xubio" ? "xubio" : "clients";
         this.loadArcaData();
+    }
+
+    setComprobantesTab(tab) {
+        this.state.xubio.activeTab = tab;
+        if (tab === "list") {
+            this.loadArcaData();
+        }
     }
 
     setClientTab(tab) {
@@ -508,6 +535,42 @@ export class LqaAccounting extends Component {
         }
     }
 
+    async runXubioBackfillNow() {
+        const form = this.state.xubio.backfill.form;
+        if (!form.fechaDesde || !form.fechaHasta) {
+            this.notification.add("Completa fecha desde y fecha hasta.", {
+                type: "warning",
+            });
+            return;
+        }
+        this.state.xubio.backfill.running = true;
+        this.state.xubio.backfill.result = null;
+        try {
+            const result = await this.orm.call(
+                "lqa.accounting.service",
+                "run_xubio_comprobantes_backfill_now",
+                [
+                    {
+                        fechaDesde: form.fechaDesde,
+                        fechaHasta: form.fechaHasta,
+                        batchSize: Number(form.batchSize || 10),
+                        windowSizeDays: Number(form.windowSizeDays || 1),
+                        xubioLimit: Number(form.xubioLimit || 100),
+                    },
+                ]
+            );
+            this.state.xubio.backfill.result = result;
+            this.notification.add("Backfill de comprobantes ejecutado.", {
+                type: "success",
+            });
+            await this.searchComprobantes();
+        } catch (error) {
+            this.notifyError(error, "No se pudo ejecutar el backfill de comprobantes.");
+        } finally {
+            this.state.xubio.backfill.running = false;
+        }
+    }
+
     async openComprobantePdf(item) {
         const tlqvCode = this.comprobanteTlqvCode(item);
         if (!tlqvCode) {
@@ -665,6 +728,14 @@ export class LqaAccounting extends Component {
 
     formatBool(value) {
         return value ? "Si" : "No";
+    }
+
+    formatJson(value) {
+        try {
+            return JSON.stringify(value || {}, null, 2);
+        } catch (_error) {
+            return String(value || "");
+        }
     }
 
     downloadBase64File(filename, content, mimetype) {

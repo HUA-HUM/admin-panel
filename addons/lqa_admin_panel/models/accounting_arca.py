@@ -380,6 +380,61 @@ class LqaAccountingService(models.AbstractModel):
         }
 
     @api.model
+    def run_xubio_comprobantes_backfill_now(self, options=None):
+        self._check_access()
+        options = options if isinstance(options, dict) else {}
+        fecha_desde = self._clean(options.get("fechaDesde"))
+        fecha_hasta = self._clean(options.get("fechaHasta"))
+        if not fecha_desde or not fecha_hasta:
+            raise UserError(_("Indica fecha desde y fecha hasta para ejecutar el backfill."))
+
+        try:
+            parsed_desde = fields.Date.from_string(fecha_desde)
+            parsed_hasta = fields.Date.from_string(fecha_hasta)
+        except (TypeError, ValueError):
+            raise UserError(_("Las fechas del backfill deben tener formato YYYY-MM-DD."))
+        if parsed_desde and parsed_hasta and parsed_desde > parsed_hasta:
+            raise UserError(_("La fecha desde no puede ser posterior a la fecha hasta."))
+
+        body = {
+            "fechaDesde": fecha_desde,
+            "fechaHasta": fecha_hasta,
+            "batchSize": max(self._as_int(options.get("batchSize"), 10), 1),
+            "windowSizeDays": max(self._as_int(options.get("windowSizeDays"), 1), 1),
+            "xubioLimit": max(self._as_int(options.get("xubioLimit"), 100), 1),
+        }
+        response = self._request_json(
+            "POST",
+            self._join_url(
+                self._invoice_base_url(),
+                "/internal/xubio/comprobantes/backfill/run-now",
+            ),
+            payload=body,
+            headers=self._invoice_headers(),
+            timeout=self._timeout(),
+        )
+        payload = response["payload"]
+        if not response["ok"]:
+            payload_dict = payload if isinstance(payload, dict) else {}
+            message = self._clean(
+                payload_dict.get("message")
+                or payload_dict.get("error")
+                or response.get("text")
+                or response.get("status_code")
+            )
+            raise UserError(
+                _("Invoice API no pudo ejecutar el backfill de comprobantes: %s")
+                % (message or _("sin detalle"))
+            )
+        return {
+            "ok": True,
+            "request": body,
+            "statusCode": response["status_code"],
+            "payload": payload,
+            "executedAt": fields.Datetime.to_string(fields.Datetime.now()),
+        }
+
+    @api.model
     def create_tlqv_document_cdn(self, tlqv_code):
         self._check_access()
         tlqv_code = self._normalize_tlqv(tlqv_code)

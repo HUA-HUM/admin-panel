@@ -483,6 +483,119 @@
                         </button>
                     </section>
 
+                    <nav class="o_lqa_accounting__client_tabs is-comprobantes_tabs" role="tablist">
+                        <button
+                            type="button"
+                            t-att-class="'o_lqa_accounting__client_tab ' + (state.xubio.activeTab === 'list' ? 'is-active' : '')"
+                            t-on-click="() => this.setComprobantesTab('list')"
+                        >
+                            <span><i class="fa fa-table"/></span>
+                            <strong>Comprobantes</strong>
+                            <small>Listado, filtros, Excel y PDF por TLQV.</small>
+                        </button>
+                        <button
+                            type="button"
+                            t-att-class="'o_lqa_accounting__client_tab ' + (state.xubio.activeTab === 'actions' ? 'is-active' : '')"
+                            t-on-click="() => this.setComprobantesTab('actions')"
+                        >
+                            <span><i class="fa fa-refresh"/></span>
+                            <strong>Acciones</strong>
+                            <small>Actualizacion forzada de la base de comprobantes.</small>
+                        </button>
+                    </nav>
+
+                    <t t-if="state.xubio.activeTab === 'actions'">
+                        <section class="o_lqa_accounting__panel is-backfill_action">
+                            <div class="o_lqa_accounting__panel_head">
+                                <div>
+                                    <h2>Actualizar comprobantes Xubio</h2>
+                                    <p>Ejecuta el backfill bloqueante de Invoice API para sincronizar comprobantes en Madre.</p>
+                                </div>
+                                <span>Invoice API</span>
+                            </div>
+                            <div class="o_lqa_accounting__backfill_layout">
+                                <div>
+                                    <h3>Parametros de ejecucion</h3>
+                                    <p>
+                                        Ajusta el rango de fechas y el tamano de procesamiento antes de disparar la actualizacion.
+                                    </p>
+                                </div>
+                                <div class="o_lqa_accounting__filters is-backfill">
+                                    <label>
+                                        Fecha desde
+                                        <input type="date" t-model="state.xubio.backfill.form.fechaDesde"/>
+                                    </label>
+                                    <label>
+                                        Fecha hasta
+                                        <input type="date" t-model="state.xubio.backfill.form.fechaHasta"/>
+                                    </label>
+                                    <label>
+                                        Batch size
+                                        <input type="number" min="1" step="1" t-model="state.xubio.backfill.form.batchSize"/>
+                                    </label>
+                                    <label>
+                                        Window days
+                                        <input type="number" min="1" step="1" t-model="state.xubio.backfill.form.windowSizeDays"/>
+                                    </label>
+                                    <label>
+                                        Xubio limit
+                                        <input type="number" min="1" step="1" t-model="state.xubio.backfill.form.xubioLimit"/>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="o_lqa_accounting__actions">
+                                <button
+                                    type="button"
+                                    class="o_lqa_accounting__primary"
+                                    t-att-disabled="state.xubio.backfill.running ? true : undefined"
+                                    t-on-click="runXubioBackfillNow"
+                                >
+                                    <i t-att-class="state.xubio.backfill.running ? 'fa fa-spinner fa-spin' : 'fa fa-play'"/>
+                                    Ejecutar actualizacion
+                                </button>
+                            </div>
+                        </section>
+
+                        <section t-if="state.xubio.backfill.result" class="o_lqa_accounting__panel is-backfill_result">
+                            <div class="o_lqa_accounting__panel_head">
+                                <div>
+                                    <h2>Resultado de la ejecucion</h2>
+                                    <p>
+                                        HTTP
+                                        <t t-esc="state.xubio.backfill.result.statusCode"/>
+                                        ·
+                                        <t t-esc="formatDate(state.xubio.backfill.result.executedAt)"/>
+                                    </p>
+                                </div>
+                                <span>Completado</span>
+                            </div>
+                            <div class="o_lqa_accounting__backfill_summary">
+                                <div>
+                                    <small>Desde</small>
+                                    <strong t-esc="state.xubio.backfill.result.request.fechaDesde"/>
+                                </div>
+                                <div>
+                                    <small>Hasta</small>
+                                    <strong t-esc="state.xubio.backfill.result.request.fechaHasta"/>
+                                </div>
+                                <div>
+                                    <small>Batch</small>
+                                    <strong t-esc="state.xubio.backfill.result.request.batchSize"/>
+                                </div>
+                                <div>
+                                    <small>Ventana</small>
+                                    <strong><t t-esc="state.xubio.backfill.result.request.windowSizeDays"/> dias</strong>
+                                </div>
+                                <div>
+                                    <small>Limite Xubio</small>
+                                    <strong t-esc="state.xubio.backfill.result.request.xubioLimit"/>
+                                </div>
+                            </div>
+                            <pre class="o_lqa_accounting__code" t-esc="formatJson(state.xubio.backfill.result.payload)"/>
+                        </section>
+                    </t>
+
+                    <t t-if="state.xubio.activeTab === 'list'">
                     <section class="o_lqa_accounting__panel is-comprobantes_filters">
                         <div class="o_lqa_accounting__panel_head">
                             <div>
@@ -728,6 +841,7 @@
                             <span>Ajusta los filtros o revisa la configuracion de Madre.</span>
                         </div>
                     </section>
+                    </t>
                 </t>
             </t>
         </div>
