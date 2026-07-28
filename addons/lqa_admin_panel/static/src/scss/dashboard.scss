@@ -1,24 +1,26 @@
 .o_lqa_dashboard {
-    --lqa-ink: #18181b;
-    --lqa-muted: #71717a;
-    --lqa-border: #e4e4e7;
-    --lqa-border-strong: #d4d4d8;
+    --lqa-ink: #15151a;
+    --lqa-ink-soft: #3f3f46;
+    --lqa-muted: #8a8a94;
+    --lqa-muted-strong: #6b6b76;
+    --lqa-border: rgba(21, 21, 26, 0.07);
+    --lqa-border-soft: rgba(21, 21, 26, 0.045);
     --lqa-surface: #fff;
-    --lqa-bg: #fafafa;
-    --lqa-chip: #f4f4f5;
-    --lqa-red: #ff4f5a;
-    --lqa-red-dark: #e11d48;
-    --lqa-red-soft: #fff1f2;
-    --lqa-shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.03);
-    --lqa-shadow-sm: 0 4px 14px rgba(15, 23, 42, 0.06);
-    --lqa-radius: 10px;
-    --lqa-radius-sm: 8px;
+    --lqa-bg: #f5f5f7;
+    --lqa-chip: #f2f2f4;
+    --lqa-red: #ff4d5e;
+    --lqa-red-dark: #e01b3d;
+    --lqa-red-soft: #fff0f1;
+    --lqa-shadow-card: 0 1px 1px rgba(16, 16, 24, 0.02), 0 6px 20px -10px rgba(16, 16, 24, 0.1);
+    --lqa-shadow-card-hover: 0 2px 4px rgba(16, 16, 24, 0.03), 0 14px 32px -12px rgba(16, 16, 24, 0.16);
+    --lqa-radius: 16px;
+    --lqa-radius-sm: 11px;
 
     height: 100%;
     min-height: 0;
     overflow-y: auto;
     scroll-behavior: smooth;
-    padding: 32px;
+    padding: 40px 32px 64px;
     background: var(--lqa-bg);
     color: var(--lqa-ink);
     font-feature-settings: "cv11", "ss01";
@@ -34,7 +36,7 @@
 .o_lqa_dashboard_bento,
 .o_lqa_dashboard__grid {
     width: 100%;
-    max-width: 1320px;
+    max-width: 1280px;
     margin-right: auto;
     margin-left: auto;
 }
@@ -44,8 +46,7 @@
     align-items: flex-end;
     justify-content: space-between;
     gap: 24px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid var(--lqa-border);
+    padding-bottom: 28px;
 
     h1 {
         margin: 0;
@@ -65,9 +66,9 @@
     display: flex;
     align-items: center;
     gap: 7px;
-    margin: 0 0 9px;
+    margin: 0 0 10px;
     color: var(--lqa-red-dark);
-    font-size: 11px;
+    font-size: 11.5px;
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -84,10 +85,10 @@
 
 .o_lqa_dashboard__subtitle {
     max-width: 620px;
-    margin: 8px 0 0;
-    color: var(--lqa-muted);
-    font-size: 14px;
-    line-height: 1.5;
+    margin: 9px 0 0;
+    color: var(--lqa-muted-strong);
+    font-size: 14.5px;
+    line-height: 1.55;
 }
 
 .o_lqa_dashboard__loading {
@@ -100,7 +101,7 @@
     color: var(--lqa-muted);
 
     strong {
-        color: #334155;
+        color: var(--lqa-ink-soft);
         font-size: 13px;
     }
 }
@@ -111,16 +112,16 @@
 
 .o_lqa_dashboard_bento {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 296px;
+    grid-template-columns: minmax(0, 1fr) 300px;
     align-items: start;
-    gap: 20px;
-    margin-top: 28px;
+    gap: 24px;
+    margin-top: 4px;
 }
 
 .o_lqa_dashboard_rail {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 24px;
     min-width: 0;
 }
 
@@ -129,14 +130,14 @@
     align-items: flex-end;
     justify-content: space-between;
     gap: 16px;
-    margin-bottom: 12px;
+    margin-bottom: 14px;
 
     p {
         margin: 0 0 4px;
         color: var(--lqa-muted);
         font-size: 10.5px;
         font-weight: 700;
-        letter-spacing: 0.03em;
+        letter-spacing: 0.04em;
         text-transform: uppercase;
     }
 
@@ -151,15 +152,15 @@
     > span {
         display: inline-flex;
         min-width: 30px;
-        min-height: 24px;
+        min-height: 26px;
         align-items: center;
         justify-content: center;
         gap: 5px;
-        padding: 3px 9px;
-        border: 1px solid var(--lqa-border);
+        padding: 3px 10px;
         border-radius: 999px;
         background: var(--lqa-surface);
-        color: var(--lqa-muted);
+        box-shadow: var(--lqa-shadow-card);
+        color: var(--lqa-muted-strong);
         font-size: 11.5px;
         font-weight: 700;
 
@@ -170,41 +171,42 @@
     }
 }
 
-// --- Stats: one flat panel, stacked rows, monochrome icons ---
+// --- Stats: one floating panel, stacked rows, tinted favorites icon ---
 
 .o_lqa_dashboard_summary {
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    border: 1px solid var(--lqa-border);
     border-radius: var(--lqa-radius);
     background: var(--lqa-surface);
+    box-shadow: var(--lqa-shadow-card);
 }
 
 .o_lqa_dashboard_summary__item {
     display: grid;
-    grid-template-columns: 34px minmax(0, 1fr);
+    grid-template-columns: 36px minmax(0, 1fr);
     align-items: center;
-    gap: 12px;
-    padding: 14px 16px;
+    gap: 13px;
+    padding: 16px 18px;
 
     & + & {
-        border-top: 1px solid var(--lqa-border);
+        border-top: 1px solid var(--lqa-border-soft);
     }
 
     > span {
         display: inline-flex;
-        width: 30px;
-        height: 30px;
+        width: 32px;
+        height: 32px;
         align-items: center;
         justify-content: center;
-        border-radius: 8px;
+        border-radius: 10px;
         background: var(--lqa-chip);
-        color: var(--lqa-ink);
+        color: var(--lqa-ink-soft);
         font-size: 13px;
     }
 
     > span.is-favorites {
+        background: var(--lqa-red-soft);
         color: var(--lqa-red-dark);
     }
 
@@ -224,7 +226,7 @@
     }
 
     strong {
-        margin-top: 1px;
+        margin-top: 2px;
         color: var(--lqa-ink);
         font-size: 22px;
         font-weight: 800;
@@ -242,45 +244,51 @@
 .o_lqa_dashboard_areas__grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
+    gap: 14px;
 
     button {
         position: relative;
         display: grid;
-        min-height: 168px;
-        grid-template-columns: 48px minmax(0, 1fr) 20px;
+        min-height: 172px;
+        grid-template-columns: 50px minmax(0, 1fr) 20px;
         align-items: flex-start;
-        gap: 14px;
-        padding: 20px;
-        border: 1px solid var(--lqa-border);
+        gap: 16px;
+        padding: 22px;
+        border: 0;
         border-radius: var(--lqa-radius);
         background: var(--lqa-surface);
+        box-shadow: var(--lqa-shadow-card);
         color: inherit;
         text-align: left;
+        cursor: pointer;
         transition:
-            border-color 0.15s ease,
-            background-color 0.15s ease;
+            box-shadow 0.18s ease,
+            transform 0.18s ease;
 
         &:hover {
-            border-color: var(--lqa-border-strong);
-            background: #fdfdfd;
+            box-shadow: var(--lqa-shadow-card-hover);
+            transform: translateY(-2px);
         }
 
         &:first-child {
             grid-column: 1 / -1;
-            min-height: 148px;
+            min-height: 150px;
             grid-template-columns: 56px minmax(0, 1fr) 22px;
-            border-color: var(--lqa-ink);
-            background: var(--lqa-ink);
+            background:
+                radial-gradient(120% 160% at 100% 0%, rgba(255, 77, 94, 0.22), transparent 55%),
+                linear-gradient(155deg, #1c1c21 0%, #101013 100%);
             color: #f4f4f5;
+            box-shadow:
+                0 1px 1px rgba(16, 16, 24, 0.03),
+                0 18px 40px -16px rgba(16, 16, 24, 0.45);
 
             .o_lqa_dashboard_area_icon {
-                background: rgba(255, 255, 255, 0.1);
+                background: rgba(255, 255, 255, 0.12);
                 color: #fff;
             }
 
             small {
-                color: #ff8790;
+                color: #ff8a93;
             }
 
             strong {
@@ -288,22 +296,21 @@
             }
 
             p {
-                color: #a1a1aa;
+                color: #b4b4bb;
             }
 
             .o_lqa_dashboard_area_meta span {
-                border-color: rgba(255, 255, 255, 0.14);
+                border: 1px solid rgba(255, 255, 255, 0.14);
                 background: rgba(255, 255, 255, 0.06);
                 color: #d4d4d8;
             }
 
             > i {
-                color: #a1a1aa;
+                color: #a8a8b0;
             }
 
             &:hover {
-                border-color: var(--lqa-ink);
-                background: #202024;
+                transform: translateY(-2px);
             }
 
             &:hover > i {
@@ -328,45 +335,45 @@
     }
 
     strong {
-        margin-top: 5px;
+        margin-top: 6px;
         color: var(--lqa-ink);
-        font-size: 18px;
+        font-size: 18.5px;
         font-weight: 700;
         letter-spacing: -0.01em;
     }
 
     p {
-        margin-top: 7px;
-        color: var(--lqa-muted);
-        font-size: 12.5px;
-        line-height: 1.5;
+        margin-top: 8px;
+        color: var(--lqa-muted-strong);
+        font-size: 13px;
+        line-height: 1.55;
     }
 
     > button > i {
         align-self: center;
-        color: #b0b0b6;
+        color: #c4c4cb;
         font-size: 12px;
         transition:
-            transform 0.15s ease,
-            color 0.15s ease;
+            transform 0.18s ease,
+            color 0.18s ease;
     }
 
     > button:hover > i {
         color: var(--lqa-ink);
-        transform: translateX(2px);
+        transform: translateX(3px);
     }
 }
 
 .o_lqa_dashboard_area_icon {
     display: inline-flex;
-    width: 48px;
-    height: 48px;
+    width: 50px;
+    height: 50px;
     flex-shrink: 0;
     align-items: center;
     justify-content: center;
     border-radius: var(--lqa-radius-sm);
     background: var(--lqa-chip);
-    color: var(--lqa-ink);
+    color: var(--lqa-ink-soft);
     font-size: 18px;
 }
 
@@ -378,17 +385,16 @@
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    margin-top: 12px;
+    margin-top: 14px;
 
     span {
         display: inline-flex;
-        min-height: 22px;
+        min-height: 23px;
         align-items: center;
-        padding: 0 9px;
-        border: 1px solid var(--lqa-border);
+        padding: 0 10px;
         border-radius: 999px;
         background: var(--lqa-chip);
-        color: #52525b;
+        color: var(--lqa-muted-strong);
         font-size: 10.5px;
         font-weight: 700;
     }
@@ -402,9 +408,9 @@
     align-items: center;
     justify-content: center;
     gap: 12px;
-    border: 1px dashed var(--lqa-border-strong);
     border-radius: var(--lqa-radius);
     background: var(--lqa-surface);
+    box-shadow: var(--lqa-shadow-card);
     color: var(--lqa-muted);
     text-align: center;
 
@@ -423,25 +429,26 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    border: 1px solid var(--lqa-border);
     border-radius: var(--lqa-radius);
     background: var(--lqa-surface);
+    box-shadow: var(--lqa-shadow-card);
 
     button {
         display: grid;
         min-width: 0;
-        grid-template-columns: 30px minmax(0, 1fr) 14px;
+        grid-template-columns: 32px minmax(0, 1fr) 14px;
         align-items: center;
-        gap: 11px;
-        padding: 11px 14px;
+        gap: 12px;
+        padding: 13px 16px;
         border: 0;
         background: transparent;
-        color: #334155;
+        color: var(--lqa-ink-soft);
         text-align: left;
+        cursor: pointer;
         transition: background-color 0.15s ease;
 
         & + button {
-            border-top: 1px solid var(--lqa-border);
+            border-top: 1px solid var(--lqa-border-soft);
         }
 
         &:hover {
@@ -465,7 +472,7 @@
 
     button small {
         margin-bottom: 2px;
-        color: #a1a1aa;
+        color: var(--lqa-muted);
         font-size: 10px;
     }
 
@@ -476,7 +483,7 @@
     }
 
     button > i {
-        color: #b0b0b6;
+        color: #c4c4cb;
         font-size: 10px;
         text-align: center;
         transition: transform 0.15s ease;
@@ -489,32 +496,30 @@
 
 .o_lqa_dashboard_favorite_icon {
     display: inline-flex;
-    width: 30px;
-    height: 30px;
+    width: 32px;
+    height: 32px;
     align-items: center;
     justify-content: center;
-    border-radius: 8px;
-    background: var(--lqa-chip);
+    border-radius: 9px;
+    background: var(--lqa-red-soft);
     color: var(--lqa-red-dark);
     font-size: 13px;
 }
 
 // ---------------------------------------------------------------------
-// Area/module drill-down view — module dashboards (unchanged data,
-// fully redesigned presentation)
+// Area/module drill-down view — module dashboards
 // ---------------------------------------------------------------------
 
 .o_lqa_module_nav {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px 18px;
-    max-width: 1320px;
-    margin: 24px auto 0;
-    padding-bottom: 16px;
-    border-bottom: 1px solid var(--lqa-border);
+    gap: 4px 20px;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding-bottom: 20px;
 
     a {
-        color: var(--lqa-muted);
+        color: var(--lqa-muted-strong);
         font-size: 13px;
         font-weight: 600;
 
@@ -525,15 +530,15 @@
 }
 
 .o_lqa_dashboard__grid {
-    margin-top: 8px;
+    margin-top: 4px;
 }
 
 .o_lqa_module {
     scroll-margin-top: 20px;
-    padding: 22px 24px 24px;
-    border: 1px solid var(--lqa-border);
+    padding: 26px 28px 28px;
     border-radius: var(--lqa-radius);
     background: var(--lqa-surface);
+    box-shadow: var(--lqa-shadow-card);
 
     & + .o_lqa_module {
         margin-top: 20px;
@@ -543,15 +548,14 @@
 .o_lqa_module__head {
     display: flex;
     align-items: flex-start;
-    gap: 14px;
+    gap: 16px;
 }
 
 .o_lqa_module__logo {
     flex: 0 0 auto;
-    height: 44px;
+    height: 46px;
     width: auto;
     max-width: 120px;
-    border: 1px solid var(--lqa-border);
     border-radius: var(--lqa-radius-sm);
     object-fit: contain;
 }
@@ -561,12 +565,11 @@
     flex: 0 0 auto;
     align-items: center;
     justify-content: center;
-    width: 44px;
-    height: 44px;
-    border: 1px solid var(--lqa-border);
+    width: 46px;
+    height: 46px;
     border-radius: var(--lqa-radius-sm);
     background: var(--lqa-chip);
-    color: var(--lqa-ink);
+    color: var(--lqa-ink-soft);
     font-size: 17px;
 }
 
@@ -577,7 +580,7 @@
     h2 {
         margin: 0;
         color: var(--lqa-ink);
-        font-size: 17px;
+        font-size: 18px;
         font-weight: 700;
         letter-spacing: -0.01em;
     }
@@ -585,30 +588,39 @@
 
 .o_lqa_module__description {
     margin: 6px 0 0;
-    color: var(--lqa-muted);
+    color: var(--lqa-muted-strong);
     font-size: 13.5px;
-    line-height: 1.5;
+    line-height: 1.55;
 }
 
 .o_lqa_module__open {
     flex: 0 0 auto;
     display: inline-flex;
     align-items: center;
-    gap: 7px;
+    gap: 8px;
     margin-top: 2px;
     margin-left: auto;
-    padding: 0;
+    padding: 9px 16px;
     border: 0;
-    background: none;
-    color: var(--lqa-ink);
+    border-radius: 999px;
+    background: var(--lqa-ink);
+    color: #fff;
     font-size: 13px;
     font-weight: 700;
     white-space: nowrap;
+    cursor: pointer;
+    transition:
+        transform 0.15s ease,
+        background-color 0.15s ease;
 
     i {
-        color: var(--lqa-muted);
+        color: rgba(255, 255, 255, 0.7);
         font-size: 11px;
         transition: transform 0.15s ease;
+    }
+
+    &:hover {
+        background: #000;
     }
 
     &:hover i {
@@ -620,11 +632,11 @@
     display: flex;
     flex-wrap: wrap;
     gap: 4px 20px;
-    margin-top: 12px;
+    margin-top: 14px;
 }
 
 .o_lqa_metric {
-    color: var(--lqa-muted);
+    color: var(--lqa-muted-strong);
     font-size: 12.5px;
 
     strong {
@@ -637,20 +649,24 @@
 .o_lqa_sections {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    margin-top: 18px;
+    gap: 4px;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--lqa-border-soft);
 }
 
 .o_lqa_section {
     display: flex;
     align-items: flex-start;
-    gap: 10px;
+    gap: 11px;
     width: 100%;
-    padding: 12px 10px;
+    padding: 13px 12px;
     border: 0;
     border-radius: var(--lqa-radius-sm);
     background: transparent;
     color: inherit;
     text-align: left;
+    cursor: pointer;
     transition: background-color 0.15s ease;
 
     &:hover {
@@ -663,9 +679,9 @@
 
     p {
         margin: 2px 0 0;
-        color: var(--lqa-muted);
+        color: var(--lqa-muted-strong);
         font-size: 12px;
-        line-height: 1.45;
+        line-height: 1.5;
     }
 
     .fa-arrow-right {
@@ -698,11 +714,11 @@
 .o_lqa_section__state {
     flex: 0 0 auto;
     display: inline-block;
-    width: 6px;
-    height: 6px;
+    width: 7px;
+    height: 7px;
     margin-top: 6px;
     border-radius: 50%;
-    background: #a1a1aa;
+    background: #c4c4cb;
 
     &.is-available {
         background: #16a34a;
@@ -725,6 +741,9 @@
     text-transform: uppercase;
 
     &.is-new {
+        padding: 1px 7px;
+        border-radius: 999px;
+        background: var(--lqa-red-soft);
         color: var(--lqa-red-dark);
     }
 }
@@ -745,13 +764,13 @@
     }
 
     .o_lqa_dashboard_areas__grid button:first-child {
-        grid-template-columns: 48px minmax(0, 1fr) 20px;
+        grid-template-columns: 50px minmax(0, 1fr) 20px;
     }
 }
 
 @media (max-width: 768px) {
     .o_lqa_dashboard {
-        padding: 20px 16px 36px;
+        padding: 24px 16px 40px;
     }
 
     .o_lqa_dashboard__header {
