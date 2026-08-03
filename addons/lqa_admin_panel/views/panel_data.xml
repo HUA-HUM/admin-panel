@@ -123,12 +123,24 @@
         <field name="active">True</field>
     </record>
 
+    <record id="panel_section_administracion_xubio_facturacion" model="lqa.panel.section">
+        <field name="module_id" ref="panel_module_administracion"/>
+        <field name="name">Facturacion</field>
+        <field name="code">xubio_facturacion</field>
+        <field name="description">Creacion de facturas conectada a Xubio.</field>
+        <field name="badge">Xubio</field>
+        <field name="status">available</field>
+        <field name="sequence">25</field>
+        <field name="action_xmlid">lqa_admin_panel.action_lqa_administracion_xubio_facturacion</field>
+        <field name="active">True</field>
+    </record>
+
     <record id="panel_section_administracion_xubio" model="lqa.panel.section">
         <field name="module_id" ref="panel_module_administracion"/>
         <field name="name">Xubio</field>
         <field name="code">xubio</field>
         <field name="description">Clientes y comprobantes contables conectados a Xubio.</field>
-        <field name="badge">2 secciones</field>
+        <field name="badge">3 secciones</field>
         <field name="status">available</field>
         <field name="sequence">30</field>
         <field name="action_xmlid">lqa_admin_panel.action_lqa_administracion_xubio</field>
@@ -381,10 +393,24 @@
         <value
             eval="{
                 'description': 'Clientes y comprobantes contables conectados a Xubio.',
-                'badge': '2 secciones',
+                'badge': '3 secciones',
                 'status': 'available',
                 'sequence': 30,
                 'action_xmlid': 'lqa_admin_panel.action_lqa_administracion_xubio',
+                'active': True,
+            }"
+        />
+    </function>
+
+    <function model="lqa.panel.section" name="write">
+        <value eval="[ref('panel_section_administracion_xubio_facturacion')]"/>
+        <value
+            eval="{
+                'description': 'Creacion de facturas conectada a Xubio.',
+                'badge': 'Xubio',
+                'status': 'available',
+                'sequence': 25,
+                'action_xmlid': 'lqa_admin_panel.action_lqa_administracion_xubio_facturacion',
                 'active': True,
             }"
         />

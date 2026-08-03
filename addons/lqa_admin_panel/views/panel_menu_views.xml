@@ -53,6 +53,12 @@
         <field name="params" eval="{'view': 'xubio'}"/>
     </record>
 
+    <record id="action_lqa_administracion_xubio_facturacion" model="ir.actions.client">
+        <field name="name">Facturacion Xubio</field>
+        <field name="tag">lqa_admin_panel.accounting</field>
+        <field name="params" eval="{'view': 'xubio_facturacion'}"/>
+    </record>
+
     <record id="action_lqa_retailers_marketplaces" model="ir.actions.client">
         <field name="name">Marketplaces</field>
         <field name="tag">lqa_admin_panel.retailers</field>
@@ -502,6 +508,15 @@
         parent="menu_lqa_administracion_xubio"
         action="action_lqa_administracion_arca_billing"
         sequence="20"
+        groups="lqa_admin_panel.group_lqa_commercial_user"
+    />
+
+    <menuitem
+        id="menu_lqa_administracion_xubio_facturacion"
+        name="Facturacion"
+        parent="menu_lqa_administracion_xubio"
+        action="action_lqa_administracion_xubio_facturacion"
+        sequence="30"
         groups="lqa_admin_panel.group_lqa_commercial_user"
     />
 

@@ -52,6 +52,8 @@ export class LqaAccounting extends Component {
             activeTab:
                 params.view === "arca_billing"
                     ? "comprobantes"
+                    : params.view === "xubio_facturacion"
+                    ? "facturacion"
                     : params.view === "xubio"
                     ? "xubio"
                     : "clients",
@@ -111,6 +113,38 @@ export class LqaAccounting extends Component {
                 },
                 result: emptyXubio(),
             },
+            facturacion: {
+                activeTab: "create",
+                creationMode: "single",
+                invoice: {
+                    running: false,
+                    loadingJobs: false,
+                    jobs: [],
+                    selectedJob: null,
+                    form: {
+                        tlqvCode: "",
+                        issueDate: inputDate(today),
+                        dryRun: true,
+                        note: "",
+                    },
+                },
+                bulk: {
+                    running: false,
+                    result: null,
+                    form: {
+                        tlqvCodes: "",
+                        issueDate: inputDate(today),
+                        dryRun: true,
+                    },
+                },
+                cache: {
+                    running: false,
+                    result: null,
+                    form: {
+                        pageSize: 100,
+                    },
+                },
+            },
         });
 
         onWillStart(async () => {
@@ -136,8 +170,12 @@ export class LqaAccounting extends Component {
         return this.state.view === "xubio";
     }
 
+    get isXubioFacturacion() {
+        return this.state.view === "xubio_facturacion";
+    }
+
     get isWorkspace() {
-        return this.isArcaBilling || this.isClients || this.isXubio;
+        return this.isArcaBilling || this.isClients || this.isXubio || this.isXubioFacturacion;
     }
 
     get pageTitle() {
@@ -146,6 +184,9 @@ export class LqaAccounting extends Component {
         }
         if (this.isXubio) {
             return "Xubio";
+        }
+        if (this.isXubioFacturacion) {
+            return "Facturacion Xubio";
         }
         return this.isArcaBilling ? "Comprobantes Xubio" : "Administracion";
     }
@@ -156,6 +197,9 @@ export class LqaAccounting extends Component {
         }
         if (this.isXubio) {
             return "Clientes y comprobantes contables conectados a Xubio.";
+        }
+        if (this.isXubioFacturacion) {
+            return "Creacion de facturas conectada a Xubio.";
         }
         return this.isArcaBilling
             ? "Consulta y auditoria de comprobantes sincronizados con Xubio."
@@ -183,7 +227,7 @@ export class LqaAccounting extends Component {
     }
 
     async openBack() {
-        if (this.isClients || this.isArcaBilling) {
+        if (this.isClients || this.isArcaBilling || this.isXubioFacturacion) {
             await this.openXubio();
             return;
         }
@@ -208,6 +252,12 @@ export class LqaAccounting extends Component {
         await this.loadArcaData();
     }
 
+    async openXubioFacturacion() {
+        this.state.view = "xubio_facturacion";
+        this.state.activeTab = "facturacion";
+        await this.loadArcaData();
+    }
+
     async loadArcaData() {
         if (this.isClients) {
             await Promise.all([this.loadClientJobs(), this.searchClientIssues()]);
@@ -215,13 +265,25 @@ export class LqaAccounting extends Component {
         }
         if (this.isArcaBilling) {
             await Promise.all([this.loadXubioExportColumns(), this.searchComprobantes()]);
+            return;
+        }
+        if (this.isXubioFacturacion && this.state.facturacion.activeTab === "create") {
+            await this.loadInvoiceCreationJobs(
+                this.state.facturacion.invoice.selectedJob?.id || false
+            );
         }
     }
 
     setTab(tab) {
         this.state.activeTab = tab;
         this.state.view =
-            tab === "comprobantes" ? "arca_billing" : tab === "xubio" ? "xubio" : "clients";
+            tab === "comprobantes"
+                ? "arca_billing"
+                : tab === "xubio"
+                ? "xubio"
+                : tab === "facturacion"
+                ? "xubio_facturacion"
+                : "clients";
         this.loadArcaData();
     }
 
@@ -229,6 +291,15 @@ export class LqaAccounting extends Component {
         this.state.xubio.activeTab = tab;
         if (tab === "list") {
             this.loadArcaData();
+        }
+    }
+
+    async setFacturacionTab(tab) {
+        this.state.facturacion.activeTab = tab;
+        if (tab === "create") {
+            await this.loadInvoiceCreationJobs(
+                this.state.facturacion.invoice.selectedJob?.id || false
+            );
         }
     }
 
@@ -571,6 +642,218 @@ export class LqaAccounting extends Component {
         }
     }
 
+    async runXubioTlqvCacheRefresh() {
+        const form = this.state.facturacion.cache.form;
+        const pageSize = Number(form.pageSize || 100);
+        if (!Number.isFinite(pageSize) || pageSize < 1) {
+            this.notification.add("Page size debe ser mayor a cero.", {
+                type: "warning",
+            });
+            return;
+        }
+
+        this.state.facturacion.cache.running = true;
+        this.state.facturacion.cache.result = null;
+        try {
+            const result = await this.orm.call(
+                "lqa.accounting.service",
+                "refresh_xubio_stock_bue_tlqv_cache",
+                [{ pageSize }]
+            );
+            this.state.facturacion.cache.result = result;
+            const jobId = result?.payload?.jobId || result?.jobId || "";
+            this.notification.add(
+                `Actualizacion de cache TLQV encolada${jobId ? `: job ${jobId}` : ""}.`,
+                { type: "success" }
+            );
+        } catch (error) {
+            this.notifyError(error, "No se pudo actualizar el cache TLQV.");
+        } finally {
+            this.state.facturacion.cache.running = false;
+        }
+    }
+
+    setInvoiceDryRun(value) {
+        this.state.facturacion.invoice.form.dryRun = Boolean(value);
+    }
+
+    setInvoiceCreationMode(mode) {
+        this.state.facturacion.creationMode = mode === "bulk" ? "bulk" : "single";
+    }
+
+    setBulkInvoiceDryRun(value) {
+        this.state.facturacion.bulk.form.dryRun = Boolean(value);
+    }
+
+    get bulkInvoiceCodes() {
+        const matches = String(this.state.facturacion.bulk.form.tlqvCodes || "")
+            .toUpperCase()
+            .match(/TLQV[-\s]?\d+|\b\d+\b/g) || [];
+        return matches.map((value) => {
+            const digits = value.match(/\d+/)?.[0] || "";
+            return `TLQV-${digits}`;
+        });
+    }
+
+    get bulkInvoiceUniqueCount() {
+        return new Set(this.bulkInvoiceCodes).size;
+    }
+
+    get bulkInvoiceDuplicatedCount() {
+        return this.bulkInvoiceCodes.length - this.bulkInvoiceUniqueCount;
+    }
+
+    get latestInvoiceIssueDate() {
+        return this.formatInputDate(new Date());
+    }
+
+    get earliestInvoiceIssueDate() {
+        const date = new Date();
+        date.setDate(date.getDate() - 10);
+        return this.formatInputDate(date);
+    }
+
+    formatInputDate(date) {
+        return [
+            date.getFullYear(),
+            String(date.getMonth() + 1).padStart(2, "0"),
+            String(date.getDate()).padStart(2, "0"),
+        ].join("-");
+    }
+
+    async createInvoicesBulkFromTlqv() {
+        const bulk = this.state.facturacion.bulk;
+        const tlqvCodes = this.bulkInvoiceCodes;
+        if (!tlqvCodes.length) {
+            this.notification.add("Ingresa al menos un TLQV para encolar.", {
+                type: "warning",
+            });
+            return;
+        }
+        if (
+            !bulk.form.dryRun &&
+            !window.confirm(
+                `Encolar ${this.bulkInvoiceUniqueCount} facturas reales en Xubio?`
+            )
+        ) {
+            return;
+        }
+
+        bulk.running = true;
+        bulk.result = null;
+        try {
+            const result = await this.orm.call(
+                "lqa.accounting.service",
+                "create_invoices_bulk_from_tlqv",
+                [{
+                    tlqvCodes,
+                    issueDate: bulk.form.issueDate || "",
+                    dryRun: Boolean(bulk.form.dryRun),
+                }]
+            );
+            bulk.result = result;
+            const totalQueued = result?.payload?.totalQueued ?? this.bulkInvoiceUniqueCount;
+            this.notification.add(
+                `${this.formatNumber(totalQueued)} facturas encoladas correctamente.`,
+                { type: "success" }
+            );
+        } catch (error) {
+            this.notifyError(error, "No se pudieron encolar las facturas.");
+        } finally {
+            bulk.running = false;
+        }
+    }
+
+    async copyBulkBatchId() {
+        const batchId = this.state.facturacion.bulk.result?.payload?.batchId || "";
+        if (!batchId) {
+            return;
+        }
+        try {
+            await navigator.clipboard.writeText(batchId);
+            this.notification.add("Batch ID copiado.", { type: "success" });
+        } catch (_error) {
+            this.notification.add("No se pudo copiar el Batch ID.", { type: "warning" });
+        }
+    }
+
+    selectInvoiceJob(job) {
+        this.state.facturacion.invoice.selectedJob = job;
+    }
+
+    invoiceModeLabel(job) {
+        return job?.dryRun ? "Simulacion" : "Creacion en Xubio";
+    }
+
+    async loadInvoiceCreationJobs(preferJobId = false) {
+        this.state.facturacion.invoice.loadingJobs = true;
+        try {
+            const jobs = await this.orm.call(
+                "lqa.accounting.service",
+                "get_invoice_creation_jobs",
+                [30]
+            );
+            this.state.facturacion.invoice.jobs = jobs;
+            const selected =
+                (preferJobId && jobs.find((job) => job.id === preferJobId)) ||
+                jobs.find((job) => job.id === this.state.facturacion.invoice.selectedJob?.id) ||
+                jobs[0] ||
+                null;
+            this.state.facturacion.invoice.selectedJob = selected;
+        } catch (error) {
+            this.notifyError(error, "No se pudieron cargar los registros de facturacion.");
+        } finally {
+            this.state.facturacion.invoice.loadingJobs = false;
+        }
+    }
+
+    async createInvoiceFromTlqv() {
+        const form = this.state.facturacion.invoice.form;
+        const tlqvCode = String(form.tlqvCode || "").trim().toUpperCase();
+        if (!tlqvCode) {
+            this.notification.add("Ingresa un TLQV para crear la factura.", {
+                type: "warning",
+            });
+            return;
+        }
+        const issueDate = form.issueDate || inputDate(new Date());
+        form.issueDate = issueDate;
+        if (
+            !form.dryRun &&
+            !window.confirm(`Crear factura en Xubio para ${tlqvCode}? El flujo se detiene antes de ARCA.`)
+        ) {
+            return;
+        }
+
+        this.state.facturacion.invoice.running = true;
+        try {
+            const job = await this.orm.call(
+                "lqa.accounting.service",
+                "create_invoice_from_tlqv",
+                [
+                    {
+                        tlqvCode,
+                        issueDate,
+                        dryRun: Boolean(form.dryRun),
+                        note: form.note || "",
+                    },
+                ]
+            );
+            this.state.facturacion.invoice.selectedJob = job;
+            await this.loadInvoiceCreationJobs(job.id);
+            this.notification.add(
+                job.state === "done"
+                    ? "Factura procesada."
+                    : "La ejecucion termino con observaciones.",
+                { type: job.state === "done" ? "success" : "warning" }
+            );
+        } catch (error) {
+            this.notifyError(error, "No se pudo crear la factura desde TLQV.");
+        } finally {
+            this.state.facturacion.invoice.running = false;
+        }
+    }
+
     async openComprobantePdf(item) {
         const tlqvCode = this.comprobanteTlqvCode(item);
         if (!tlqvCode) {
@@ -654,26 +937,33 @@ export class LqaAccounting extends Component {
     }
 
     stateLabel(value) {
+        const key = String(value || "").toLowerCase();
         return (
             {
                 done: "Listo",
+                completed: "Completado",
                 partial: "Parcial",
                 failed: "Fallido",
+                error: "Error",
+                blocked: "Bloqueado",
                 processing: "Procesando",
+                queued: "En cola",
                 success: "Creado",
                 issue: "Con issue",
-            }[value] || this.humanize(value)
+                skipped: "Omitido",
+            }[key] || this.humanize(value)
         );
     }
 
     stateClass(value) {
-        if (["done", "success"].includes(value)) {
+        const key = String(value || "").toLowerCase();
+        if (["done", "success", "completed"].includes(key)) {
             return "is-green";
         }
-        if (["partial", "issue"].includes(value)) {
+        if (["partial", "issue", "skipped", "queued", "processing"].includes(key)) {
             return "is-amber";
         }
-        if (["failed"].includes(value)) {
+        if (["failed", "error", "blocked"].includes(key)) {
             return "is-red";
         }
         return "is-blue";

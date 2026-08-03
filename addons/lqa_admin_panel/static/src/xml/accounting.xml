@@ -2,7 +2,7 @@
 <templates xml:space="preserve">
     <t t-name="lqa_admin_panel.Accounting">
         <div t-att-class="'o_lqa_accounting ' + (isArcaBilling ? 'is-comprobantes-page' : '')">
-            <header class="o_lqa_accounting__header">
+            <header t-if="!isArcaBilling &amp;&amp; !isXubioFacturacion" class="o_lqa_accounting__header">
                 <div>
                     <p>Administracion</p>
                     <h1 t-esc="pageTitle"/>
@@ -19,49 +19,47 @@
                 </button>
             </header>
 
-            <section t-if="isDashboard" class="o_lqa_accounting__summary">
-                <article>
-                    <small>Area</small>
-                    <strong>Contable</strong>
-                    <span>Administracion</span>
-                </article>
-                <article>
-                    <small>Integracion</small>
-                    <strong>Xubio</strong>
-                    <span>Clientes y comprobantes</span>
-                </article>
-                <article>
-                    <small>Secciones</small>
-                    <strong>2</strong>
-                    <span>Clientes y comprobantes</span>
-                </article>
-            </section>
-
-            <section t-if="isDashboard" class="o_lqa_accounting__modules">
-                <article class="o_lqa_accounting__xubio_module">
-                    <span class="o_lqa_accounting__brand_icon">
-                        <img src="/lqa_admin_panel/static/src/img/xubio-logo.png" alt="Xubio"/>
-                    </span>
-                    <div class="o_lqa_accounting__xubio_module_body">
-                        <small>Modulo Xubio</small>
-                        <strong>Xubio</strong>
-                        <p>Clientes fiscales y comprobantes sincronizados desde la operacion contable.</p>
-                        <div class="o_lqa_accounting__xubio_actions">
-                            <button type="button" t-on-click="openClients">
-                                <i class="fa fa-users"/>
-                                Clientes
-                            </button>
-                            <button type="button" t-on-click="openArcaBilling">
-                                <i class="fa fa-file-text-o"/>
-                                Comprobantes
-                            </button>
+            <section t-if="isDashboard" class="o_lqa_accounting__admin_dashboard">
+                <article class="o_lqa_accounting__admin_overview">
+                    <div class="o_lqa_accounting__admin_brand">
+                        <span>
+                            <img src="/lqa_admin_panel/static/src/img/xubio-logo.png" alt="Xubio"/>
+                        </span>
+                        <div>
+                            <p>Modulo contable</p>
+                            <h2>Xubio</h2>
+                            <small>Clientes, comprobantes y facturacion conectados al flujo administrativo.</small>
                         </div>
                     </div>
-                    <button type="button" class="o_lqa_accounting__xubio_open" t-on-click="openXubio">
+                    <button type="button" class="o_lqa_accounting__ghost" t-on-click="openXubio">
                         Ver modulo
                         <i class="fa fa-arrow-right"/>
                     </button>
                 </article>
+
+                <div class="o_lqa_accounting__admin_cards">
+                    <button type="button" class="o_lqa_accounting__admin_card" t-on-click="openClients">
+                        <span><i class="fa fa-users"/></span>
+                        <small>Clientes</small>
+                        <strong>Alta y regularizacion</strong>
+                        <p>Crear clientes desde TLQV y resolver casos de consumidor final.</p>
+                        <em>Entrar <i class="fa fa-arrow-right"/></em>
+                    </button>
+                    <button type="button" class="o_lqa_accounting__admin_card" t-on-click="openArcaBilling">
+                        <span><i class="fa fa-file-text-o"/></span>
+                        <small>Comprobantes</small>
+                        <strong>Auditoria Xubio</strong>
+                        <p>Consultar, exportar y generar respaldos PDF de comprobantes.</p>
+                        <em>Entrar <i class="fa fa-arrow-right"/></em>
+                    </button>
+                    <button type="button" class="o_lqa_accounting__admin_card" t-on-click="openXubioFacturacion">
+                        <span><i class="fa fa-pencil-square-o"/></span>
+                        <small>Facturacion</small>
+                        <strong>Emision operativa</strong>
+                        <p>Espacio preparado para los proximos flujos de facturacion.</p>
+                        <em>Entrar <i class="fa fa-arrow-right"/></em>
+                    </button>
+                </div>
             </section>
 
             <t t-if="isWorkspace">
@@ -459,28 +457,475 @@
                                 <strong>Comprobantes</strong>
                                 <span>Auditoria y consulta de comprobantes sincronizados.</span>
                             </button>
+                            <button type="button" t-on-click="openXubioFacturacion">
+                                <i class="fa fa-pencil-square-o"/>
+                                <strong>Facturacion</strong>
+                                <span>Vista operativa para preparar altas y emision de facturas.</span>
+                            </button>
                         </div>
                     </section>
                 </t>
 
-                <t t-if="isArcaBilling">
-                    <section class="o_lqa_accounting__comprobante_hero">
+                <t t-if="isXubioFacturacion">
+                    <section class="o_lqa_accounting__facturacion_topbar">
                         <div>
-                            <p>Auditoria Xubio</p>
-                            <h2>Comprobantes emitidos</h2>
+                            <p>Administracion / Xubio</p>
+                            <h2>Facturacion Xubio</h2>
                             <span>
-                                Consulta comprobantes sincronizados, revisa importes fiscales y descarga el respaldo PDF por TLQV.
+                                Crear facturas y ejecutar procesos vinculados a comprobantes.
                             </span>
                         </div>
+                        <button type="button" class="o_lqa_accounting__ghost" t-on-click="openXubio">
+                            <i class="fa fa-arrow-left"/>
+                            Xubio
+                        </button>
+                    </section>
+
+                    <nav class="o_lqa_accounting__client_tabs is-facturacion_tabs" role="tablist">
                         <button
                             type="button"
-                            class="o_lqa_accounting__ghost"
-                            t-att-disabled="state.xubio.loading ? true : undefined"
-                            t-on-click="() => this.searchComprobantes(state.xubio.result.pagination.offset || 0)"
+                            t-att-class="'o_lqa_accounting__client_tab ' + (state.facturacion.activeTab === 'create' ? 'is-active' : '')"
+                            t-on-click="() => this.setFacturacionTab('create')"
                         >
-                            <i t-att-class="state.xubio.loading ? 'fa fa-spinner fa-spin' : 'fa fa-refresh'"/>
-                            Actualizar
+                            <span><i class="fa fa-pencil-square-o"/></span>
+                            <strong>Crear facturas</strong>
+                            <small>Flujo operativo de emision.</small>
                         </button>
+                        <button
+                            type="button"
+                            t-att-class="'o_lqa_accounting__client_tab ' + (state.facturacion.activeTab === 'cache' ? 'is-active' : '')"
+                            t-on-click="() => this.setFacturacionTab('cache')"
+                        >
+                            <span><i class="fa fa-database"/></span>
+                            <strong>Cache TLQV</strong>
+                            <small>Actualizacion de cache stock-bue.</small>
+                        </button>
+                    </nav>
+
+                    <t t-if="state.facturacion.activeTab === 'create'">
+                        <section class="o_lqa_accounting__panel is-invoice_create">
+                            <div class="o_lqa_accounting__panel_head">
+                                <div>
+                                    <h2>Crear facturas desde TLQV</h2>
+                                    <p>Procesa un codigo en el momento o encola una lista completa en Invoice API.</p>
+                                </div>
+                                <span>Invoice API</span>
+                            </div>
+                            <div class="o_lqa_accounting__creation_mode_switch">
+                                <button
+                                    type="button"
+                                    t-att-class="'o_lqa_accounting__mode_option ' + (state.facturacion.creationMode === 'single' ? 'is-active' : '')"
+                                    t-on-click="() => this.setInvoiceCreationMode('single')"
+                                >
+                                    <strong>Factura individual</strong>
+                                    <span>Procesa un TLQV y muestra el resultado completo.</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    t-att-class="'o_lqa_accounting__mode_option ' + (state.facturacion.creationMode === 'bulk' ? 'is-active' : '')"
+                                    t-on-click="() => this.setInvoiceCreationMode('bulk')"
+                                >
+                                    <strong>Carga masiva</strong>
+                                    <span>Encola un job por cada TLQV y devuelve un Batch ID.</span>
+                                </button>
+                            </div>
+                            <div t-if="state.facturacion.creationMode === 'single'" class="o_lqa_accounting__invoice_create_grid">
+                                <div class="o_lqa_accounting__invoice_form">
+                                    <div class="o_lqa_accounting__filters is-invoice_fields">
+                                        <label>
+                                            Codigo TLQV
+                                            <input type="text" t-model="state.facturacion.invoice.form.tlqvCode" placeholder="TLQV-15783"/>
+                                        </label>
+                                        <label>
+                                            Fecha del comprobante
+                                            <input
+                                                type="date"
+                                                t-model="state.facturacion.invoice.form.issueDate"
+                                                t-att-min="earliestInvoiceIssueDate"
+                                                t-att-max="latestInvoiceIssueDate"
+                                                title="Si queda vacia, se usa la fecha de hoy."
+                                            />
+                                        </label>
+                                    </div>
+                                    <div class="o_lqa_accounting__mode_switch">
+                                        <button
+                                            type="button"
+                                            t-att-class="'o_lqa_accounting__mode_option ' + (state.facturacion.invoice.form.dryRun ? 'is-active' : '')"
+                                            t-on-click="() => this.setInvoiceDryRun(true)"
+                                        >
+                                            <strong>Simular</strong>
+                                            <span>Valida la venta y arma la factura sin crearla en Xubio.</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            t-att-class="'o_lqa_accounting__mode_option ' + (!state.facturacion.invoice.form.dryRun ? 'is-active' : '')"
+                                            t-on-click="() => this.setInvoiceDryRun(false)"
+                                        >
+                                            <strong>Crear en Xubio</strong>
+                                            <span>Crea la factura y detiene el proceso antes de enviar a ARCA.</span>
+                                        </button>
+                                    </div>
+                                    <label class="o_lqa_accounting__note_field">
+                                        Nota operativa
+                                        <textarea rows="3" t-model="state.facturacion.invoice.form.note" placeholder="Ej: facturacion manual cierre julio"/>
+                                    </label>
+                                    <div class="o_lqa_accounting__actions">
+                                        <button
+                                            type="button"
+                                            class="o_lqa_accounting__primary"
+                                            t-att-disabled="state.facturacion.invoice.running ? true : undefined"
+                                            t-on-click="createInvoiceFromTlqv"
+                                        >
+                                            <i t-att-class="state.facturacion.invoice.running ? 'fa fa-spinner fa-spin' : 'fa fa-play'"/>
+                                            <t t-if="state.facturacion.invoice.form.dryRun">Simular factura</t>
+                                            <t t-else="">Crear factura</t>
+                                        </button>
+                                    </div>
+                                </div>
+                                <aside class="o_lqa_accounting__invoice_guardrail">
+                                    <h3>Control operativo</h3>
+                                    <ul>
+                                        <li>La venta se identifica siempre por codigo TLQV.</li>
+                                        <li>La fecha del comprobante viaja como issueDate; si queda vacia, se usa la fecha de hoy.</li>
+                                        <li>El flujo usa stopAfter invoice_creation para no avanzar a ARCA.</li>
+                                        <li>Cada ejecucion guarda usuario, nota y respuesta completa.</li>
+                                    </ul>
+                                </aside>
+                            </div>
+                            <div t-else="" class="o_lqa_accounting__invoice_create_grid">
+                                <div class="o_lqa_accounting__invoice_form">
+                                    <label class="o_lqa_accounting__note_field is-bulk_codes">
+                                        Codigos TLQV
+                                        <textarea
+                                            rows="9"
+                                            t-model="state.facturacion.bulk.form.tlqvCodes"
+                                            placeholder="TLQV-15783&#10;TLQV-15723"
+                                        />
+                                        <span class="o_lqa_accounting__field_help">
+                                            Podes pegarlos uno por linea, separados por coma o con espacios.
+                                            Detectados: <strong t-esc="formatNumber(bulkInvoiceCodes.length)"/> ·
+                                            Unicos: <strong t-esc="formatNumber(bulkInvoiceUniqueCount)"/>
+                                            <t t-if="bulkInvoiceDuplicatedCount">
+                                                · Duplicados: <strong t-esc="formatNumber(bulkInvoiceDuplicatedCount)"/>
+                                            </t>
+                                        </span>
+                                    </label>
+                                    <div class="o_lqa_accounting__filters is-invoice_fields is-bulk_fields">
+                                        <label>
+                                            Fecha comun de las facturas
+                                            <input
+                                                type="date"
+                                                t-model="state.facturacion.bulk.form.issueDate"
+                                                t-att-min="earliestInvoiceIssueDate"
+                                                t-att-max="latestInvoiceIssueDate"
+                                                title="Invoice API admite hoy o hasta 10 dias hacia atras."
+                                            />
+                                        </label>
+                                    </div>
+                                    <div class="o_lqa_accounting__mode_switch">
+                                        <button
+                                            type="button"
+                                            t-att-class="'o_lqa_accounting__mode_option ' + (state.facturacion.bulk.form.dryRun ? 'is-active' : '')"
+                                            t-on-click="() => this.setBulkInvoiceDryRun(true)"
+                                        >
+                                            <strong>Preview recomendado</strong>
+                                            <span>Encola validaciones sin crear facturas en Xubio.</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            t-att-class="'o_lqa_accounting__mode_option ' + (!state.facturacion.bulk.form.dryRun ? 'is-active' : '')"
+                                            t-on-click="() => this.setBulkInvoiceDryRun(false)"
+                                        >
+                                            <strong>Crear en Xubio</strong>
+                                            <span>Encola jobs reales para todos los TLQV unicos.</span>
+                                        </button>
+                                    </div>
+                                    <div class="o_lqa_accounting__actions">
+                                        <button
+                                            type="button"
+                                            class="o_lqa_accounting__primary"
+                                            t-att-disabled="state.facturacion.bulk.running || !bulkInvoiceUniqueCount ? true : undefined"
+                                            t-on-click="createInvoicesBulkFromTlqv"
+                                        >
+                                            <i t-att-class="state.facturacion.bulk.running ? 'fa fa-spinner fa-spin' : 'fa fa-tasks'"/>
+                                            <t t-if="state.facturacion.bulk.running">Encolando</t>
+                                            <t t-elif="state.facturacion.bulk.form.dryRun">Encolar previews</t>
+                                            <t t-else="">Encolar facturas</t>
+                                        </button>
+                                    </div>
+                                </div>
+                                <aside class="o_lqa_accounting__invoice_guardrail">
+                                    <h3>Flujo recomendado</h3>
+                                    <ol>
+                                        <li>Encola primero en modo preview.</li>
+                                        <li>Revisa los jobs en Bull Dashboard.</li>
+                                        <li>Si el resultado es correcto, repite en modo real.</li>
+                                        <li>Usa el Batch ID para seguir todo el lote.</li>
+                                    </ol>
+                                    <p>Cada factura tiene 3 intentos. El endpoint solo confirma que los jobs fueron encolados.</p>
+                                </aside>
+                            </div>
+                        </section>
+
+                        <section
+                            t-if="state.facturacion.creationMode === 'bulk' &amp;&amp; state.facturacion.bulk.result"
+                            class="o_lqa_accounting__panel is-invoice_result is-bulk_result"
+                        >
+                            <div class="o_lqa_accounting__panel_head">
+                                <div>
+                                    <h2>Lote encolado</h2>
+                                    <p>
+                                        La respuesta confirma la cola; los resultados finales se consultan en Bull Dashboard.
+                                    </p>
+                                </div>
+                                <span class="o_lqa_accounting__pill is-amber">En cola</span>
+                            </div>
+                            <div class="o_lqa_accounting__batch_id">
+                                <div>
+                                    <small>Batch ID</small>
+                                    <strong t-esc="state.facturacion.bulk.result.payload.batchId || '-'"/>
+                                </div>
+                                <button type="button" class="o_lqa_accounting__ghost" t-on-click="copyBulkBatchId">
+                                    <i class="fa fa-copy"/>
+                                    Copiar
+                                </button>
+                            </div>
+                            <div class="o_lqa_accounting__invoice_result_grid is-bulk_stats">
+                                <div>
+                                    <small>Solicitados</small>
+                                    <strong t-esc="formatNumber(state.facturacion.bulk.result.payload.totalRequested)"/>
+                                </div>
+                                <div>
+                                    <small>Unicos</small>
+                                    <strong t-esc="formatNumber(state.facturacion.bulk.result.payload.totalUnique)"/>
+                                </div>
+                                <div>
+                                    <small>Duplicados</small>
+                                    <strong t-esc="formatNumber(state.facturacion.bulk.result.payload.totalDuplicated)"/>
+                                </div>
+                                <div>
+                                    <small>Encolados</small>
+                                    <strong t-esc="formatNumber(state.facturacion.bulk.result.payload.totalQueued)"/>
+                                </div>
+                            </div>
+                            <div class="o_lqa_accounting__bulk_result_actions">
+                                <div>
+                                    <small>Cola</small>
+                                    <strong t-esc="state.facturacion.bulk.result.payload.queueName || 'tlqv-invoice-facturas-bulk'"/>
+                                </div>
+                                <a
+                                    class="o_lqa_accounting__primary"
+                                    t-att-href="state.facturacion.bulk.result.bullDashboardUrl"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
+                                    Abrir Bull Dashboard
+                                    <i class="fa fa-external-link"/>
+                                </a>
+                            </div>
+                        </section>
+
+                        <section t-if="state.facturacion.creationMode === 'single' &amp;&amp; state.facturacion.invoice.selectedJob" class="o_lqa_accounting__panel is-invoice_result">
+                            <div class="o_lqa_accounting__panel_head">
+                                <div>
+                                    <h2>Resultado seleccionado</h2>
+                                    <p>
+                                        <t t-esc="state.facturacion.invoice.selectedJob.tlqvCode"/>
+                                        ·
+                                        <t t-esc="invoiceModeLabel(state.facturacion.invoice.selectedJob)"/>
+                                        ·
+                                        <t t-esc="formatDate(state.facturacion.invoice.selectedJob.createdAt)"/>
+                                    </p>
+                                </div>
+                                <span
+                                    t-att-class="'o_lqa_accounting__pill ' + stateClass(state.facturacion.invoice.selectedJob.state)"
+                                    t-esc="stateLabel(state.facturacion.invoice.selectedJob.state)"
+                                />
+                            </div>
+                            <div class="o_lqa_accounting__invoice_result_grid">
+                                <div>
+                                    <small>Letra</small>
+                                    <strong t-esc="state.facturacion.invoice.selectedJob.invoiceLetter || '-'"/>
+                                </div>
+                                <div>
+                                    <small>Items</small>
+                                    <strong t-esc="formatNumber(state.facturacion.invoice.selectedJob.itemsCount)"/>
+                                </div>
+                                <div>
+                                    <small>Total estimado</small>
+                                    <strong t-esc="formatCurrency(state.facturacion.invoice.selectedJob.invoiceTotal)"/>
+                                </div>
+                                <div>
+                                    <small>Cliente Xubio</small>
+                                    <strong t-esc="state.facturacion.invoice.selectedJob.xubioClienteId || '-'"/>
+                                </div>
+                            </div>
+                            <div class="o_lqa_accounting__invoice_message">
+                                <strong>Detalle</strong>
+                                <span t-esc="state.facturacion.invoice.selectedJob.message || '-'"/>
+                            </div>
+                            <ul
+                                t-if="state.facturacion.invoice.selectedJob.steps &amp;&amp; state.facturacion.invoice.selectedJob.steps.length"
+                                class="o_lqa_accounting__invoice_steps"
+                            >
+                                <li t-foreach="state.facturacion.invoice.selectedJob.steps" t-as="step" t-key="step.name || step.message">
+                                    <strong t-esc="humanize(step.name)"/>
+                                    <span t-att-class="'o_lqa_accounting__pill ' + stateClass(step.status)" t-esc="stateLabel(step.status)"/>
+                                    <small t-esc="step.message || '-'"/>
+                                </li>
+                            </ul>
+                            <pre class="o_lqa_accounting__code is-invoice_payload" t-esc="formatJson(state.facturacion.invoice.selectedJob.payload)"/>
+                        </section>
+
+                        <section t-if="state.facturacion.creationMode === 'single'" class="o_lqa_accounting__panel is-invoice_history">
+                            <div class="o_lqa_accounting__panel_head">
+                                <div>
+                                    <h2>Registros de facturacion</h2>
+                                    <p>Ultimas simulaciones y creaciones ejecutadas por usuario.</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    class="o_lqa_accounting__ghost"
+                                    t-on-click="() => this.loadInvoiceCreationJobs(state.facturacion.invoice.selectedJob ? state.facturacion.invoice.selectedJob.id : false)"
+                                >
+                                    <i t-att-class="state.facturacion.invoice.loadingJobs ? 'fa fa-spinner fa-spin' : 'fa fa-refresh'"/>
+                                    Actualizar
+                                </button>
+                            </div>
+                            <div t-if="!state.facturacion.invoice.jobs.length" class="o_lqa_accounting__empty">
+                                <i class="fa fa-file-text-o"/>
+                                <strong>Sin registros todavia</strong>
+                                <span>Cuando simules o crees una factura, queda guardada aca.</span>
+                            </div>
+                            <div t-else="" class="o_lqa_accounting__table_wrap">
+                                <table class="o_lqa_accounting__table is-invoice_jobs">
+                                    <thead>
+                                        <tr>
+                                            <th>Fecha</th>
+                                            <th>TLQV</th>
+                                            <th>Modo</th>
+                                            <th>Estado</th>
+                                            <th>Ejecutado por</th>
+                                            <th>Nota</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr
+                                            t-foreach="state.facturacion.invoice.jobs"
+                                            t-as="job"
+                                            t-key="job.id"
+                                            t-att-class="state.facturacion.invoice.selectedJob &amp;&amp; state.facturacion.invoice.selectedJob.id === job.id ? 'is-active' : ''"
+                                            t-on-click="() => this.selectInvoiceJob(job)"
+                                        >
+                                            <td><strong t-esc="formatDate(job.createdAt)"/></td>
+                                            <td><strong t-esc="job.tlqvCode"/></td>
+                                            <td t-esc="invoiceModeLabel(job)"/>
+                                            <td>
+                                                <span t-att-class="'o_lqa_accounting__pill ' + stateClass(job.state)" t-esc="stateLabel(job.state)"/>
+                                            </td>
+                                            <td t-esc="job.user"/>
+                                            <td t-esc="job.note || '-'"/>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+                    </t>
+
+                    <t t-if="state.facturacion.activeTab === 'cache'">
+                        <section class="o_lqa_accounting__panel is-backfill_action">
+                            <div class="o_lqa_accounting__panel_head">
+                                <div>
+                                    <h2>Actualizar cache TLQV</h2>
+                                    <p>Encola la reconstruccion del cache stock-bue de comprobantes TLQV.</p>
+                                </div>
+                                <span>Invoice API</span>
+                            </div>
+                            <div class="o_lqa_accounting__backfill_layout is-cache_refresh">
+                                <div>
+                                    <h3>Parametros</h3>
+                                    <p>
+                                        El proceso queda en cola en Invoice API. Ajusta el page size si queres controlar el tamano de cada pagina procesada.
+                                    </p>
+                                </div>
+                                <div class="o_lqa_accounting__filters is-cache_refresh">
+                                    <label>
+                                        Page size
+                                        <input type="number" min="1" step="1" t-model="state.facturacion.cache.form.pageSize"/>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="o_lqa_accounting__actions">
+                                <button
+                                    type="button"
+                                    class="o_lqa_accounting__primary"
+                                    t-att-disabled="state.facturacion.cache.running ? true : undefined"
+                                    t-on-click="runXubioTlqvCacheRefresh"
+                                >
+                                    <i t-att-class="state.facturacion.cache.running ? 'fa fa-spinner fa-spin' : 'fa fa-play'"/>
+                                    Actualizar cache
+                                </button>
+                            </div>
+                        </section>
+
+                        <section t-if="state.facturacion.cache.result" class="o_lqa_accounting__panel is-backfill_result">
+                            <div class="o_lqa_accounting__panel_head">
+                                <div>
+                                    <h2>Job encolado</h2>
+                                    <p>
+                                        HTTP
+                                        <t t-esc="state.facturacion.cache.result.statusCode"/>
+                                        ·
+                                        <t t-esc="formatDate(state.facturacion.cache.result.executedAt)"/>
+                                    </p>
+                                </div>
+                                <span t-esc="humanize(state.facturacion.cache.result.payload.status || 'queued')"/>
+                            </div>
+                            <div class="o_lqa_accounting__backfill_summary is-cache_refresh">
+                                <div>
+                                    <small>Job ID</small>
+                                    <strong t-esc="state.facturacion.cache.result.payload.jobId || '-'"/>
+                                </div>
+                                <div>
+                                    <small>Cola</small>
+                                    <strong t-esc="state.facturacion.cache.result.payload.queueName || '-'"/>
+                                </div>
+                                <div>
+                                    <small>Origen</small>
+                                    <strong t-esc="humanize(state.facturacion.cache.result.payload.source || '-')"/>
+                                </div>
+                                <div>
+                                    <small>Page size</small>
+                                    <strong t-esc="state.facturacion.cache.result.payload.pageSize || state.facturacion.cache.result.request.pageSize"/>
+                                </div>
+                            </div>
+                            <pre class="o_lqa_accounting__code" t-esc="formatJson(state.facturacion.cache.result.payload)"/>
+                        </section>
+                    </t>
+                </t>
+
+                <t t-if="isArcaBilling">
+                    <section class="o_lqa_accounting__comprobantes_topbar">
+                        <div>
+                            <p>Administracion / Xubio</p>
+                            <h2>Comprobantes</h2>
+                            <span>Consulta comprobantes emitidos, exporta Excel y descarga el PDF por TLQV.</span>
+                        </div>
+                        <div class="o_lqa_accounting__topbar_actions">
+                            <button type="button" class="o_lqa_accounting__ghost" t-on-click="openBack">
+                                <i class="fa fa-arrow-left"/>
+                                Volver
+                            </button>
+                            <button
+                                type="button"
+                                class="o_lqa_accounting__ghost"
+                                t-att-disabled="state.xubio.loading ? true : undefined"
+                                t-on-click="() => this.searchComprobantes(state.xubio.result.pagination.offset || 0)"
+                            >
+                                <i t-att-class="state.xubio.loading ? 'fa fa-spinner fa-spin' : 'fa fa-refresh'"/>
+                                Actualizar
+                            </button>
+                        </div>
                     </section>
 
                     <nav class="o_lqa_accounting__client_tabs is-comprobantes_tabs" role="tablist">
@@ -491,7 +936,7 @@
                         >
                             <span><i class="fa fa-table"/></span>
                             <strong>Comprobantes</strong>
-                            <small>Listado, filtros, Excel y PDF por TLQV.</small>
+                            <small>Listado y exportacion.</small>
                         </button>
                         <button
                             type="button"
@@ -500,7 +945,7 @@
                         >
                             <span><i class="fa fa-refresh"/></span>
                             <strong>Acciones</strong>
-                            <small>Actualizacion forzada de la base de comprobantes.</small>
+                            <small>Procesos manuales.</small>
                         </button>
                     </nav>
 
@@ -599,8 +1044,8 @@
                     <section class="o_lqa_accounting__panel is-comprobantes_filters">
                         <div class="o_lqa_accounting__panel_head">
                             <div>
-                                <h2>Explorador de comprobantes</h2>
-                                <p>Filtra por TLQV, documento, cliente, orden ML, tipo y rango de emision.</p>
+                                <h2>Filtros</h2>
+                                <p>Busca por TLQV, documento, cliente, orden ML o rango de emision.</p>
                             </div>
                             <span>Madre DB</span>
                         </div>
@@ -716,7 +1161,7 @@
                     <section class="o_lqa_accounting__panel is-comprobantes_table">
                         <div class="o_lqa_accounting__panel_head">
                             <div>
-                                <h2>Listado de comprobantes</h2>
+                                <h2>Listado</h2>
                                 <p>
                                     <t t-esc="formatNumber(state.xubio.result.pagination.count)"/>
                                     visibles de

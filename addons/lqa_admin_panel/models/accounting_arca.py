@@ -96,6 +96,48 @@ class LqaAccountingTlqvClientLine(models.Model):
     processed_at = fields.Datetime(readonly=True)
 
 
+class LqaAccountingInvoiceCreationJob(models.Model):
+    _name = "lqa.accounting.invoice.creation.job"
+    _description = "Registro de creacion de facturas TLQV"
+    _order = "create_date desc, id desc"
+
+    name = fields.Char(required=True, readonly=True, default="Factura TLQV")
+    user_id = fields.Many2one(
+        "res.users",
+        required=True,
+        readonly=True,
+        default=lambda self: self.env.user,
+    )
+    state = fields.Selection(
+        selection=[
+            ("processing", "Procesando"),
+            ("done", "Listo"),
+            ("failed", "Fallido"),
+        ],
+        default="processing",
+        required=True,
+        readonly=True,
+        index=True,
+    )
+    tlqv_code = fields.Char(required=True, readonly=True, index=True)
+    issue_date = fields.Date(readonly=True)
+    dry_run = fields.Boolean(readonly=True)
+    stop_after = fields.Char(readonly=True, default="invoice_creation")
+    note = fields.Text(readonly=True)
+    http_status = fields.Integer(readonly=True)
+    response_status = fields.Char(readonly=True)
+    can_continue = fields.Boolean(readonly=True)
+    message = fields.Text(readonly=True)
+    invoice_letter = fields.Char(readonly=True)
+    invoice_total = fields.Float(readonly=True)
+    invoice_description = fields.Char(readonly=True)
+    items_count = fields.Integer(readonly=True)
+    xubio_cliente_id = fields.Integer(readonly=True)
+    response_payload = fields.Text(readonly=True)
+    started_at = fields.Datetime(readonly=True)
+    finished_at = fields.Datetime(readonly=True)
+
+
 class LqaAccountingService(models.AbstractModel):
     _name = "lqa.accounting.service"
     _description = "Servicio contable ARCA"
@@ -433,6 +475,221 @@ class LqaAccountingService(models.AbstractModel):
             "payload": payload,
             "executedAt": fields.Datetime.to_string(fields.Datetime.now()),
         }
+
+    @api.model
+    def refresh_xubio_stock_bue_tlqv_cache(self, options=None):
+        self._check_access()
+        options = options if isinstance(options, dict) else {}
+        body = {
+            "pageSize": max(self._as_int(options.get("pageSize"), 100), 1),
+        }
+        headers = self._invoice_headers()
+        headers["Content-Type"] = "application/json"
+        response = self._request_json(
+            "POST",
+            self._join_url(
+                self._invoice_base_url(),
+                "/internal/xubio/comprobantes/stock-bue/tlqv-cache/refresh",
+            ),
+            payload=body,
+            headers=headers,
+            timeout=self._timeout(),
+        )
+        payload = response["payload"]
+        if not response["ok"]:
+            payload_dict = payload if isinstance(payload, dict) else {}
+            message = self._clean(
+                payload_dict.get("message")
+                or payload_dict.get("error")
+                or response.get("text")
+                or response.get("status_code")
+            )
+            raise UserError(
+                _("Invoice API no pudo encolar el refresh del cache TLQV: %s")
+                % (message or _("sin detalle"))
+            )
+        return {
+            "ok": True,
+            "request": body,
+            "statusCode": response["status_code"],
+            "payload": payload,
+            "executedAt": fields.Datetime.to_string(fields.Datetime.now()),
+        }
+
+    @api.model
+    def create_invoice_from_tlqv(self, options=None):
+        self._check_access()
+        options = options if isinstance(options, dict) else {}
+        tlqv_code = self._normalize_tlqv(options.get("tlqvCode"))
+        issue_date = self._clean(options.get("issueDate"))
+        dry_run = bool(options.get("dryRun"))
+        note = self._clean(options.get("note"))
+        if not tlqv_code:
+            raise UserError(_("Ingresa un codigo TLQV valido."))
+        if not issue_date:
+            issue_date = fields.Date.to_string(fields.Date.context_today(self))
+        try:
+            parsed_issue_date = fields.Date.from_string(issue_date)
+        except (TypeError, ValueError):
+            raise UserError(_("La fecha del comprobante debe tener formato YYYY-MM-DD."))
+        if not parsed_issue_date:
+            raise UserError(_("La fecha del comprobante debe tener formato YYYY-MM-DD."))
+
+        issue_date = fields.Date.to_string(parsed_issue_date)
+        body = {
+            "tlqvCode": tlqv_code,
+            "stopAfter": "invoice_creation",
+            "dryRun": dry_run,
+            "issueDate": issue_date,
+        }
+        job = self.env["lqa.accounting.invoice.creation.job"].sudo().create(
+            {
+                "name": _("Factura %s") % tlqv_code,
+                "user_id": self.env.user.id,
+                "state": "processing",
+                "tlqv_code": tlqv_code,
+                "issue_date": issue_date,
+                "dry_run": dry_run,
+                "stop_after": "invoice_creation",
+                "note": note,
+                "started_at": fields.Datetime.now(),
+            }
+        )
+
+        try:
+            headers = self._invoice_headers()
+            headers["Content-Type"] = "application/json"
+            response = self._request_json(
+                "POST",
+                self._join_url(
+                    self._invoice_base_url(),
+                    "/internal/tlqv-invoice/facturas/create-from-tlqv",
+                ),
+                payload=body,
+                headers=headers,
+                timeout=self._timeout(),
+            )
+            payload = response["payload"] if isinstance(response["payload"], dict) else {}
+            response_status = self._clean(payload.get("status")).lower()
+            success = response["ok"] and response_status not in {
+                "error",
+                "failed",
+                "failure",
+                "blocked",
+            }
+            job.write(
+                {
+                    "state": "done" if success else "failed",
+                    "http_status": response["status_code"],
+                    "response_status": self._clean(payload.get("status")),
+                    "can_continue": bool(payload.get("canContinue")),
+                    "message": self._invoice_response_message(payload, response),
+                    "response_payload": self._json_dumps(payload if payload else response),
+                    "finished_at": fields.Datetime.now(),
+                    **self._invoice_payload_summary(payload),
+                }
+            )
+        except Exception as error:
+            job.write(
+                {
+                    "state": "failed",
+                    "message": str(error),
+                    "response_payload": self._json_dumps(
+                        {
+                            "error": str(error),
+                            "request": body,
+                        }
+                    ),
+                    "finished_at": fields.Datetime.now(),
+                }
+            )
+        return self._invoice_job_to_dict(job)
+
+    @api.model
+    def create_invoices_bulk_from_tlqv(self, options=None):
+        """Enqueue one Invoice API job per TLQV and return the batch metadata."""
+        self._check_access()
+        options = options if isinstance(options, dict) else {}
+        raw_codes = options.get("tlqvCodes")
+        if not isinstance(raw_codes, list) or not raw_codes:
+            raise UserError(_("Ingresa al menos un codigo TLQV."))
+
+        tlqv_codes = []
+        invalid_codes = []
+        for raw_code in raw_codes:
+            normalized = self._normalize_tlqv(raw_code)
+            if normalized:
+                tlqv_codes.append(normalized)
+            else:
+                invalid_codes.append(self._clean(raw_code) or _("(vacio)"))
+        if invalid_codes:
+            raise UserError(
+                _("Hay codigos TLQV invalidos: %s") % ", ".join(invalid_codes[:10])
+            )
+
+        issue_date = self._clean(options.get("issueDate"))
+        if issue_date:
+            try:
+                parsed_issue_date = fields.Date.from_string(issue_date)
+            except (TypeError, ValueError):
+                raise UserError(_("La fecha del comprobante debe tener formato YYYY-MM-DD."))
+            if not parsed_issue_date:
+                raise UserError(_("La fecha del comprobante debe tener formato YYYY-MM-DD."))
+            issue_date = fields.Date.to_string(parsed_issue_date)
+
+        body = {
+            "tlqvCodes": tlqv_codes,
+            "dryRun": bool(options.get("dryRun", True)),
+        }
+        if issue_date:
+            body["issueDate"] = issue_date
+
+        response = self._request_json(
+            "POST",
+            self._join_url(
+                self._invoice_base_url(),
+                "/internal/tlqv-invoice/facturas/bulk/create-from-tlqv",
+            ),
+            payload=body,
+            headers=self._invoice_headers(),
+            timeout=self._timeout(),
+        )
+        payload = response["payload"] if isinstance(response["payload"], dict) else {}
+        if not response["ok"]:
+            message = self._clean(
+                payload.get("message")
+                or payload.get("error")
+                or response.get("text")
+                or response.get("status_code")
+            )
+            raise UserError(
+                _("Invoice API no pudo encolar las facturas: %s")
+                % (message or _("sin detalle"))
+            )
+
+        bull_board_path = self._clean(payload.get("bullBoardPath")) or "/admin/queues"
+        return {
+            "ok": True,
+            "request": body,
+            "statusCode": response["status_code"],
+            "payload": payload,
+            "bullDashboardUrl": self._join_url(self._invoice_base_url(), bull_board_path),
+            "executedAt": fields.Datetime.to_string(fields.Datetime.now()),
+        }
+
+    @api.model
+    def get_invoice_creation_jobs(self, limit=30):
+        self._check_access()
+        limit = min(max(self._as_int(limit, 30), 1), 100)
+        domain = []
+        if not self.env.user.has_group("lqa_admin_panel.group_lqa_admin"):
+            domain.append(("user_id", "=", self.env.user.id))
+        jobs = (
+            self.env["lqa.accounting.invoice.creation.job"]
+            .sudo()
+            .search(domain, limit=limit)
+        )
+        return [self._invoice_job_to_dict(job) for job in jobs]
 
     @api.model
     def create_tlqv_document_cdn(self, tlqv_code):
@@ -939,6 +1196,123 @@ class LqaAccountingService(models.AbstractModel):
             "message": line.message or "",
             "issuesCount": line.issues_count,
             "processedAt": fields.Datetime.to_string(line.processed_at) if line.processed_at else "",
+        }
+
+    def _invoice_payload_summary(self, payload):
+        payload = payload if isinstance(payload, dict) else {}
+        invoice_build = (
+            payload.get("invoiceBuild")
+            if isinstance(payload.get("invoiceBuild"), dict)
+            else {}
+        )
+        invoice = (
+            invoice_build.get("invoice")
+            if isinstance(invoice_build.get("invoice"), dict)
+            else {}
+        )
+        invoice_letter_payload = (
+            invoice_build.get("invoiceLetter")
+            if isinstance(invoice_build.get("invoiceLetter"), dict)
+            else {}
+        )
+        invoice_letter = invoice.get("letter") or invoice_letter_payload.get("letter")
+        items = invoice.get("items") if isinstance(invoice.get("items"), list) else []
+
+        total = 0.0
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            value = (
+                item.get("total")
+                or item.get("importeTotal")
+                or item.get("amount")
+                or item.get("grossAmount")
+            )
+            if value is None:
+                quantity = self._as_float(item.get("quantity") or item.get("cantidad") or 1) or 1.0
+                unit_price = self._as_float(
+                    item.get("unitPrice")
+                    or item.get("price")
+                    or item.get("importeUnitario")
+                    or item.get("netUnitPrice")
+                    or 0
+                )
+                value = quantity * unit_price
+            total += self._as_float(value) or 0.0
+
+        return {
+            "invoice_letter": self._clean(invoice_letter),
+            "invoice_total": total,
+            "invoice_description": self._clean(invoice.get("description")),
+            "items_count": len(items),
+            "xubio_cliente_id": self._as_int(payload.get("xubioClienteId"), 0),
+        }
+
+    def _invoice_response_message(self, payload, response):
+        payload = payload if isinstance(payload, dict) else {}
+        steps = payload.get("steps") if isinstance(payload.get("steps"), list) else []
+        failed = next(
+            (
+                step
+                for step in steps
+                if isinstance(step, dict)
+                and self._clean(step.get("status")).lower() in {"failed", "error"}
+            ),
+            None,
+        )
+        if failed and failed.get("message"):
+            return self._clean(failed.get("message"))
+        if payload.get("message"):
+            return self._clean(payload.get("message"))
+        skipped = next(
+            (
+                step
+                for step in steps
+                if isinstance(step, dict)
+                and self._clean(step.get("status")).lower() == "skipped"
+            ),
+            None,
+        )
+        if skipped and skipped.get("message"):
+            return self._clean(skipped.get("message"))
+        if payload:
+            return self._clean(payload.get("status")) or _("Respuesta recibida de Invoice API.")
+        return self._clean(response.get("text")) or _("Respuesta recibida de Invoice API.")
+
+    def _invoice_job_to_dict(self, job):
+        try:
+            payload = json.loads(job.response_payload or "{}")
+        except (TypeError, ValueError):
+            payload = {}
+        steps = (
+            payload.get("steps")
+            if isinstance(payload, dict) and isinstance(payload.get("steps"), list)
+            else []
+        )
+        return {
+            "id": job.id,
+            "name": job.name,
+            "state": job.state,
+            "user": job.user_id.name,
+            "tlqvCode": job.tlqv_code,
+            "issueDate": fields.Date.to_string(job.issue_date) if job.issue_date else "",
+            "dryRun": bool(job.dry_run),
+            "stopAfter": job.stop_after or "",
+            "note": job.note or "",
+            "httpStatus": job.http_status,
+            "responseStatus": job.response_status or "",
+            "canContinue": bool(job.can_continue),
+            "message": job.message or "",
+            "invoiceLetter": job.invoice_letter or "",
+            "invoiceTotal": job.invoice_total,
+            "invoiceDescription": job.invoice_description or "",
+            "itemsCount": job.items_count,
+            "xubioClienteId": job.xubio_cliente_id,
+            "payload": payload,
+            "steps": steps,
+            "createdAt": fields.Datetime.to_string(job.create_date),
+            "startedAt": fields.Datetime.to_string(job.started_at) if job.started_at else "",
+            "finishedAt": fields.Datetime.to_string(job.finished_at) if job.finished_at else "",
         }
 
     def _response_items(self, payload):
