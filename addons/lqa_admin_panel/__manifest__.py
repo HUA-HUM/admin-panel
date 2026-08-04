@@ -1,6 +1,6 @@
 {
     "name": "LQA Admin Panel",
-    "version": "18.0.1.0.73",
+    "version": "18.0.1.0.81",
     "category": "Sales",
     "summary": "Panel interno para areas operativas de Lo Quiero Aca",
     "author": "Lo Quiero Aca",

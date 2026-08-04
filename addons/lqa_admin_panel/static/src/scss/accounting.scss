@@ -358,6 +358,190 @@
     }
 }
 
+// ---------------------------------------------------------------------
+// Administration landing: compact, polished overview
+// ---------------------------------------------------------------------
+
+.o_lqa_accounting.is-dashboard-page {
+    --lqa-bg: #f6f6f8;
+    --lqa-border: #e4e5e9;
+    --lqa-border-soft: #eceef1;
+
+    padding: 28px 32px 56px;
+    background: var(--lqa-bg);
+
+    .o_lqa_accounting__header,
+    .o_lqa_accounting__admin_dashboard {
+        max-width: 1320px;
+    }
+
+    .o_lqa_accounting__header {
+        padding: 4px 4px 22px;
+        border-bottom: 1px solid var(--lqa-border);
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+
+        p {
+            font-size: 10.5px;
+            letter-spacing: 0.07em;
+
+            &::before {
+                width: 5px;
+                height: 5px;
+            }
+        }
+
+        h1 {
+            margin-top: 7px;
+            font-size: 29px;
+            font-weight: 750;
+        }
+
+        span {
+            margin-top: 7px;
+            font-size: 13.5px;
+        }
+    }
+
+    .o_lqa_accounting__dashboard_module_link {
+        display: grid;
+        min-width: 190px;
+        min-height: 58px;
+        grid-template-columns: 38px minmax(0, 1fr) 18px;
+        align-items: center;
+        gap: 11px;
+        padding: 8px 12px;
+        border: 1px solid var(--lqa-border);
+        border-radius: 12px;
+        background: #fff;
+        color: var(--lqa-ink);
+        text-align: left;
+        cursor: pointer;
+        transition:
+            border-color 150ms ease,
+            box-shadow 150ms ease,
+            transform 150ms ease;
+
+        img {
+            display: block;
+            width: 38px;
+            height: 38px;
+            padding: 4px;
+            border-radius: 9px;
+            background: #fff;
+            object-fit: contain;
+        }
+
+        span,
+        small,
+        strong {
+            display: block;
+            margin: 0;
+        }
+
+        small {
+            color: var(--lqa-muted);
+            font-size: 9px;
+            font-weight: 750;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+
+        strong {
+            margin-top: 2px;
+            font-size: 14px;
+            font-weight: 750;
+        }
+
+        > i {
+            color: #b5b8bf;
+            font-size: 11px;
+            transition: transform 150ms ease;
+        }
+
+        &:hover {
+            border-color: #d1d3d8;
+            box-shadow: 0 12px 26px -22px rgba(18, 18, 24, 0.45);
+            transform: translateY(-1px);
+
+            > i {
+                color: var(--lqa-red-dark);
+                transform: translateX(2px);
+            }
+        }
+    }
+
+    .o_lqa_accounting__admin_dashboard {
+        gap: 0;
+        margin-top: 18px;
+    }
+
+    .o_lqa_accounting__admin_cards {
+        gap: 14px;
+    }
+
+    .o_lqa_accounting__admin_card {
+        min-height: 186px;
+        padding: 22px;
+        border: 1px solid var(--lqa-border);
+        border-radius: 14px;
+        box-shadow: 0 10px 28px -26px rgba(18, 18, 24, 0.5);
+
+        > span {
+            width: 42px;
+            height: 42px;
+            border-radius: 11px;
+        }
+
+        small {
+            margin-top: 16px;
+            font-size: 9.5px;
+            letter-spacing: 0.08em;
+        }
+
+        strong {
+            margin-top: 6px;
+            font-size: 17.5px;
+        }
+
+        p {
+            margin-top: 8px;
+            font-size: 12.5px;
+            line-height: 1.5;
+        }
+
+        em {
+            align-items: center;
+            gap: 7px;
+            margin-top: 13px;
+            color: var(--lqa-red-dark);
+            font-size: 12.5px;
+        }
+
+        &:nth-child(1) > span {
+            background: #eef4ff;
+            color: #386fd0;
+        }
+
+        &:nth-child(2) > span {
+            background: #f4f0ff;
+            color: #7658bf;
+        }
+
+        &:nth-child(3) > span {
+            background: var(--lqa-red-soft);
+            color: var(--lqa-red-dark);
+        }
+
+        &:hover {
+            border-color: #d3d5da;
+            box-shadow: 0 20px 38px -28px rgba(18, 18, 24, 0.45);
+            transform: translateY(-2px);
+        }
+    }
+}
+
 .o_lqa_accounting__summary {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -887,107 +1071,168 @@
 // isXubio: module landing
 // ---------------------------------------------------------------------
 
-.o_lqa_accounting__xubio {
-    margin-top: 4px;
-}
+.o_lqa_accounting.is-xubio-page {
+    --lqa-bg: #f6f6f8;
+    --lqa-border: #e4e5e9;
 
-.o_lqa_accounting__xubio_hero {
-    display: grid;
-    grid-template-columns: 150px minmax(0, 1fr);
-    gap: 24px;
-    align-items: center;
-    padding: 28px;
-    border-radius: var(--lqa-radius);
-    background: var(--lqa-surface);
-    box-shadow: var(--lqa-shadow-card);
+    padding: 28px 32px 56px;
+    background: var(--lqa-bg);
 
-    img {
-        display: block;
+    .o_lqa_accounting__header,
+    .o_lqa_accounting__xubio {
         width: 100%;
-        max-width: 130px;
-        aspect-ratio: 1;
-        object-fit: contain;
-        border-radius: var(--lqa-radius-sm);
-        background: var(--lqa-chip);
-        padding: 12px;
+        max-width: 1320px;
+        margin-right: auto;
+        margin-left: auto;
     }
 
-    small {
-        color: var(--lqa-red-dark);
-        font-size: 10.5px;
-        font-weight: 700;
-        letter-spacing: 0.03em;
-        text-transform: uppercase;
-    }
+    .o_lqa_accounting__header {
+        padding: 4px 4px 22px;
+        border-bottom: 1px solid var(--lqa-border);
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
 
-    h2 {
-        margin: 8px 0 0;
-        color: var(--lqa-ink);
-        font-size: 27px;
-        font-weight: 700;
-        letter-spacing: -0.02em;
-    }
+        p {
+            font-size: 10.5px;
+            letter-spacing: 0.07em;
 
-    p {
-        max-width: 680px;
-        margin: 10px 0 0;
-        color: var(--lqa-muted-strong);
-        font-size: 14px;
-        line-height: 1.5;
-    }
-}
+            &::before {
+                width: 5px;
+                height: 5px;
+            }
+        }
 
-.o_lqa_accounting__xubio_grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 14px;
-    margin-top: 14px;
+        h1 {
+            margin-top: 6px;
+            font-size: 29px;
+            font-weight: 750;
+        }
 
-    article,
-    button {
-        min-height: 124px;
-        padding: 20px;
-        border: 0;
-        border-radius: var(--lqa-radius);
-        background: var(--lqa-surface);
-        box-shadow: var(--lqa-shadow-card);
-        color: inherit;
-        text-align: left;
-    }
-
-    button {
-        cursor: pointer;
-        transition:
-            box-shadow 0.18s ease,
-            transform 0.18s ease;
-
-        &:hover {
-            box-shadow: var(--lqa-shadow-card-hover);
-            transform: translateY(-2px);
+        span {
+            margin-top: 6px;
+            font-size: 13.5px;
         }
     }
 
-    i {
+    .o_lqa_accounting__xubio_header_brand {
+        display: grid;
+        min-width: 0;
+        grid-template-columns: 58px minmax(0, 1fr);
+        align-items: center;
+        gap: 16px;
+
+        > img {
+            display: block;
+            width: 58px;
+            height: 58px;
+            padding: 7px;
+            border: 1px solid var(--lqa-border);
+            border-radius: 13px;
+            background: #fff;
+            object-fit: contain;
+        }
+    }
+
+    .o_lqa_accounting__xubio {
+        margin-top: 18px;
+    }
+
+    .o_lqa_accounting__xubio_grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+
+        button {
+            display: grid;
+            min-height: 156px;
+            grid-template-columns: 44px minmax(0, 1fr) 16px;
+            align-items: start;
+            gap: 14px;
+            padding: 22px;
+            border: 1px solid var(--lqa-border);
+            border-radius: 14px;
+            background: #fff;
+            box-shadow: 0 10px 28px -26px rgba(18, 18, 24, 0.5);
+            color: inherit;
+            text-align: left;
+            cursor: pointer;
+            transition:
+                border-color 150ms ease,
+                box-shadow 150ms ease,
+                transform 150ms ease;
+
+            &:hover {
+                border-color: #d3d5da;
+                box-shadow: 0 20px 38px -28px rgba(18, 18, 24, 0.45);
+                transform: translateY(-2px);
+
+                .o_lqa_accounting__xubio_card_arrow {
+                    color: var(--lqa-red-dark);
+                    transform: translateX(2px);
+                }
+            }
+        }
+
+        small,
+        strong,
+        p {
+            display: block;
+            margin: 0;
+        }
+
+        small {
+            color: var(--lqa-muted);
+            font-size: 9.5px;
+            font-weight: 750;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        strong {
+            margin-top: 6px;
+            color: var(--lqa-ink);
+            font-size: 17.5px;
+            font-weight: 750;
+        }
+
+        p {
+            margin-top: 8px;
+            color: var(--lqa-muted-strong);
+            font-size: 12.5px;
+            line-height: 1.5;
+        }
+    }
+
+    .o_lqa_accounting__xubio_card_icon {
+        display: inline-flex;
+        width: 44px;
+        height: 44px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 11px;
+        background: var(--lqa-red-soft);
         color: var(--lqa-red-dark);
-        font-size: 18px;
-    }
-
-    strong,
-    span {
-        display: block;
-    }
-
-    strong {
-        margin-top: 14px;
-        color: var(--lqa-ink);
         font-size: 16px;
-        font-weight: 700;
     }
 
-    span {
-        margin-top: 6px;
-        color: var(--lqa-muted-strong);
-        font-size: 13px;
+    .o_lqa_accounting__xubio_card_arrow {
+        align-self: center;
+        color: #b5b8bf;
+        font-size: 11px;
+        transition:
+            color 150ms ease,
+            transform 150ms ease;
+    }
+
+    .o_lqa_accounting__xubio_grid button:nth-child(1) .o_lqa_accounting__xubio_card_icon {
+        background: #eef4ff;
+        color: #386fd0;
+    }
+
+    .o_lqa_accounting__xubio_grid button:nth-child(2) .o_lqa_accounting__xubio_card_icon {
+        background: #f4f0ff;
+        color: #7658bf;
     }
 }
 
@@ -2665,6 +2910,10 @@
 
     .o_lqa_accounting__admin_card {
         min-height: 0;
+    }
+
+    .o_lqa_accounting.is-dashboard-page .o_lqa_accounting__dashboard_module_link {
+        width: 100%;
     }
 
     .o_lqa_accounting__xubio_open {

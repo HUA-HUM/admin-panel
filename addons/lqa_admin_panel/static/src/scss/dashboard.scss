@@ -748,6 +748,298 @@
     }
 }
 
+// ---------------------------------------------------------------------
+// Root dashboard: simple, uniform workspace
+// ---------------------------------------------------------------------
+
+.o_lqa_root_dashboard {
+    .o_lqa_dashboard {
+        --lqa-bg: #fff;
+        --lqa-surface: #fff;
+        --lqa-border: #e3e5e9;
+        --lqa-border-soft: #eceef1;
+        --lqa-chip: #f6f7f8;
+
+        padding: 38px 32px 64px;
+        background: #fff;
+    }
+
+    .o_lqa_dashboard__header,
+    .o_lqa_dashboard_bento {
+        max-width: 1240px;
+    }
+
+    .o_lqa_dashboard__header {
+        padding-bottom: 24px;
+        border-bottom: 1px solid var(--lqa-border);
+
+        &.is-root h1 {
+            font-size: 28px;
+            font-weight: 750;
+        }
+    }
+
+    .o_lqa_dashboard__eyebrow {
+        margin-bottom: 8px;
+        color: var(--lqa-muted);
+        font-size: 10.5px;
+
+        &::before {
+            display: none;
+        }
+    }
+
+    .o_lqa_dashboard__subtitle {
+        margin-top: 7px;
+        font-size: 14px;
+    }
+
+    .o_lqa_dashboard_bento {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 34px;
+        margin-top: 0;
+    }
+
+    .o_lqa_dashboard_favorites__head {
+        align-items: center;
+        margin-bottom: 16px;
+
+        p {
+            margin-bottom: 5px;
+            color: #90939b;
+            font-size: 10px;
+            letter-spacing: 0.09em;
+        }
+
+        h2 {
+            font-size: 20px;
+            font-weight: 750;
+            letter-spacing: -0.02em;
+        }
+
+        > span {
+            min-width: 42px;
+            min-height: 28px;
+            border: 1px solid var(--lqa-border);
+            border-radius: 999px;
+            background: #fff;
+            box-shadow: none;
+            color: var(--lqa-muted-strong);
+        }
+    }
+
+    .o_lqa_dashboard_areas__grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+
+        button,
+        button:first-child {
+            min-height: 194px;
+            grid-column: auto;
+            grid-template-columns: 48px minmax(0, 1fr) 32px;
+            gap: 15px;
+            padding: 24px 22px;
+            border: 1px solid var(--lqa-border);
+            border-radius: 14px;
+            background: #fff;
+            box-shadow: 0 8px 24px -22px rgba(24, 24, 32, 0.5);
+            color: var(--lqa-ink);
+            transition:
+                border-color 160ms ease,
+                box-shadow 160ms ease,
+                transform 160ms ease;
+
+            .o_lqa_dashboard_area_icon {
+                width: 48px;
+                height: 48px;
+                border-radius: 12px;
+                background: var(--lqa-chip);
+                color: var(--lqa-ink-soft);
+                font-size: 17px;
+            }
+
+            small {
+                color: var(--lqa-red-dark);
+                font-size: 9.5px;
+                letter-spacing: 0.07em;
+            }
+
+            strong {
+                color: var(--lqa-ink);
+                font-size: 19px;
+                font-weight: 750;
+                letter-spacing: -0.02em;
+            }
+
+            p {
+                min-height: 40px;
+                margin-top: 8px;
+                color: var(--lqa-muted-strong);
+                font-size: 12.5px;
+                line-height: 1.5;
+            }
+
+            .o_lqa_dashboard_area_meta span {
+                min-height: 23px;
+                padding: 0 9px;
+                border: 0;
+                background: var(--lqa-chip);
+                color: var(--lqa-muted-strong);
+                font-size: 10px;
+            }
+
+            > i {
+                display: inline-flex;
+                width: 30px;
+                height: 30px;
+                align-items: center;
+                justify-content: center;
+                border-radius: 999px;
+                background: var(--lqa-chip);
+                color: #a7abb3;
+            }
+
+            &:hover {
+                border-color: #d3d5da;
+                background: #fff;
+                box-shadow: 0 18px 36px -26px rgba(24, 24, 32, 0.45);
+                transform: translateY(-2px);
+            }
+
+            &:hover > i {
+                color: var(--lqa-red-dark);
+                transform: translateX(2px);
+            }
+        }
+
+        button.is-comercial .o_lqa_dashboard_area_icon {
+            background: #fff0f1;
+            color: #dc2946;
+        }
+
+        button.is-administracion .o_lqa_dashboard_area_icon {
+            background: #eef4ff;
+            color: #386fd0;
+        }
+
+        button.is-configuracion .o_lqa_dashboard_area_icon {
+            background: #f4f0ff;
+            color: #7658bf;
+        }
+    }
+
+    .o_lqa_dashboard_rail {
+        display: block;
+    }
+
+    .o_lqa_dashboard_summary,
+    .o_lqa_dashboard_favorites__grid,
+    .o_lqa_dashboard_favorites__empty {
+        border: 1px solid var(--lqa-border);
+        border-radius: 10px;
+        background: #fff;
+        box-shadow: none;
+    }
+
+    .o_lqa_dashboard_summary__item {
+        padding: 14px 16px;
+
+        > span,
+        > span.is-favorites {
+            border-radius: 8px;
+            background: var(--lqa-chip);
+            color: var(--lqa-ink-soft);
+        }
+
+        strong {
+            font-size: 20px;
+        }
+    }
+
+    .o_lqa_dashboard_favorites__grid button {
+        padding: 14px 16px;
+
+        &:hover {
+            background: #fff;
+
+            strong {
+                color: var(--lqa-red-dark);
+            }
+        }
+    }
+
+    .o_lqa_dashboard_favorite_icon {
+        border-radius: 8px;
+        background: var(--lqa-chip);
+        color: var(--lqa-ink-soft);
+    }
+
+    .o_lqa_dashboard_favorites__grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0;
+
+        button {
+            min-height: 66px;
+
+            & + button {
+                border-top: 0;
+                border-left: 1px solid var(--lqa-border-soft);
+            }
+        }
+    }
+
+    .o_lqa_dashboard_favorites__empty {
+        min-height: 96px;
+        justify-content: flex-start;
+        padding: 20px 24px;
+        border-style: dashed;
+        text-align: left;
+
+        > span {
+            display: inline-flex;
+            width: 42px;
+            height: 42px;
+            flex: 0 0 auto;
+            align-items: center;
+            justify-content: center;
+            border-radius: 11px;
+            background: #fff7e8;
+            color: #c98211;
+            font-size: 16px;
+        }
+
+        strong,
+        small {
+            display: block;
+        }
+
+        strong {
+            color: var(--lqa-ink-soft);
+            font-size: 13.5px;
+            font-weight: 700;
+        }
+
+        small {
+            margin-top: 4px;
+            color: var(--lqa-muted);
+            font-size: 12px;
+        }
+    }
+}
+
+// Keep the root dashboard full-width even while Odoo is reconciling navbar state.
+body:has(.o_lqa_dashboard.is-root-dashboard) {
+    .o_lqa_sidebar,
+    .o_lqa_mobile_menu {
+        display: none !important;
+    }
+}
+
+body.o_web_client:has(.o_lqa_dashboard.is-root-dashboard) > .o_action_manager {
+    margin-left: 0 !important;
+}
+
 @media (max-width: 1100px) {
     .o_lqa_dashboard_bento {
         grid-template-columns: minmax(0, 1fr);
@@ -755,6 +1047,14 @@
 
     .o_lqa_dashboard_areas__grid button:first-child {
         grid-column: 1 / -1;
+    }
+
+    .o_lqa_root_dashboard .o_lqa_dashboard_areas__grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+
+        button:first-child {
+            grid-column: auto;
+        }
     }
 }
 
@@ -765,6 +1065,18 @@
 
     .o_lqa_dashboard_areas__grid button:first-child {
         grid-template-columns: 50px minmax(0, 1fr) 20px;
+    }
+
+    .o_lqa_root_dashboard {
+        .o_lqa_dashboard_areas__grid,
+        .o_lqa_dashboard_favorites__grid {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .o_lqa_dashboard_favorites__grid button + button {
+            border-top: 1px solid var(--lqa-border-soft);
+            border-left: 0;
+        }
     }
 }
 

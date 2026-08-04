@@ -499,10 +499,10 @@ body.o_lqa_root_dashboard {
     .o_lqa_sidebar {
         display: none !important;
     }
+}
 
-    .o_web_client > .o_action_manager {
-        margin-left: 0;
-    }
+body.o_web_client.o_lqa_root_dashboard > .o_action_manager {
+    margin-left: 0;
 }
 
 .o_lqa_sidebar_backdrop {

@@ -1,13 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
     <t t-name="lqa_admin_panel.Accounting">
-        <div t-att-class="'o_lqa_accounting ' + (isArcaBilling ? 'is-comprobantes-page' : '')">
+        <div t-att-class="'o_lqa_accounting ' + (isArcaBilling ? 'is-comprobantes-page' : '') + (isDashboard ? ' is-dashboard-page' : '') + (isXubio ? ' is-xubio-page' : '')">
             <header t-if="!isArcaBilling &amp;&amp; !isXubioFacturacion" class="o_lqa_accounting__header">
-                <div>
-                    <p>Administracion</p>
-                    <h1 t-esc="pageTitle"/>
-                    <span t-esc="pageSubtitle"/>
+                <div t-att-class="isXubio ? 'o_lqa_accounting__xubio_header_brand' : ''">
+                    <img
+                        t-if="isXubio"
+                        src="/lqa_admin_panel/static/src/img/xubio-logo.png"
+                        alt="Xubio"
+                    />
+                    <div>
+                        <p>Administracion</p>
+                        <h1 t-esc="pageTitle"/>
+                        <span t-esc="pageSubtitle"/>
+                    </div>
                 </div>
+                <button
+                    t-if="isDashboard"
+                    type="button"
+                    class="o_lqa_accounting__dashboard_module_link"
+                    t-on-click="openXubio"
+                >
+                    <img src="/lqa_admin_panel/static/src/img/xubio-logo.png" alt="Xubio"/>
+                    <span>
+                        <small>Modulo contable</small>
+                        <strong>Xubio</strong>
+                    </span>
+                    <i class="fa fa-arrow-right"/>
+                </button>
                 <button
                     t-if="isWorkspace"
                     type="button"
@@ -20,23 +40,6 @@
             </header>
 
             <section t-if="isDashboard" class="o_lqa_accounting__admin_dashboard">
-                <article class="o_lqa_accounting__admin_overview">
-                    <div class="o_lqa_accounting__admin_brand">
-                        <span>
-                            <img src="/lqa_admin_panel/static/src/img/xubio-logo.png" alt="Xubio"/>
-                        </span>
-                        <div>
-                            <p>Modulo contable</p>
-                            <h2>Xubio</h2>
-                            <small>Clientes, comprobantes y facturacion conectados al flujo administrativo.</small>
-                        </div>
-                    </div>
-                    <button type="button" class="o_lqa_accounting__ghost" t-on-click="openXubio">
-                        Ver modulo
-                        <i class="fa fa-arrow-right"/>
-                    </button>
-                </article>
-
                 <div class="o_lqa_accounting__admin_cards">
                     <button type="button" class="o_lqa_accounting__admin_card" t-on-click="openClients">
                         <span><i class="fa fa-users"/></span>
@@ -56,7 +59,7 @@
                         <span><i class="fa fa-pencil-square-o"/></span>
                         <small>Facturacion</small>
                         <strong>Emision operativa</strong>
-                        <p>Espacio preparado para los proximos flujos de facturacion.</p>
+                        <p>Crea facturas individuales o encola lotes masivos desde codigos TLQV.</p>
                         <em>Entrar <i class="fa fa-arrow-right"/></em>
                     </button>
                 </div>
@@ -432,35 +435,34 @@
                 </t>
 
                 <t t-if="isXubio">
-                    <section class="o_lqa_accounting__panel o_lqa_accounting__xubio">
-                        <div class="o_lqa_accounting__xubio_hero">
-                            <img
-                                src="/lqa_admin_panel/static/src/img/xubio-logo.png"
-                                alt="Xubio"
-                            />
-                            <div>
-                                <small>Modulo Xubio</small>
-                                <h2>Xubio</h2>
-                                <p>
-                                    Centraliza las herramientas contables de clientes y comprobantes conectadas con Xubio.
-                                </p>
-                            </div>
-                        </div>
+                    <section class="o_lqa_accounting__xubio">
                         <div class="o_lqa_accounting__xubio_grid">
                             <button type="button" t-on-click="openClients">
-                                <i class="fa fa-users"/>
-                                <strong>Clientes</strong>
-                                <span>Issues de CUIT, altas por TLQV y conversion a consumidor final con DNI.</span>
+                                <span class="o_lqa_accounting__xubio_card_icon"><i class="fa fa-users"/></span>
+                                <div>
+                                    <small>Gestion fiscal</small>
+                                    <strong>Clientes</strong>
+                                    <p>Altas desde TLQV, issues de CUIT y consumidor final.</p>
+                                </div>
+                                <i class="fa fa-arrow-right o_lqa_accounting__xubio_card_arrow"/>
                             </button>
                             <button type="button" t-on-click="openArcaBilling">
-                                <i class="fa fa-file-text-o"/>
-                                <strong>Comprobantes</strong>
-                                <span>Auditoria y consulta de comprobantes sincronizados.</span>
+                                <span class="o_lqa_accounting__xubio_card_icon"><i class="fa fa-file-text-o"/></span>
+                                <div>
+                                    <small>Auditoria</small>
+                                    <strong>Comprobantes</strong>
+                                    <p>Consulta, exportacion y respaldo de comprobantes sincronizados.</p>
+                                </div>
+                                <i class="fa fa-arrow-right o_lqa_accounting__xubio_card_arrow"/>
                             </button>
                             <button type="button" t-on-click="openXubioFacturacion">
-                                <i class="fa fa-pencil-square-o"/>
-                                <strong>Facturacion</strong>
-                                <span>Vista operativa para preparar altas y emision de facturas.</span>
+                                <span class="o_lqa_accounting__xubio_card_icon"><i class="fa fa-pencil-square-o"/></span>
+                                <div>
+                                    <small>Emision</small>
+                                    <strong>Facturacion</strong>
+                                    <p>Crea facturas individuales o procesa lotes de codigos TLQV.</p>
+                                </div>
+                                <i class="fa fa-arrow-right o_lqa_accounting__xubio_card_arrow"/>
                             </button>
                         </div>
                     </section>

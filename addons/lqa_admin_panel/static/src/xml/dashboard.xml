@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
     <t t-name="lqa_admin_panel.Dashboard">
-        <div class="o_lqa_dashboard">
+        <div t-att-class="'o_lqa_dashboard ' + (isRootDashboard ? 'is-root-dashboard' : '')">
             <header
+                t-if="!isRootDashboard"
                 t-att-class="{
                     'o_lqa_dashboard__header': true,
                     'is-root': isRootDashboard
@@ -24,44 +25,11 @@
 
             <t t-else="">
                 <t t-if="isRootDashboard">
-                    <section class="o_lqa_dashboard_summary">
-                        <div class="o_lqa_dashboard_summary__item">
-                            <span class="is-favorites">
-                                <i class="fa fa-star"/>
-                            </span>
-                            <div>
-                                <small>Favoritos</small>
-                                <strong t-esc="state.favorites.length"/>
-                                <p>Accesos personales</p>
-                            </div>
-                        </div>
-                        <div class="o_lqa_dashboard_summary__item">
-                            <span class="is-sections">
-                                <i class="fa fa-th-large"/>
-                            </span>
-                            <div>
-                                <small>Herramientas</small>
-                                <strong t-esc="availableSectionsCount"/>
-                                <p>Secciones disponibles</p>
-                            </div>
-                        </div>
-                        <div class="o_lqa_dashboard_summary__item">
-                            <span class="is-modules">
-                                <i class="fa fa-cubes"/>
-                            </span>
-                            <div>
-                                <small>Areas</small>
-                                <strong t-esc="activeModulesCount"/>
-                                <p>Áreas activas</p>
-                            </div>
-                        </div>
-                    </section>
-
                     <div class="o_lqa_dashboard_bento">
                         <section class="o_lqa_dashboard_areas">
                             <div class="o_lqa_dashboard_favorites__head">
                                 <div>
-                                    <p>Panel principal</p>
+                                    <p>Navegacion</p>
                                     <h2>Areas de trabajo</h2>
                                 </div>
                                 <span>
@@ -105,39 +73,6 @@
                         </section>
 
                         <aside class="o_lqa_dashboard_rail">
-                            <section class="o_lqa_dashboard_summary">
-                                <div class="o_lqa_dashboard_summary__item">
-                                    <span class="is-favorites">
-                                        <i class="fa fa-star"/>
-                                    </span>
-                                    <div>
-                                        <small>Favoritos</small>
-                                        <strong t-esc="state.favorites.length"/>
-                                        <p>Accesos personales</p>
-                                    </div>
-                                </div>
-                                <div class="o_lqa_dashboard_summary__item">
-                                    <span class="is-sections">
-                                        <i class="fa fa-th-large"/>
-                                    </span>
-                                    <div>
-                                        <small>Herramientas</small>
-                                        <strong t-esc="availableSectionsCount"/>
-                                        <p>Secciones disponibles</p>
-                                    </div>
-                                </div>
-                                <div class="o_lqa_dashboard_summary__item">
-                                    <span class="is-modules">
-                                        <i class="fa fa-cubes"/>
-                                    </span>
-                                    <div>
-                                        <small>Areas</small>
-                                        <strong t-esc="activeModulesCount"/>
-                                        <p>Áreas activas</p>
-                                    </div>
-                                </div>
-                            </section>
-
                             <section class="o_lqa_dashboard_favorites">
                                 <div class="o_lqa_dashboard_favorites__head">
                                     <div>
@@ -156,7 +91,10 @@
                                     <span>
                                         <i class="fa fa-star-o"/>
                                     </span>
-                                    <strong>No hay secciones favoritas</strong>
+                                    <div>
+                                        <strong>Todavia no hay favoritos</strong>
+                                        <small>Marca una seccion con la estrella para tenerla siempre a mano.</small>
+                                    </div>
                                 </div>
                                 <div t-else="" class="o_lqa_dashboard_favorites__grid">
                                     <button
