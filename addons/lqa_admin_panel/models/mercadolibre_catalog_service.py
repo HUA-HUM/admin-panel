@@ -80,8 +80,8 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
         "permalink",
     )
     MAX_FILTER_SELECTION_ROWS = 500000
-    FILTER_SELECTION_PAGE_SIZE = 100
-    FILTER_SELECTION_CYCLE_SECONDS = 45
+    FILTER_SELECTION_PAGE_SIZE = 1000
+    FILTER_SELECTION_CYCLE_SECONDS = 55
     FILTER_SELECTION_PAGE_RETRIES = 3
     FILTER_SELECTION_MAX_CYCLE_RETRIES = 10
     FILTER_SELECTION_API_TIMEOUT = 90
@@ -183,11 +183,16 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
         filters = dict(filters or {})
         filters["offset"] = 0
         filters["limit"] = self.FILTER_SELECTION_PAGE_SIZE
+        initial_folder_count = self.env[
+            "lqa.mercadolibre.selection.item"
+        ].search_count([("folder_id", "=", folder.id)])
         job = self.env["lqa.mercadolibre.selection.job"].sudo().create(
             {
                 "folder_id": folder.id,
                 "requested_by_id": self.env.user.id,
                 "filters_json": json.dumps(filters, ensure_ascii=False),
+                "initial_folder_count": initial_folder_count,
+                "initial_count_recorded": True,
             }
         )
         thread = threading.Thread(
@@ -377,7 +382,10 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
         )
 
         while True:
-            params = self._prepare_params(filters)
+            params = self._prepare_params(
+                filters,
+                max_limit=self.FILTER_SELECTION_PAGE_SIZE,
+            )
             response = self._request_selection_page(endpoint, params)
             pagination = response.get("pagination") or {}
             matched = self._as_int(pagination.get("total"), matched)
@@ -416,6 +424,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
                 products,
                 max_folder_size=self.MAX_FILTER_SELECTION_ROWS,
                 current_count=existing_count,
+                update_existing=False,
             )
             added += batch_result["added"]
             updated += batch_result["updated"]
@@ -477,6 +486,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
         products,
         max_folder_size=None,
         current_count=None,
+        update_existing=True,
     ):
         line_model = self.env["lqa.mercadolibre.selection.item"]
         values_by_key = {}
@@ -498,7 +508,8 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
         for product_key, values in values_by_key.items():
             existing = existing_by_key.get(product_key)
             if existing:
-                existing.write(values)
+                if update_existing:
+                    existing.write(values)
                 updated += 1
             else:
                 to_create.append(values)
@@ -523,6 +534,11 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
         }
 
     def _selection_job_to_dict(self, job):
+        folder_count = job.initial_folder_count + job.added_count
+        if not job.initial_count_recorded:
+            folder_count = self.env[
+                "lqa.mercadolibre.selection.item"
+            ].sudo().search_count([("folder_id", "=", job.folder_id.id)])
         return {
             "id": job.id,
             "folderId": job.folder_id.id,
@@ -532,6 +548,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
             "processed": job.processed_count,
             "added": job.added_count,
             "updated": job.updated_count,
+            "folderCount": folder_count,
             "retries": job.retry_count,
             "error": job.error_message or "",
             "maxProducts": self.MAX_FILTER_SELECTION_ROWS,
@@ -800,7 +817,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
         ]
         return "|".join(part for part in parts if part)
 
-    def _prepare_params(self, filters):
+    def _prepare_params(self, filters, max_limit=100):
         params = {}
         for key in self.ALLOWED_FILTERS:
             value = filters.get(key)
@@ -812,7 +829,11 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
                     continue
             params[key] = value
 
-        params["limit"] = min(max(self._as_int(params.get("limit"), 100), 1), 100)
+        max_limit = max(self._as_int(max_limit, 100), 1)
+        params["limit"] = min(
+            max(self._as_int(params.get("limit"), 100), 1),
+            max_limit,
+        )
         params["offset"] = max(self._as_int(params.get("offset"), 0), 0)
         params.setdefault("sortBy", "revenue")
         params.setdefault("sortOrder", "desc")

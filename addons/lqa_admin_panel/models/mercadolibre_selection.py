@@ -65,6 +65,8 @@ class LqaMercadolibreSelectionJob(models.Model):
         readonly=True,
     )
     filters_json = fields.Text(required=True, readonly=True)
+    initial_folder_count = fields.Integer(readonly=True)
+    initial_count_recorded = fields.Boolean(default=False, readonly=True)
     matched_count = fields.Integer(readonly=True)
     processed_count = fields.Integer(readonly=True)
     cursor_offset = fields.Integer(readonly=True)

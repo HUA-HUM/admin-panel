@@ -319,6 +319,8 @@
                                 de
                                 <t t-esc="formatNumber(state.selectionJob.matched || state.pagination.total || 0)"/>
                                 procesados
+                                · <t t-esc="formatNumber(state.selectionJob.folderCount || 0)"/>
+                                guardados en la carpeta
                                 <t t-if="state.selectionJob.retries">
                                     · reintentos <t t-esc="state.selectionJob.retries"/>
                                 </t>

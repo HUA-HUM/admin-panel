@@ -120,6 +120,7 @@ export class LqaMercadolibreCatalog extends Component {
             if (job) {
                 this.state.selectionJob = job;
                 this.state.selectedFolderId = String(job.folderId || "");
+                this.updateSelectionFolderProgress(job);
                 this.scheduleSelectionJobPolling();
             }
         } catch (error) {
@@ -226,6 +227,7 @@ export class LqaMercadolibreCatalog extends Component {
                 [Number(this.state.selectedFolderId), { ...this.state.filters }]
             );
             this.state.selectionJob = job;
+            this.updateSelectionFolderProgress(job);
             this.notification.add(
                 "El guardado masivo fue enviado y continuara en segundo plano.",
                 { type: "info" }
@@ -263,6 +265,17 @@ export class LqaMercadolibreCatalog extends Component {
                 [jobId]
             );
             this.state.selectionJob = job;
+            this.updateSelectionFolderProgress(job);
+            const now = Date.now();
+            if (
+                ["queued", "running"].includes(job.state) &&
+                String(job.folderId) === String(this.state.selectedFolderId) &&
+                (!this.lastFolderProgressRefresh ||
+                    now - this.lastFolderProgressRefresh >= 10000)
+            ) {
+                this.lastFolderProgressRefresh = now;
+                await this.loadFolderProducts();
+            }
             if (job.state === "done") {
                 await Promise.all([this.loadFolders(), this.loadFolderProducts()]);
                 this.clearSelection();
@@ -296,6 +309,7 @@ export class LqaMercadolibreCatalog extends Component {
                 "retry_selection_job",
                 [jobId]
             );
+            this.updateSelectionFolderProgress(this.state.selectionJob);
             this.notification.add("El proceso se retomara desde el ultimo lote guardado.", {
                 type: "info",
             });
@@ -311,6 +325,25 @@ export class LqaMercadolibreCatalog extends Component {
     async selectFolder(folderId) {
         this.state.selectedFolderId = String(folderId || "");
         await this.loadFolderProducts();
+    }
+
+    updateSelectionFolderProgress(job) {
+        const folderId = String(job?.folderId || "");
+        const folderCount = Number(job?.folderCount);
+        if (!folderId || !Number.isFinite(folderCount)) {
+            return;
+        }
+        this.state.folders = this.state.folders.map((folder) =>
+            String(folder.id) === folderId
+                ? { ...folder, productCount: folderCount }
+                : folder
+        );
+        if (String(this.state.selectedFolderId) === folderId) {
+            this.state.folderPagination = {
+                ...this.state.folderPagination,
+                total: folderCount,
+            };
+        }
     }
 
     async loadFolderProducts() {
