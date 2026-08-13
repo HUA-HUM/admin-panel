@@ -1,9 +1,12 @@
 import csv
+from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 import io
 import json
 import threading
 import time
+
+import requests
 
 from odoo import _, api, fields, models, SUPERUSER_ID
 from odoo.exceptions import AccessError, UserError
@@ -81,6 +84,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
     )
     MAX_FILTER_SELECTION_ROWS = 500000
     FILTER_SELECTION_PAGE_SIZE = 1000
+    FILTER_SELECTION_FETCH_CONCURRENCY = 4
     FILTER_SELECTION_CYCLE_SECONDS = 55
     FILTER_SELECTION_PAGE_RETRIES = 3
     FILTER_SELECTION_MAX_CYCLE_RETRIES = 10
@@ -380,24 +384,53 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
         existing_count = self.env["lqa.mercadolibre.selection.item"].search_count(
             [("folder_id", "=", job.folder_id.id)]
         )
+        parallel_safe = False
 
         while True:
-            params = self._prepare_params(
-                filters,
-                max_limit=self.FILTER_SELECTION_PAGE_SIZE,
-            )
-            response = self._request_selection_page(endpoint, params)
-            pagination = response.get("pagination") or {}
-            matched = self._as_int(pagination.get("total"), matched)
-            if matched > self.MAX_FILTER_SELECTION_ROWS:
-                raise SelectionLimitError(
-                    _(
-                        "El filtro devuelve %s productos y el maximo por carpeta es %s. Refiná el filtro antes de guardar."
-                    )
-                    % (matched, self.MAX_FILTER_SELECTION_ROWS)
+            page_offsets = [cursor_offset]
+            if parallel_safe and matched:
+                remaining = max(matched - cursor_offset, 0)
+                page_count = min(
+                    self.FILTER_SELECTION_FETCH_CONCURRENCY,
+                    max(
+                        1,
+                        (remaining + self.FILTER_SELECTION_PAGE_SIZE - 1)
+                        // self.FILTER_SELECTION_PAGE_SIZE,
+                    ),
                 )
-            if processed == 0:
-                if existing_count + matched > self.MAX_FILTER_SELECTION_ROWS:
+                page_offsets = [
+                    cursor_offset + index * self.FILTER_SELECTION_PAGE_SIZE
+                    for index in range(page_count)
+                ]
+            params_list = []
+            for page_offset in page_offsets:
+                page_filters = dict(filters, offset=page_offset)
+                params_list.append(
+                    self._prepare_params(
+                        page_filters,
+                        max_limit=self.FILTER_SELECTION_PAGE_SIZE,
+                    )
+                )
+            responses = self._request_selection_pages(
+                endpoint,
+                params_list,
+            )
+
+            for page_offset, response in zip(page_offsets, responses):
+                if page_offset != cursor_offset:
+                    break
+                pagination = response.get("pagination") or {}
+                matched = self._as_int(pagination.get("total"), matched)
+                if matched > self.MAX_FILTER_SELECTION_ROWS:
+                    raise SelectionLimitError(
+                        _(
+                            "El filtro devuelve %s productos y el maximo por carpeta es %s. Refiná el filtro antes de guardar."
+                        )
+                        % (matched, self.MAX_FILTER_SELECTION_ROWS)
+                    )
+                if processed == 0 and (
+                    existing_count + matched > self.MAX_FILTER_SELECTION_ROWS
+                ):
                     raise SelectionLimitError(
                         _(
                             "La carpeta ya contiene %s productos. Este filtro podria superar el maximo de %s productos por carpeta."
@@ -405,54 +438,63 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
                         % (existing_count, self.MAX_FILTER_SELECTION_ROWS)
                     )
 
-            products = [
-                self._normalize_product(product)
-                for product in (response.get("products") or [])
-            ]
-            if not products:
-                return {
-                    "completed": True,
-                    "matched_count": matched or processed,
-                    "processed_count": processed,
-                    "cursor_offset": cursor_offset,
-                    "added_count": added,
-                    "updated_count": updated,
-                }
+                products = [
+                    self._normalize_product(product)
+                    for product in (response.get("products") or [])
+                ]
+                if not products:
+                    return {
+                        "completed": True,
+                        "matched_count": matched or processed,
+                        "processed_count": processed,
+                        "cursor_offset": cursor_offset,
+                        "added_count": added,
+                        "updated_count": updated,
+                    }
 
-            batch_result = self._save_product_batch(
-                job.folder_id,
-                products,
-                max_folder_size=self.MAX_FILTER_SELECTION_ROWS,
-                current_count=existing_count,
-                update_existing=False,
-            )
-            added += batch_result["added"]
-            updated += batch_result["updated"]
-            existing_count += batch_result["added"]
-            processed += len(products)
-            cursor_offset += len(products)
-            job.write(
-                {
-                    "matched_count": matched,
-                    "processed_count": processed,
-                    "cursor_offset": cursor_offset,
-                    "added_count": added,
-                    "updated_count": updated,
-                    "last_progress_at": fields.Datetime.now(),
-                    "error_message": False,
-                }
-            )
-            self.env.cr.commit()
+                batch_result = self._save_product_batch(
+                    job.folder_id,
+                    products,
+                    max_folder_size=self.MAX_FILTER_SELECTION_ROWS,
+                    current_count=existing_count,
+                    update_existing=False,
+                )
+                added += batch_result["added"]
+                updated += batch_result["updated"]
+                existing_count += batch_result["added"]
+                processed += len(products)
+                cursor_offset += len(products)
+                job.write(
+                    {
+                        "matched_count": matched,
+                        "processed_count": processed,
+                        "cursor_offset": cursor_offset,
+                        "added_count": added,
+                        "updated_count": updated,
+                        "last_progress_at": fields.Datetime.now(),
+                        "error_message": False,
+                    }
+                )
+                self.env.cr.commit()
 
-            if matched and processed >= matched:
-                return {
-                    "completed": True,
-                    "matched_count": matched,
-                    "processed_count": processed,
-                    "cursor_offset": cursor_offset,
-                    "added_count": added,
-                    "updated_count": updated,
-                }
+                if matched and processed >= matched:
+                    return {
+                        "completed": True,
+                        "matched_count": matched,
+                        "processed_count": processed,
+                        "cursor_offset": cursor_offset,
+                        "added_count": added,
+                        "updated_count": updated,
+                    }
+                expected_page_size = min(
+                    self.FILTER_SELECTION_PAGE_SIZE,
+                    max(matched - page_offset, 0),
+                )
+                if len(products) < expected_page_size:
+                    parallel_safe = False
+                    break
+                parallel_safe = len(products) == self.FILTER_SELECTION_PAGE_SIZE
+
             filters["offset"] = cursor_offset
             if time.monotonic() - cycle_started >= self.FILTER_SELECTION_CYCLE_SECONDS:
                 return {
@@ -463,6 +505,47 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
                     "added_count": added,
                     "updated_count": updated,
                 }
+
+    def _request_selection_pages(self, endpoint, params_list):
+        if len(params_list) == 1:
+            return [self._request_selection_page(endpoint, params_list[0])]
+        try:
+            with ThreadPoolExecutor(max_workers=len(params_list)) as executor:
+                return list(
+                    executor.map(
+                        lambda params: self._request_selection_page_http(
+                            endpoint,
+                            params,
+                            self.FILTER_SELECTION_API_TIMEOUT,
+                            self.FILTER_SELECTION_PAGE_RETRIES,
+                        ),
+                        params_list,
+                    )
+                )
+        except Exception as error:
+            raise UserError(
+                _("No se pudo consultar un lote paralelo del catalogo: %s")
+                % error
+            ) from error
+
+    @staticmethod
+    def _request_selection_page_http(endpoint, params, timeout, retries):
+        last_error = None
+        for attempt in range(1, retries + 1):
+            try:
+                response = requests.get(
+                    endpoint,
+                    headers={"Accept": "application/json"},
+                    params=params,
+                    timeout=timeout,
+                )
+                response.raise_for_status()
+                return response.json()
+            except (requests.RequestException, ValueError) as error:
+                last_error = error
+                if attempt < retries:
+                    time.sleep(attempt * 2)
+        raise last_error
 
     def _request_selection_page(self, endpoint, params):
         last_error = None
