@@ -67,11 +67,19 @@ class LqaMercadolibreSelectionJob(models.Model):
     filters_json = fields.Text(required=True, readonly=True)
     matched_count = fields.Integer(readonly=True)
     processed_count = fields.Integer(readonly=True)
+    cursor_offset = fields.Integer(readonly=True)
     added_count = fields.Integer(readonly=True)
     updated_count = fields.Integer(readonly=True)
+    retry_count = fields.Integer(readonly=True)
     error_message = fields.Text(readonly=True)
     started_at = fields.Datetime(readonly=True)
+    last_progress_at = fields.Datetime(readonly=True)
     finished_at = fields.Datetime(readonly=True)
+
+    def _cron_process_pending_jobs(self):
+        return self.env[
+            "lqa.mercadolibre.catalog.service"
+        ].process_pending_selection_jobs()
 
 
 class LqaMercadolibreSelectionItem(models.Model):

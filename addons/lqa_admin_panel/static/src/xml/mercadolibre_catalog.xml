@@ -319,6 +319,9 @@
                                 de
                                 <t t-esc="formatNumber(state.selectionJob.matched || state.pagination.total || 0)"/>
                                 procesados
+                                <t t-if="state.selectionJob.retries">
+                                    · reintentos <t t-esc="state.selectionJob.retries"/>
+                                </t>
                             </span>
                             <span t-elif="state.selectionJob.state === 'done'">
                                 <t t-esc="formatNumber(state.selectionJob.added || 0)"/> nuevos ·
@@ -327,6 +330,15 @@
                             <span t-else="" t-esc="state.selectionJob.error"/>
                         </div>
                         <strong t-if="isSelectionJobRunning"><t t-esc="selectionJobProgress"/>%</strong>
+                        <button
+                            t-if="state.selectionJob.state === 'failed'"
+                            type="button"
+                            class="btn btn-primary"
+                            t-on-click="retrySelectionJob"
+                        >
+                            <i class="fa fa-refresh"/>
+                            Reintentar desde el ultimo lote
+                        </button>
                     </div>
                     <div t-if="isSelectionJobRunning" class="o_lqa_meli_selection_job__track">
                         <span t-att-style="'width: ' + selectionJobProgress + '%'"/>

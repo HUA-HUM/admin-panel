@@ -285,6 +285,29 @@ export class LqaMercadolibreCatalog extends Component {
         }
     }
 
+    async retrySelectionJob() {
+        const jobId = this.state.selectionJob?.id;
+        if (!jobId || this.state.selectionJob?.state !== "failed") {
+            return;
+        }
+        try {
+            this.state.selectionJob = await this.orm.call(
+                "lqa.mercadolibre.catalog.service",
+                "retry_selection_job",
+                [jobId]
+            );
+            this.notification.add("El proceso se retomara desde el ultimo lote guardado.", {
+                type: "info",
+            });
+            this.scheduleSelectionJobPolling();
+        } catch (error) {
+            this.notification.add(
+                error?.data?.message || "No se pudo reintentar el guardado.",
+                { type: "danger" }
+            );
+        }
+    }
+
     async selectFolder(folderId) {
         this.state.selectedFolderId = String(folderId || "");
         await this.loadFolderProducts();

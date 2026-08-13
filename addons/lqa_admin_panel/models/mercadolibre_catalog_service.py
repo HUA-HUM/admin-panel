@@ -1,11 +1,17 @@
 import csv
+from datetime import timedelta
 import io
 import json
 import threading
+import time
 
 from odoo import _, api, fields, models, SUPERUSER_ID
 from odoo.exceptions import AccessError, UserError
 from odoo.modules.registry import Registry
+
+
+class SelectionLimitError(UserError):
+    """A selection cannot continue without changing its requested scope."""
 
 
 class LqaMercadolibreCatalogService(models.AbstractModel):
@@ -75,6 +81,10 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
     )
     MAX_FILTER_SELECTION_ROWS = 500000
     FILTER_SELECTION_PAGE_SIZE = 100
+    FILTER_SELECTION_CYCLE_SECONDS = 45
+    FILTER_SELECTION_PAGE_RETRIES = 3
+    FILTER_SELECTION_MAX_CYCLE_RETRIES = 10
+    FILTER_SELECTION_API_TIMEOUT = 90
 
     @api.model
     def get_products(self, filters=None):
@@ -222,7 +232,55 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
                 limit=1,
             )
         )
+        if not job:
+            job = (
+                self.env["lqa.mercadolibre.selection.job"]
+                .sudo()
+                .search(
+                    [
+                        ("requested_by_id", "=", self.env.user.id),
+                        ("state", "=", "failed"),
+                    ],
+                    order="id desc",
+                    limit=1,
+                )
+            )
         return self._selection_job_to_dict(job) if job else False
+
+    @api.model
+    def retry_selection_job(self, job_id):
+        self._check_access()
+        job = (
+            self.env["lqa.mercadolibre.selection.job"]
+            .sudo()
+            .browse(self._as_int(job_id, 0))
+            .exists()
+        )
+        if not job:
+            raise UserError(_("El proceso de guardado no existe."))
+        if (
+            not self.env.user.has_group("lqa_admin_panel.group_lqa_admin")
+            and job.requested_by_id != self.env.user
+        ):
+            raise AccessError(_("No tenes acceso a este proceso."))
+        if job.state != "failed":
+            raise UserError(_("Solo se pueden reintentar procesos fallidos."))
+        job.write(
+            {
+                "state": "queued",
+                "retry_count": 0,
+                "error_message": False,
+                "finished_at": False,
+            }
+        )
+        thread = threading.Thread(
+            target=self._run_filtered_selection_job,
+            args=(self.env.cr.dbname, job.id),
+            name=f"lqa-meli-selection-retry-{job.id}",
+            daemon=True,
+        )
+        self.env.cr.postcommit.add(thread.start)
+        return self._selection_job_to_dict(job)
 
     @staticmethod
     def _run_filtered_selection_job(dbname, job_id):
@@ -232,50 +290,99 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
             if not job:
                 return
             service = env["lqa.mercadolibre.catalog.service"]
-            job.write({"state": "running", "started_at": fields.Datetime.now()})
+            service._process_selection_job_cycle(job)
             cr.commit()
-            try:
-                filters = json.loads(job.filters_json or "{}")
-                result = service._save_filtered_products_in_batches(job, filters)
+
+    @api.model
+    def process_pending_selection_jobs(self):
+        """Continue one queued job per cron tick and recover abandoned workers."""
+        stale_before = fields.Datetime.now() - timedelta(minutes=5)
+        job_model = self.env["lqa.mercadolibre.selection.job"].sudo()
+        stale_jobs = job_model.search(
+            [
+                ("state", "=", "running"),
+                "|",
+                ("last_progress_at", "=", False),
+                ("last_progress_at", "<", stale_before),
+            ]
+        )
+        if stale_jobs:
+            stale_jobs.write({"state": "queued"})
+        job = job_model.search([("state", "=", "queued")], order="id", limit=1)
+        if job:
+            self._process_selection_job_cycle(job)
+        return True
+
+    def _process_selection_job_cycle(self, job):
+        now = fields.Datetime.now()
+        job.write(
+            {
+                "state": "running",
+                "started_at": job.started_at or now,
+                "last_progress_at": now,
+            }
+        )
+        self.env.cr.commit()
+        try:
+            filters = json.loads(job.filters_json or "{}")
+            result = self._save_filtered_products_in_batches(job, filters)
+            if result.pop("completed", False):
                 job.write(
                     {
                         "state": "done",
                         "finished_at": fields.Datetime.now(),
+                        "error_message": False,
                         **result,
                     }
                 )
-            except Exception as error:
-                job.write(
-                    {
-                        "state": "failed",
-                        "finished_at": fields.Datetime.now(),
-                        "error_message": str(error),
-                    }
+            else:
+                job.write({"state": "queued", **result})
+        except SelectionLimitError as error:
+            job.write(
+                {
+                    "state": "failed",
+                    "finished_at": fields.Datetime.now(),
+                    "error_message": str(error),
+                }
+            )
+        except Exception as error:
+            retry_count = job.retry_count + 1
+            values = {
+                "retry_count": retry_count,
+                "error_message": str(error),
+                "last_progress_at": fields.Datetime.now(),
+            }
+            if retry_count >= self.FILTER_SELECTION_MAX_CYCLE_RETRIES:
+                values.update(
+                    {"state": "failed", "finished_at": fields.Datetime.now()}
                 )
-            cr.commit()
+            else:
+                values["state"] = "queued"
+            job.write(values)
+        self.env.cr.commit()
 
     def _save_filtered_products_in_batches(self, job, filters):
         endpoint = self._catalog_endpoint()
         filters = dict(filters or {})
-        filters["offset"] = 0
+        cursor_offset = job.cursor_offset or job.processed_count or 0
+        filters["offset"] = cursor_offset
         filters["limit"] = self.FILTER_SELECTION_PAGE_SIZE
-        processed = 0
-        added = 0
-        updated = 0
-        matched = 0
+        processed = job.processed_count or 0
+        added = job.added_count or 0
+        updated = job.updated_count or 0
+        matched = job.matched_count or 0
+        cycle_started = time.monotonic()
         existing_count = self.env["lqa.mercadolibre.selection.item"].search_count(
             [("folder_id", "=", job.folder_id.id)]
         )
 
         while True:
             params = self._prepare_params(filters)
-            response = self.env["lqa.api.client"].request_absolute_json(
-                "GET", endpoint, params=params
-            )
+            response = self._request_selection_page(endpoint, params)
             pagination = response.get("pagination") or {}
             matched = self._as_int(pagination.get("total"), matched)
             if matched > self.MAX_FILTER_SELECTION_ROWS:
-                raise UserError(
+                raise SelectionLimitError(
                     _(
                         "El filtro devuelve %s productos y el maximo por carpeta es %s. Refiná el filtro antes de guardar."
                     )
@@ -283,7 +390,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
                 )
             if processed == 0:
                 if existing_count + matched > self.MAX_FILTER_SELECTION_ROWS:
-                    raise UserError(
+                    raise SelectionLimitError(
                         _(
                             "La carpeta ya contiene %s productos. Este filtro podria superar el maximo de %s productos por carpeta."
                         )
@@ -295,42 +402,74 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
                 for product in (response.get("products") or [])
             ]
             if not products:
-                break
+                return {
+                    "completed": True,
+                    "matched_count": matched or processed,
+                    "processed_count": processed,
+                    "cursor_offset": cursor_offset,
+                    "added_count": added,
+                    "updated_count": updated,
+                }
 
             batch_result = self._save_product_batch(
                 job.folder_id,
                 products,
                 max_folder_size=self.MAX_FILTER_SELECTION_ROWS,
-                current_count=existing_count + added,
+                current_count=existing_count,
             )
             added += batch_result["added"]
             updated += batch_result["updated"]
+            existing_count += batch_result["added"]
             processed += len(products)
+            cursor_offset += len(products)
             job.write(
                 {
                     "matched_count": matched,
                     "processed_count": processed,
+                    "cursor_offset": cursor_offset,
                     "added_count": added,
                     "updated_count": updated,
+                    "last_progress_at": fields.Datetime.now(),
+                    "error_message": False,
                 }
             )
             self.env.cr.commit()
 
             if matched and processed >= matched:
-                break
-            offset = self._as_int(params.get("offset"), 0) + len(products)
-            if offset <= self._as_int(params.get("offset"), 0):
-                break
-            filters["offset"] = offset
+                return {
+                    "completed": True,
+                    "matched_count": matched,
+                    "processed_count": processed,
+                    "cursor_offset": cursor_offset,
+                    "added_count": added,
+                    "updated_count": updated,
+                }
+            filters["offset"] = cursor_offset
+            if time.monotonic() - cycle_started >= self.FILTER_SELECTION_CYCLE_SECONDS:
+                return {
+                    "completed": False,
+                    "matched_count": matched,
+                    "processed_count": processed,
+                    "cursor_offset": cursor_offset,
+                    "added_count": added,
+                    "updated_count": updated,
+                }
 
-        if not processed:
-            raise UserError(_("El filtro actual no devolvio productos para guardar."))
-        return {
-            "matched_count": matched or processed,
-            "processed_count": processed,
-            "added_count": added,
-            "updated_count": updated,
-        }
+    def _request_selection_page(self, endpoint, params):
+        last_error = None
+        for attempt in range(1, self.FILTER_SELECTION_PAGE_RETRIES + 1):
+            try:
+                return self.env["lqa.api.client"].request_absolute_json(
+                    "GET",
+                    endpoint,
+                    params=params,
+                    timeout=self.FILTER_SELECTION_API_TIMEOUT,
+                )
+            except UserError as error:
+                last_error = error
+                if attempt < self.FILTER_SELECTION_PAGE_RETRIES:
+                    time.sleep(attempt * 2)
+        raise last_error
 
     def _save_product_batch(
         self,
@@ -393,6 +532,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
             "processed": job.processed_count,
             "added": job.added_count,
             "updated": job.updated_count,
+            "retries": job.retry_count,
             "error": job.error_message or "",
             "maxProducts": self.MAX_FILTER_SELECTION_ROWS,
         }
