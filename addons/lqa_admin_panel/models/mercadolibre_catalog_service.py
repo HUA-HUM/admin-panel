@@ -1,9 +1,11 @@
 import csv
 import io
 import json
+import threading
 
-from odoo import _, api, fields, models
+from odoo import _, api, fields, models, SUPERUSER_ID
 from odoo.exceptions import AccessError, UserError
+from odoo.modules.registry import Registry
 
 
 class LqaMercadolibreCatalogService(models.AbstractModel):
@@ -71,7 +73,8 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
         "available_quantity",
         "permalink",
     )
-    MAX_FILTER_SELECTION_ROWS = 10000
+    MAX_FILTER_SELECTION_ROWS = 500000
+    FILTER_SELECTION_PAGE_SIZE = 100
 
     @api.model
     def get_products(self, filters=None):
@@ -135,7 +138,15 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
         if not isinstance(products, list) or not products:
             raise UserError(_("Selecciona al menos un producto."))
 
-        result = self._save_product_batch(folder, products)
+        current_count = self.env["lqa.mercadolibre.selection.item"].search_count(
+            [("folder_id", "=", folder.id)]
+        )
+        result = self._save_product_batch(
+            folder,
+            products,
+            max_folder_size=self.MAX_FILTER_SELECTION_ROWS,
+            current_count=current_count,
+        )
         return {
             "folder": self._folder_to_dict(folder),
             **result,
@@ -145,41 +156,259 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
     def save_filtered_products_to_folder(self, folder_id, filters=None):
         self._check_access()
         folder = self._get_folder(folder_id)
-        products, total = self._fetch_filtered_products(filters or {})
-        if not products:
-            raise UserError(_("El filtro actual no devolvio productos para guardar."))
-        result = self._save_product_batch(folder, products)
-        return {
-            "folder": self._folder_to_dict(folder),
-            "matched": total,
-            **result,
-        }
-
-    def _save_product_batch(self, folder, products):
-        line_model = self.env["lqa.mercadolibre.selection.item"]
-        added = 0
-        updated = 0
-        for product in products:
-            values = self._selection_values_from_product(folder, product)
-            existing = line_model.search(
+        active_job = (
+            self.env["lqa.mercadolibre.selection.job"]
+            .sudo()
+            .search_count(
                 [
                     ("folder_id", "=", folder.id),
-                    ("product_key", "=", values["product_key"]),
+                    ("state", "in", ["queued", "running"]),
+                ]
+            )
+        )
+        if active_job:
+            raise UserError(
+                _("Esta carpeta ya tiene un guardado masivo en curso.")
+            )
+        filters = dict(filters or {})
+        filters["offset"] = 0
+        filters["limit"] = self.FILTER_SELECTION_PAGE_SIZE
+        job = self.env["lqa.mercadolibre.selection.job"].sudo().create(
+            {
+                "folder_id": folder.id,
+                "requested_by_id": self.env.user.id,
+                "filters_json": json.dumps(filters, ensure_ascii=False),
+            }
+        )
+        thread = threading.Thread(
+            target=self._run_filtered_selection_job,
+            args=(self.env.cr.dbname, job.id),
+            name=f"lqa-meli-selection-{job.id}",
+            daemon=True,
+        )
+        self.env.cr.postcommit.add(thread.start)
+        return self._selection_job_to_dict(job)
+
+    @api.model
+    def get_selection_job(self, job_id):
+        self._check_access()
+        job = (
+            self.env["lqa.mercadolibre.selection.job"]
+            .sudo()
+            .browse(self._as_int(job_id, 0))
+            .exists()
+        )
+        if not job:
+            raise UserError(_("El proceso de guardado no existe."))
+        if (
+            not self.env.user.has_group("lqa_admin_panel.group_lqa_admin")
+            and job.requested_by_id != self.env.user
+        ):
+            raise AccessError(_("No tenes acceso a este proceso."))
+        return self._selection_job_to_dict(job)
+
+    @api.model
+    def get_active_selection_job(self):
+        self._check_access()
+        job = (
+            self.env["lqa.mercadolibre.selection.job"]
+            .sudo()
+            .search(
+                [
+                    ("requested_by_id", "=", self.env.user.id),
+                    ("state", "in", ["queued", "running"]),
                 ],
+                order="id desc",
                 limit=1,
             )
+        )
+        return self._selection_job_to_dict(job) if job else False
+
+    @staticmethod
+    def _run_filtered_selection_job(dbname, job_id):
+        with Registry(dbname).cursor() as cr:
+            env = api.Environment(cr, SUPERUSER_ID, {})
+            job = env["lqa.mercadolibre.selection.job"].browse(job_id).exists()
+            if not job:
+                return
+            service = env["lqa.mercadolibre.catalog.service"]
+            job.write({"state": "running", "started_at": fields.Datetime.now()})
+            cr.commit()
+            try:
+                filters = json.loads(job.filters_json or "{}")
+                result = service._save_filtered_products_in_batches(job, filters)
+                job.write(
+                    {
+                        "state": "done",
+                        "finished_at": fields.Datetime.now(),
+                        **result,
+                    }
+                )
+            except Exception as error:
+                job.write(
+                    {
+                        "state": "failed",
+                        "finished_at": fields.Datetime.now(),
+                        "error_message": str(error),
+                    }
+                )
+            cr.commit()
+
+    def _save_filtered_products_in_batches(self, job, filters):
+        endpoint = self._catalog_endpoint()
+        filters = dict(filters or {})
+        filters["offset"] = 0
+        filters["limit"] = self.FILTER_SELECTION_PAGE_SIZE
+        processed = 0
+        added = 0
+        updated = 0
+        matched = 0
+        existing_count = self.env["lqa.mercadolibre.selection.item"].search_count(
+            [("folder_id", "=", job.folder_id.id)]
+        )
+
+        while True:
+            params = self._prepare_params(filters)
+            response = self.env["lqa.api.client"].request_absolute_json(
+                "GET", endpoint, params=params
+            )
+            pagination = response.get("pagination") or {}
+            matched = self._as_int(pagination.get("total"), matched)
+            if matched > self.MAX_FILTER_SELECTION_ROWS:
+                raise UserError(
+                    _(
+                        "El filtro devuelve %s productos y el maximo por carpeta es %s. Refiná el filtro antes de guardar."
+                    )
+                    % (matched, self.MAX_FILTER_SELECTION_ROWS)
+                )
+            if processed == 0:
+                if existing_count + matched > self.MAX_FILTER_SELECTION_ROWS:
+                    raise UserError(
+                        _(
+                            "La carpeta ya contiene %s productos. Este filtro podria superar el maximo de %s productos por carpeta."
+                        )
+                        % (existing_count, self.MAX_FILTER_SELECTION_ROWS)
+                    )
+
+            products = [
+                self._normalize_product(product)
+                for product in (response.get("products") or [])
+            ]
+            if not products:
+                break
+
+            batch_result = self._save_product_batch(
+                job.folder_id,
+                products,
+                max_folder_size=self.MAX_FILTER_SELECTION_ROWS,
+                current_count=existing_count + added,
+            )
+            added += batch_result["added"]
+            updated += batch_result["updated"]
+            processed += len(products)
+            job.write(
+                {
+                    "matched_count": matched,
+                    "processed_count": processed,
+                    "added_count": added,
+                    "updated_count": updated,
+                }
+            )
+            self.env.cr.commit()
+
+            if matched and processed >= matched:
+                break
+            offset = self._as_int(params.get("offset"), 0) + len(products)
+            if offset <= self._as_int(params.get("offset"), 0):
+                break
+            filters["offset"] = offset
+
+        if not processed:
+            raise UserError(_("El filtro actual no devolvio productos para guardar."))
+        return {
+            "matched_count": matched or processed,
+            "processed_count": processed,
+            "added_count": added,
+            "updated_count": updated,
+        }
+
+    def _save_product_batch(
+        self,
+        folder,
+        products,
+        max_folder_size=None,
+        current_count=None,
+    ):
+        line_model = self.env["lqa.mercadolibre.selection.item"]
+        values_by_key = {}
+        for product in products:
+            values = self._selection_values_from_product(folder, product)
+            values_by_key[values["product_key"]] = values
+
+        existing_by_key = {
+            line.product_key: line
+            for line in line_model.search(
+                [
+                    ("folder_id", "=", folder.id),
+                    ("product_key", "in", list(values_by_key)),
+                ]
+            )
+        }
+        to_create = []
+        updated = 0
+        for product_key, values in values_by_key.items():
+            existing = existing_by_key.get(product_key)
             if existing:
                 existing.write(values)
                 updated += 1
             else:
-                line_model.create(values)
-                added += 1
+                to_create.append(values)
+        if max_folder_size is not None:
+            folder_count = (
+                current_count
+                if current_count is not None
+                else line_model.search_count([("folder_id", "=", folder.id)])
+            )
+            if folder_count + len(to_create) > max_folder_size:
+                raise UserError(
+                    _("Una carpeta puede contener como maximo %s productos.")
+                    % max_folder_size
+                )
+        if to_create:
+            line_model.create(to_create)
 
         return {
-            "added": added,
+            "added": len(to_create),
             "updated": updated,
-            "total": added + updated,
+            "total": len(to_create) + updated,
         }
+
+    def _selection_job_to_dict(self, job):
+        return {
+            "id": job.id,
+            "folderId": job.folder_id.id,
+            "folderName": job.folder_id.name,
+            "state": job.state,
+            "matched": job.matched_count,
+            "processed": job.processed_count,
+            "added": job.added_count,
+            "updated": job.updated_count,
+            "error": job.error_message or "",
+            "maxProducts": self.MAX_FILTER_SELECTION_ROWS,
+        }
+
+    def _catalog_endpoint(self):
+        endpoint = (
+            self.env["ir.config_parameter"]
+            .sudo()
+            .get_param(
+                "lqa_admin_panel.mercadolibre_catalog_url",
+                self.DEFAULT_ENDPOINT,
+            )
+        )
+        if not endpoint:
+            raise UserError(_("Configura la URL del catalogo MercadoLibre."))
+        return endpoint
 
     def _fetch_filtered_products(self, filters):
         filters = dict(filters or {})

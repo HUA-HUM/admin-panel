@@ -12,11 +12,12 @@
                     <button
                         type="button"
                         class="btn btn-secondary"
-                        t-att-disabled="state.loadingStats || state.loadingPromotions || state.loadingCatalogs || state.loadingOrders || state.loadingAnalytics"
+                        t-att-disabled="isLoading"
                         t-on-click="refreshCurrent"
                     >
-                        <i class="fa fa-refresh"/>
-                        Actualizar
+                        <i t-att-class="isLoading ? 'fa fa-refresh fa-spin' : 'fa fa-refresh'"/>
+                        <t t-if="isLoading">Actualizando</t>
+                        <t t-else="">Actualizar</t>
                     </button>
                     <img
                         src="/lqa_admin_panel/static/src/img/mercadolibre-logo.png?v=2"
@@ -63,44 +64,114 @@
                 </button>
             </nav>
 
-            <section class="o_lqa_promotions_stats">
+            <section t-if="state.activeTab === 'central'" class="o_lqa_promotions_stats">
                 <article t-att-class="'o_lqa_promotions_total ' + (state.loadingStats ? 'is-loading' : '')">
-                    <span>Total promociones</span>
-                    <strong t-if="!state.loadingStats" t-esc="formatNumber(state.stats.total)"/>
-                    <strong t-else="">Cargando...</strong>
-                    <small t-if="state.loadingStats">La API de CPE puede tardar hasta 2 minutos.</small>
-                </article>
-                <article
-                    class="o_lqa_promotions_type"
-                    t-foreach="state.stats.cards"
-                    t-as="card"
-                    t-key="card.key"
-                >
-                    <div class="o_lqa_promotions_type__head">
-                        <div>
-                            <span t-esc="card.label"/>
-                            <strong t-esc="formatNumber(card.total)"/>
-                        </div>
-                        <small>Total del tipo</small>
-                    </div>
-                    <div class="o_lqa_promotions_type__grid">
-                        <div
-                            t-att-class="'o_lqa_promotions_status ' + status.key"
-                            t-foreach="card.statuses"
-                            t-as="status"
-                            t-key="card.key + '-' + status.key"
-                        >
-                            <span t-esc="status.label"/>
-                            <strong t-esc="formatNumber(status.value)"/>
-                        </div>
+                    <span class="o_lqa_promotions_total__icon"><i class="fa fa-tags"/></span>
+                    <div>
+                        <small>Volumen total</small>
+                        <strong t-if="!state.loadingStats" t-esc="formatNumber(state.stats.total)"/>
+                        <strong t-else="">Cargando...</strong>
+                        <span>Promociones registradas</span>
                     </div>
                 </article>
+                <t t-if="state.loadingStats">
+                    <article class="o_lqa_promotions_type is-skeleton" t-foreach="[1, 2, 3]" t-as="skeletonCard" t-key="skeletonCard">
+                        <span class="o_lqa_promotions_skeleton_line is-short"/>
+                        <span class="o_lqa_promotions_skeleton_line is-value"/>
+                        <div class="o_lqa_promotions_skeleton_grid">
+                            <span t-foreach="[1, 2, 3, 4, 5, 6]" t-as="skeletonStatus" t-key="skeletonCard + '-' + skeletonStatus"/>
+                        </div>
+                    </article>
+                </t>
+                <t t-else="">
+                    <article
+                        class="o_lqa_promotions_type"
+                        t-foreach="state.stats.cards"
+                        t-as="card"
+                        t-key="card.key"
+                    >
+                        <div class="o_lqa_promotions_type__head">
+                            <div>
+                                <span t-esc="card.label"/>
+                                <strong t-esc="formatNumber(card.total)"/>
+                            </div>
+                            <small>Total del tipo</small>
+                        </div>
+                        <div class="o_lqa_promotions_type__grid">
+                            <div
+                                t-att-class="'o_lqa_promotions_status ' + status.key"
+                                t-foreach="card.statuses"
+                                t-as="status"
+                                t-key="card.key + '-' + status.key"
+                            >
+                                <span t-esc="status.label"/>
+                                <strong t-esc="formatNumber(status.value)"/>
+                            </div>
+                        </div>
+                    </article>
+                </t>
             </section>
 
-            <div class="o_lqa_promotions_long_loading" t-if="state.loadingStats || state.loadingPromotions || state.loadingCatalogs || state.loadingOrders || state.loadingAnalytics">
-                <span/>
-                <strong>Consultando APIs internas</strong>
-                <p>Algunos endpoints de CPE son pesados; dejamos la espera extendida para evitar timeouts prematuros.</p>
+            <section
+                t-if="state.activeTab === 'central' &amp;&amp; !state.loadingStats"
+                class="o_lqa_promotions_coverage"
+            >
+                <div class="o_lqa_promotions_coverage__head">
+                    <div>
+                        <p>Cobertura del catalogo</p>
+                        <h2>MLAs y SKUs alcanzados por promociones</h2>
+                    </div>
+                    <button
+                        type="button"
+                        class="o_lqa_promotions_export"
+                        t-att-disabled="state.downloadingStats"
+                        t-on-click="downloadStatsXlsx"
+                    >
+                        <i t-att-class="state.downloadingStats ? 'fa fa-spinner fa-spin' : 'fa fa-file-excel-o'"/>
+                        <t t-if="state.downloadingStats">Generando Excel</t>
+                        <t t-else="">Descargar Excel</t>
+                    </button>
+                </div>
+                <div class="o_lqa_promotions_coverage__metrics">
+                    <article>
+                        <span class="is-blue"><i class="fa fa-tags"/></span>
+                        <div>
+                            <small>MLAs con promocion</small>
+                            <strong t-esc="formatNumber(state.stats.coverage.mlas_with_promotion || 0)"/>
+                            <p>Registros asociados a promociones.</p>
+                        </div>
+                    </article>
+                    <article>
+                        <span class="is-violet"><i class="fa fa-clone"/></span>
+                        <div>
+                            <small>MLAs sin duplicados</small>
+                            <strong t-if="state.stats.coverage.has_unique_mlas" t-esc="formatNumber(state.stats.coverage.unique_mlas)"/>
+                            <strong t-else="" class="is-unavailable">No informado</strong>
+                            <p t-if="state.stats.coverage.has_unique_mlas">Item IDs unicos dentro de la central.</p>
+                            <p t-else="">CPE debe incluir uniqueItems en estadisticas.</p>
+                        </div>
+                    </article>
+                    <article>
+                        <span class="is-green"><i class="fa fa-barcode"/></span>
+                        <div>
+                            <small>SKUs unicos</small>
+                            <strong t-if="state.stats.coverage.has_unique_skus" t-esc="formatNumber(state.stats.coverage.unique_skus)"/>
+                            <strong t-else="" class="is-unavailable">No informado</strong>
+                            <p t-if="state.stats.coverage.has_unique_skus">Productos distintos alcanzados.</p>
+                            <p t-else="">CPE debe incluir uniqueSkus en estadisticas.</p>
+                        </div>
+                    </article>
+                </div>
+            </section>
+
+            <div class="o_lqa_promotions_long_loading" t-if="isLoading" role="status" aria-live="polite">
+                <span class="o_lqa_promotions_long_loading__spinner"/>
+                <div>
+                    <strong t-esc="loadingTitle"/>
+                    <p t-esc="loadingMessage"/>
+                </div>
+                <small><t t-esc="state.loadingSeconds"/> s</small>
+                <span class="o_lqa_promotions_long_loading__progress"/>
             </div>
 
             <section t-if="state.activeTab === 'central'" class="o_lqa_promotions_panel">
@@ -111,12 +182,14 @@
                             type="search"
                             placeholder="Buscar SKU, item, promocion o nombre"
                             t-model="state.promotionFilters.search"
+                            t-att-disabled="state.loadingPromotions"
                         />
                     </label>
                     <select
                         class="form-select"
                         t-model="state.promotionFilters.type"
                         t-on-change="applyPromotionFilters"
+                        t-att-disabled="state.loadingPromotions"
                     >
                         <option value="">Todos los tipos</option>
                         <option value="SMART">SMART</option>
@@ -124,10 +197,10 @@
                         <option value="PRE_NEGOTIATED">PRE_NEGOTIATED</option>
                     </select>
                     <div class="o_lqa_promotions_segments">
-                        <button type="button" t-att-class="!state.promotionFilters.status ? 'is-active' : ''" t-on-click="() => this.setPromotionStatus('')">Todas</button>
-                        <button type="button" t-att-class="state.promotionFilters.status === 'ACTIVE' ? 'is-active' : ''" t-on-click="() => this.setPromotionStatus('ACTIVE')">Activas</button>
-                        <button type="button" t-att-class="state.promotionFilters.status === 'SYNCED' ? 'is-active' : ''" t-on-click="() => this.setPromotionStatus('SYNCED')">Sync</button>
-                        <button type="button" t-att-class="state.promotionFilters.status === 'DELETED' ? 'is-active' : ''" t-on-click="() => this.setPromotionStatus('DELETED')">Eliminadas</button>
+                        <button type="button" t-att-disabled="state.loadingPromotions" t-att-class="!state.promotionFilters.status ? 'is-active' : ''" t-on-click="() => this.setPromotionStatus('')">Todas</button>
+                        <button type="button" t-att-disabled="state.loadingPromotions" t-att-class="state.promotionFilters.status === 'ACTIVE' ? 'is-active' : ''" t-on-click="() => this.setPromotionStatus('ACTIVE')">Activas</button>
+                        <button type="button" t-att-disabled="state.loadingPromotions" t-att-class="state.promotionFilters.status === 'SYNCED' ? 'is-active' : ''" t-on-click="() => this.setPromotionStatus('SYNCED')">Sync</button>
+                        <button type="button" t-att-disabled="state.loadingPromotions" t-att-class="state.promotionFilters.status === 'DELETED' ? 'is-active' : ''" t-on-click="() => this.setPromotionStatus('DELETED')">Eliminadas</button>
                     </div>
                 </div>
 
@@ -147,27 +220,30 @@
                             <button type="button" class="btn btn-secondary" t-att-disabled="!state.promotions.pagination.has_next" t-on-click="nextPromotionsPage">Siguiente</button>
                         </div>
                     </div>
-                    <div t-if="state.loadingPromotions" class="o_lqa_promotions_empty">
-                        Cargando promociones desde CPE. Esta consulta puede demorar.
+                    <div t-if="state.loadingPromotions" class="o_lqa_promotions_table_loader">
+                        <div class="o_lqa_promotions_table_loader__message">
+                            <span class="o_lqa_promotions_long_loading__spinner"/>
+                            <div>
+                                <strong>Procesando promociones</strong>
+                                <small>La tabla aparecera automaticamente cuando CPE termine de responder.</small>
+                            </div>
+                        </div>
+                        <div class="o_lqa_promotions_table_loader__rows">
+                            <span t-foreach="[1, 2, 3, 4, 5, 6]" t-as="skeletonRow" t-key="skeletonRow"/>
+                        </div>
                     </div>
                     <div t-elif="!filteredPromotions.length" class="o_lqa_promotions_empty">No hay promociones para los filtros seleccionados.</div>
                     <div t-else="" class="o_lqa_promotions_table_wrap">
-                        <table class="o_lqa_promotions_table">
+                        <table class="o_lqa_promotions_table is-central">
                             <thead>
                                 <tr>
                                     <th>Promocion</th>
                                     <th>Estado</th>
-                                    <th>Item</th>
-                                    <th>SKU</th>
-                                    <th>Categoria</th>
-                                    <th>Listing</th>
-                                    <th>Tipo</th>
-                                    <th>Inicio</th>
-                                    <th>Fin</th>
-                                    <th>Precio original</th>
-                                    <th>Precio sugerido</th>
-                                    <th>Profit</th>
-                                    <th>Margen</th>
+                                    <th>Producto</th>
+                                    <th>Publicacion</th>
+                                    <th>Vigencia</th>
+                                    <th>Precios</th>
+                                    <th>Rentabilidad</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -179,17 +255,26 @@
                                     <td>
                                         <span t-att-class="'o_lqa_badge ' + statusClass(promotion.status)" t-esc="statusLabel(promotion.status)"/>
                                     </td>
-                                    <td><strong t-esc="promotion.item_id"/></td>
-                                    <td t-esc="promotion.sku"/>
-                                    <td t-esc="promotion.category_id"/>
-                                    <td t-esc="promotion.listing_type"/>
-                                    <td t-esc="typeLabel(promotion.type)"/>
-                                    <td t-esc="formatDateTime(promotion.start_date)"/>
-                                    <td t-esc="formatDateTime(promotion.finish_date)"/>
-                                    <td t-esc="formatCurrency(promotion.original_price)"/>
-                                    <td><strong t-esc="formatCurrency(promotion.suggested_price)"/></td>
-                                    <td t-esc="formatCurrency(promotion.profit)"/>
-                                    <td t-esc="formatPercent(promotion.margin)"/>
+                                    <td>
+                                        <strong t-esc="promotion.item_id"/>
+                                        <small><span>SKU</span> <t t-esc="promotion.sku || '-'"/></small>
+                                    </td>
+                                    <td>
+                                        <strong t-esc="typeLabel(promotion.type)"/>
+                                        <small><t t-esc="promotion.category_id || '-'"/> · <t t-esc="promotion.listing_type || '-'"/></small>
+                                    </td>
+                                    <td class="o_lqa_promotions_table__stack">
+                                        <span><small>Desde</small><t t-esc="formatDateTime(promotion.start_date)"/></span>
+                                        <span><small>Hasta</small><t t-esc="formatDateTime(promotion.finish_date)"/></span>
+                                    </td>
+                                    <td class="o_lqa_promotions_table__stack is-numeric">
+                                        <span><small>Original</small><t t-esc="formatCurrency(promotion.original_price)"/></span>
+                                        <span><small>Sugerido</small><strong t-esc="formatCurrency(promotion.suggested_price)"/></span>
+                                    </td>
+                                    <td class="o_lqa_promotions_table__stack is-numeric">
+                                        <span><small>Profit</small><t t-esc="formatCurrency(promotion.profit)"/></span>
+                                        <span><small>Margen</small><strong t-esc="formatPercent(promotion.margin)"/></span>
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>

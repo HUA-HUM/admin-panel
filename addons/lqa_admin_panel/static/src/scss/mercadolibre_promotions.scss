@@ -1,19 +1,163 @@
 .o_lqa_promotions {
+    --lqa-promotions-blue: #2563eb;
+    --lqa-promotions-ink: #18212f;
+    --lqa-promotions-muted: #667085;
+    --lqa-promotions-border: #e2e7ee;
+
     height: 100%;
     min-height: 0;
     overflow-x: hidden;
     overflow-y: auto;
-    padding: 24px;
-    background: #f5f7fa;
-    color: #202a37;
+    padding: 22px 24px 44px;
+    background: #f6f7f9;
+    color: var(--lqa-promotions-ink);
 }
 
 .o_lqa_promotions__header,
 .o_lqa_promotions__tabs,
 .o_lqa_promotions_stats,
+.o_lqa_promotions_coverage,
 .o_lqa_promotions_panel {
-    max-width: 1600px;
+    max-width: 1800px;
     margin-inline: auto;
+}
+
+.o_lqa_promotions_coverage {
+    margin-bottom: 14px;
+    border: 1px solid var(--lqa-promotions-border);
+    border-radius: 12px;
+    background: #fff;
+}
+
+.o_lqa_promotions_coverage__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 13px 15px;
+    border-bottom: 1px solid var(--lqa-promotions-border);
+
+    p,
+    h2 {
+        margin: 0;
+    }
+
+    p {
+        color: var(--lqa-promotions-blue);
+        font-size: 9.5px;
+        font-weight: 800;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+    }
+
+    h2 {
+        margin-top: 3px;
+        font-size: 15px;
+        font-weight: 800;
+    }
+}
+
+.o_lqa_promotions_export {
+    display: inline-flex;
+    min-height: 34px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 13px;
+    border: 1px solid #b7dfc8;
+    border-radius: 8px;
+    background: #f0fdf4;
+    color: #087443;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+        border-color: #86cda5;
+        background: #e5f9ec;
+    }
+
+    &:disabled {
+        cursor: wait;
+        opacity: 0.65;
+    }
+}
+
+.o_lqa_promotions_coverage__metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+
+    article {
+        display: grid;
+        min-width: 0;
+        grid-template-columns: 40px minmax(0, 1fr);
+        align-items: center;
+        gap: 12px;
+        padding: 15px;
+
+        + article {
+            border-left: 1px solid var(--lqa-promotions-border);
+        }
+
+        > span {
+            display: inline-flex;
+            width: 40px;
+            height: 40px;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            font-size: 15px;
+
+            &.is-blue {
+                background: #eff4ff;
+                color: #2563eb;
+            }
+
+            &.is-violet {
+                background: #f4f0ff;
+                color: #7658bf;
+            }
+
+            &.is-green {
+                background: #ecfdf5;
+                color: #078153;
+            }
+        }
+    }
+
+    small,
+    strong,
+    p {
+        display: block;
+        margin: 0;
+    }
+
+    small {
+        color: var(--lqa-promotions-muted);
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }
+
+    strong {
+        margin-top: 4px;
+        color: var(--lqa-promotions-ink);
+        font-size: 22px;
+        letter-spacing: -0.025em;
+
+        &.is-unavailable {
+            color: #8a96a7;
+            font-size: 14px;
+            letter-spacing: 0;
+        }
+    }
+
+    p {
+        margin-top: 3px;
+        color: var(--lqa-promotions-muted);
+        font-size: 10.5px;
+    }
 }
 
 .o_lqa_promotions__header {
@@ -21,28 +165,31 @@
     align-items: center;
     justify-content: space-between;
     gap: 18px;
-    margin-bottom: 14px;
+    margin-bottom: 12px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--lqa-promotions-border);
 
     p {
-        margin: 0 0 6px;
-        color: #1f6fff;
-        font-size: 12px;
+        margin: 0 0 5px;
+        color: var(--lqa-promotions-blue);
+        font-size: 10.5px;
         font-weight: 800;
-        letter-spacing: 0;
+        letter-spacing: 0.07em;
         text-transform: uppercase;
     }
 
     h1 {
         margin: 0;
-        font-size: 34px;
+        font-size: 30px;
         font-weight: 800;
-        letter-spacing: 0;
+        letter-spacing: -0.025em;
     }
 
     span {
         display: block;
-        margin-top: 6px;
-        color: #607086;
+        margin-top: 5px;
+        color: var(--lqa-promotions-muted);
+        font-size: 13px;
     }
 }
 
@@ -52,10 +199,10 @@
     gap: 12px;
 
     img {
-        width: 138px;
-        height: 52px;
-        border: 1px solid #d9e1ec;
-        border-radius: 8px;
+        width: 112px;
+        height: 42px;
+        border: 1px solid #e1ca00;
+        border-radius: 10px;
         background: #ffe600;
         object-fit: cover;
     }
@@ -68,32 +215,39 @@
 .o_lqa_promotions__tabs {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 14px;
+    gap: 4px;
+    width: max-content;
+    max-width: 100%;
+    margin-bottom: 16px;
+    padding: 4px;
+    border: 1px solid var(--lqa-promotions-border);
+    border-radius: 10px;
+    background: #fff;
 
     button {
-        min-height: 38px;
-        padding: 0 14px;
-        border: 1px solid #cfd8e5;
-        border-radius: 8px;
-        background: #fff;
-        color: #405064;
+        min-height: 34px;
+        padding: 0 13px;
+        border: 0;
+        border-radius: 7px;
+        background: transparent;
+        color: #556274;
+        font-size: 13px;
         font-weight: 700;
     }
 
     button.is-active {
-        border-color: #1f6fff;
-        background: #1f6fff;
+        background: var(--lqa-promotions-blue);
         color: #fff;
+        box-shadow: 0 5px 14px -9px rgba(37, 99, 235, 0.8);
     }
 }
 
 .o_lqa_promotions_stats {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: start;
+    grid-template-columns: minmax(190px, 0.58fr) repeat(3, minmax(315px, 1fr));
+    align-items: stretch;
     gap: 12px;
-    margin-bottom: 16px;
+    margin-bottom: 14px;
 }
 
 .o_lqa_promotions_total,
@@ -102,36 +256,54 @@
 .o_lqa_promotions_toolbar,
 .o_lqa_promotions_table_card,
 .o_lqa_promotions_chart {
-    border: 1px solid #d9e1ec;
-    border-radius: 8px;
+    border: 1px solid var(--lqa-promotions-border);
+    border-radius: 12px;
     background: #fff;
 }
 
 .o_lqa_promotions_total {
-    display: flex;
-    min-height: 190px;
-    align-self: start;
-    flex-direction: column;
-    justify-content: center;
+    display: grid;
+    min-height: 174px;
+    grid-template-columns: 42px minmax(0, 1fr);
+    align-items: center;
+    gap: 14px;
     padding: 18px;
 
-    span {
-        color: #6b7788;
-        font-size: 12px;
+    small {
+        display: block;
+        color: var(--lqa-promotions-muted);
+        font-size: 10px;
         font-weight: 800;
+        letter-spacing: 0.06em;
         text-transform: uppercase;
     }
 
     strong {
-        margin-top: 8px;
-        font-size: 34px;
+        display: block;
+        margin-top: 7px;
+        font-size: clamp(25px, 1.8vw, 32px);
+        letter-spacing: -0.03em;
         line-height: 1;
     }
 
-    small {
-        margin-top: 8px;
-        color: #607086;
+    div > span {
+        display: block;
+        margin-top: 7px;
+        color: var(--lqa-promotions-muted);
+        font-size: 11.5px;
     }
+}
+
+.o_lqa_promotions_total__icon {
+    display: inline-flex;
+    width: 42px;
+    height: 42px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 11px;
+    background: #eff4ff;
+    color: var(--lqa-promotions-blue);
+    font-size: 17px;
 }
 
 .o_lqa_promotions_total.is-loading strong {
@@ -140,7 +312,8 @@
 }
 
 .o_lqa_promotions_type {
-    padding: 14px 16px 16px;
+    min-width: 0;
+    padding: 14px;
 }
 
 .o_lqa_promotions_type__head {
@@ -148,25 +321,27 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 12px;
-    padding-bottom: 12px;
+    padding-bottom: 10px;
     border-bottom: 1px solid #e2e8f0;
 
     span {
         display: block;
-        color: #1f6fff;
-        font-size: 12px;
+        color: var(--lqa-promotions-blue);
+        font-size: 10.5px;
         font-weight: 800;
         text-transform: uppercase;
     }
 
     strong {
         display: block;
-        margin-top: 4px;
-        font-size: 24px;
+        margin-top: 3px;
+        font-size: 22px;
+        letter-spacing: -0.02em;
     }
 
     small {
-        color: #6b7788;
+        color: var(--lqa-promotions-muted);
+        font-size: 10px;
         font-weight: 700;
     }
 }
@@ -174,18 +349,18 @@
 .o_lqa_promotions_type__grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(120px, 1fr));
-    gap: 8px;
-    margin-top: 12px;
+    gap: 6px;
+    margin-top: 10px;
 }
 
 .o_lqa_promotions_status {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     min-width: 0;
-    min-height: 46px;
+    min-height: 38px;
     align-items: center;
     gap: 8px;
-    padding: 8px 10px;
+    padding: 6px 8px;
     border: 1px solid #d6e1ec;
     border-radius: 7px;
     background: #f8fafc;
@@ -195,7 +370,7 @@
         overflow-wrap: normal;
         word-break: normal;
         color: #475569;
-        font-size: 11px;
+        font-size: 9px;
         font-weight: 800;
         line-height: 1.2;
         text-transform: uppercase;
@@ -203,7 +378,7 @@
 
     strong {
         justify-self: end;
-        font-size: 16px;
+        font-size: 13px;
         line-height: 1.1;
         white-space: nowrap;
     }
@@ -240,38 +415,76 @@
 .o_lqa_promotions_panel {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
 }
 
 .o_lqa_promotions_long_loading {
-    display: flex;
-    max-width: 1600px;
+    position: relative;
+    display: grid;
+    max-width: 1800px;
+    overflow: hidden;
+    grid-template-columns: 22px minmax(0, 1fr) auto;
     align-items: center;
     gap: 12px;
-    margin: 0 auto 16px;
-    padding: 12px 14px;
+    margin: 0 auto 14px;
+    padding: 13px 15px 15px;
     border: 1px solid #bfdbfe;
-    border-radius: 8px;
-    background: #eff6ff;
+    border-radius: 12px;
+    background: linear-gradient(110deg, #eff6ff, #f8fbff);
     color: #1e3a8a;
 
-    > span {
-        width: 18px;
-        height: 18px;
-        flex: 0 0 auto;
-        border: 3px solid #bfdbfe;
-        border-top-color: #2563eb;
-        border-radius: 999px;
-        animation: o-lqa-spin 0.9s linear infinite;
-    }
-
     strong {
-        white-space: nowrap;
+        display: block;
+        font-size: 13px;
     }
 
     p {
-        margin: 0;
+        margin: 3px 0 0;
         color: #405f95;
+        font-size: 12px;
+        line-height: 1.4;
+    }
+
+    > small {
+        min-width: 48px;
+        padding: 5px 8px;
+        border: 1px solid #c9ddfb;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.75);
+        color: #315b9a;
+        font-size: 11px;
+        font-weight: 800;
+        text-align: center;
+    }
+}
+
+.o_lqa_promotions_long_loading__spinner {
+    display: inline-block;
+    width: 19px;
+    height: 19px;
+    border: 3px solid #bfd6f8;
+    border-top-color: var(--lqa-promotions-blue);
+    border-radius: 999px;
+    animation: o-lqa-spin 0.8s linear infinite;
+}
+
+.o_lqa_promotions_long_loading__progress {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    overflow: hidden;
+    background: #dbeafe;
+
+    &::after {
+        position: absolute;
+        width: 38%;
+        height: 100%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, transparent, #3b82f6, transparent);
+        content: "";
+        animation: o-lqa-loading-progress 1.5s ease-in-out infinite;
     }
 }
 
@@ -281,11 +494,67 @@
     }
 }
 
+@keyframes o-lqa-loading-progress {
+    from {
+        transform: translateX(-110%);
+    }
+    to {
+        transform: translateX(370%);
+    }
+}
+
+@keyframes o-lqa-skeleton-pulse {
+    0%, 100% {
+        opacity: 0.52;
+    }
+    50% {
+        opacity: 1;
+    }
+}
+
+.o_lqa_promotions_type.is-skeleton {
+    display: flex;
+    min-height: 174px;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.o_lqa_promotions_skeleton_line,
+.o_lqa_promotions_skeleton_grid span,
+.o_lqa_promotions_table_loader__rows span {
+    display: block;
+    border-radius: 7px;
+    background: #e8edf4;
+    animation: o-lqa-skeleton-pulse 1.35s ease-in-out infinite;
+}
+
+.o_lqa_promotions_skeleton_line {
+    width: 42%;
+    height: 9px;
+
+    &.is-value {
+        width: 58%;
+        height: 22px;
+        margin-top: 9px;
+    }
+}
+
+.o_lqa_promotions_skeleton_grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 16px;
+
+    span {
+        height: 32px;
+    }
+}
+
 .o_lqa_promotions_toolbar {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 12px;
+    padding: 10px;
 
     label {
         min-width: 0;
@@ -302,7 +571,18 @@
 
     .form-select {
         width: auto;
-        min-width: 170px;
+        min-width: 165px;
+        min-height: 38px;
+        border-color: #d8dee8;
+        border-radius: 8px;
+        font-size: 13px;
+    }
+
+    input:disabled,
+    select:disabled,
+    button:disabled {
+        cursor: wait;
+        opacity: 0.62;
     }
 }
 
@@ -320,7 +600,7 @@
 
     input {
         width: 100%;
-        min-height: 42px;
+        min-height: 38px;
         padding: 0 12px 0 36px;
         border: 1px solid #d6dee8;
         border-radius: 8px;
@@ -336,13 +616,14 @@
     background: #f8fafc;
 
     button {
-        min-height: 34px;
-        padding: 0 12px;
+        min-height: 30px;
+        padding: 0 11px;
         border: 0;
         border-radius: 6px;
         background: transparent;
         color: #5c6b7d;
-        font-weight: 800;
+        font-size: 12px;
+        font-weight: 750;
     }
 
     button.is-active {
@@ -389,17 +670,18 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    padding: 14px 16px;
+    padding: 12px 14px;
     border-bottom: 1px solid #e2e8f0;
 
     h2 {
         margin: 0;
-        font-size: 18px;
+        font-size: 16px;
         font-weight: 800;
     }
 
     span {
         color: #607086;
+        font-size: 12px;
     }
 }
 
@@ -408,6 +690,14 @@
     align-items: center;
     gap: 8px;
     color: #607086;
+
+    .btn {
+        min-height: 32px;
+        padding: 4px 10px;
+        border-color: #d8dee8;
+        border-radius: 7px;
+        font-size: 12px;
+    }
 }
 
 .o_lqa_promotions_table_wrap {
@@ -460,6 +750,88 @@
     }
 }
 
+.o_lqa_promotions_table.is-central {
+    min-width: 1050px;
+    table-layout: fixed;
+
+    th,
+    td {
+        padding: 11px 12px;
+        white-space: normal;
+    }
+
+    th:nth-child(1) { width: 17%; }
+    th:nth-child(2) { width: 9%; }
+    th:nth-child(3) { width: 15%; }
+    th:nth-child(4) { width: 14%; }
+    th:nth-child(5) { width: 18%; }
+    th:nth-child(6) { width: 14%; }
+    th:nth-child(7) { width: 13%; }
+
+    td {
+        font-size: 12.5px;
+        vertical-align: middle;
+    }
+
+    td:first-child strong,
+    td:nth-child(3) strong,
+    td:nth-child(4) strong {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    td:first-child small,
+    td:nth-child(3) small,
+    td:nth-child(4) small {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    td:nth-child(3) small span {
+        display: inline;
+        margin-right: 3px;
+        color: #8a96a7;
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+}
+
+.o_lqa_promotions_table__stack {
+    > span {
+        display: grid;
+        grid-template-columns: 42px minmax(0, 1fr);
+        align-items: baseline;
+        gap: 7px;
+        line-height: 1.35;
+        white-space: nowrap;
+
+        + span {
+            margin-top: 5px;
+        }
+    }
+
+    small {
+        margin: 0;
+        color: #8a96a7;
+        font-size: 8.5px;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    strong {
+        display: inline;
+    }
+
+    &.is-numeric > span {
+        grid-template-columns: 47px minmax(0, 1fr);
+    }
+}
+
 .o_lqa_badge {
     display: inline-flex;
     min-width: 78px;
@@ -495,6 +867,50 @@
     padding: 36px 18px;
     color: #607086;
     text-align: center;
+}
+
+.o_lqa_promotions_table_loader {
+    padding: 18px;
+}
+
+.o_lqa_promotions_table_loader__message {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    margin-bottom: 16px;
+
+    strong,
+    small {
+        display: block;
+    }
+
+    strong {
+        color: var(--lqa-promotions-ink);
+        font-size: 13px;
+    }
+
+    small {
+        margin-top: 3px;
+        color: var(--lqa-promotions-muted);
+        font-size: 11.5px;
+    }
+}
+
+.o_lqa_promotions_table_loader__rows {
+    display: grid;
+    gap: 8px;
+
+    span {
+        height: 42px;
+
+        &:nth-child(2n) {
+            animation-delay: 120ms;
+        }
+
+        &:nth-child(3n) {
+            animation-delay: 240ms;
+        }
+    }
 }
 
 .o_lqa_promotions_chart {
@@ -721,6 +1137,12 @@
     gap: 10px;
 }
 
+@media (max-width: 1500px) {
+    .o_lqa_promotions_stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
 @media (max-width: 1180px) {
     .o_lqa_promotions_stats {
         grid-template-columns: 1fr;
@@ -729,6 +1151,15 @@
     .o_lqa_promotions_cards,
     .o_lqa_promotions_action_grid {
         grid-template-columns: 1fr;
+    }
+
+    .o_lqa_promotions_coverage__metrics {
+        grid-template-columns: 1fr;
+
+        article + article {
+            border-top: 1px solid var(--lqa-promotions-border);
+            border-left: 0;
+        }
     }
 }
 
@@ -746,11 +1177,29 @@
         }
     }
 
+    .o_lqa_promotions_coverage__head {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .o_lqa_promotions_export {
+        width: 100%;
+    }
+
     .o_lqa_promotions__tabs,
     .o_lqa_promotions_toolbar,
     .o_lqa_promotions_segments {
         align-items: stretch;
         flex-direction: column;
+    }
+
+    .o_lqa_promotions_long_loading {
+        grid-template-columns: 22px minmax(0, 1fr);
+
+        > small {
+            grid-column: 2;
+            justify-self: start;
+        }
     }
 
     .o_lqa_promotions_toolbar .form-select {
@@ -772,5 +1221,15 @@
 
     .o_lqa_promotions_action_promotion {
         flex-basis: auto;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .o_lqa_promotions_long_loading__spinner,
+    .o_lqa_promotions_long_loading__progress::after,
+    .o_lqa_promotions_skeleton_line,
+    .o_lqa_promotions_skeleton_grid span,
+    .o_lqa_promotions_table_loader__rows span {
+        animation-duration: 2.8s;
     }
 }

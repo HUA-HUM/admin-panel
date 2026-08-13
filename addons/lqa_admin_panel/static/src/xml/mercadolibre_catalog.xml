@@ -274,11 +274,12 @@
                         </button>
                         <button
                             type="button"
-                            class="btn btn-primary o_lqa_meli_save_filter_btn"
-                            t-att-disabled="!state.selectedFolderId || !state.pagination.total || state.savingFilteredSelection"
+                            t-att-class="'btn btn-primary o_lqa_meli_save_filter_btn ' + (filterExceedsFolderLimit ? 'is-over-limit' : '')"
+                            t-att-disabled="!state.selectedFolderId || !state.pagination.total || state.savingFilteredSelection || isSelectionJobRunning"
                             t-on-click="saveFilteredSelectionToFolder"
                         >
-                            <t t-if="state.savingFilteredSelection">Guardando filtro...</t>
+                            <t t-if="state.savingFilteredSelection">Preparando...</t>
+                            <t t-elif="isSelectionJobRunning">Guardando en segundo plano...</t>
                             <t t-else="">
                                 Guardar todo el filtro
                                 (<t t-esc="formatNumber(state.pagination.total || 0)"/>)
@@ -292,6 +293,43 @@
                         >
                             Limpiar seleccion
                         </button>
+                    </div>
+                </div>
+
+                <div t-if="filterExceedsFolderLimit &amp;&amp; !isSelectionJobRunning" class="o_lqa_meli_selection_limit">
+                    <i class="fa fa-info-circle"/>
+                    <span>
+                        El maximo por carpeta es
+                        <strong t-esc="formatNumber(maxFolderProducts)"/>
+                        productos. Refina el filtro para guardar este conjunto.
+                    </span>
+                </div>
+
+                <div t-if="state.selectionJob" t-att-class="'o_lqa_meli_selection_job is-' + state.selectionJob.state">
+                    <div class="o_lqa_meli_selection_job__head">
+                        <div>
+                            <strong>
+                                <t t-if="state.selectionJob.state === 'queued'">Guardado en cola</t>
+                                <t t-elif="state.selectionJob.state === 'running'">Guardando productos</t>
+                                <t t-elif="state.selectionJob.state === 'done'">Guardado completado</t>
+                                <t t-else="">El guardado no pudo completarse</t>
+                            </strong>
+                            <span t-if="isSelectionJobRunning">
+                                <t t-esc="formatNumber(state.selectionJob.processed || 0)"/>
+                                de
+                                <t t-esc="formatNumber(state.selectionJob.matched || state.pagination.total || 0)"/>
+                                procesados
+                            </span>
+                            <span t-elif="state.selectionJob.state === 'done'">
+                                <t t-esc="formatNumber(state.selectionJob.added || 0)"/> nuevos ·
+                                <t t-esc="formatNumber(state.selectionJob.updated || 0)"/> actualizados
+                            </span>
+                            <span t-else="" t-esc="state.selectionJob.error"/>
+                        </div>
+                        <strong t-if="isSelectionJobRunning"><t t-esc="selectionJobProgress"/>%</strong>
+                    </div>
+                    <div t-if="isSelectionJobRunning" class="o_lqa_meli_selection_job__track">
+                        <span t-att-style="'width: ' + selectionJobProgress + '%'"/>
                     </div>
                 </div>
 

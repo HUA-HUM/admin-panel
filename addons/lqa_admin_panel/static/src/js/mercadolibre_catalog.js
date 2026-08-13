@@ -1,6 +1,6 @@
 /** @odoo-module **/
 
-import { Component, onWillStart, useState } from "@odoo/owl";
+import { Component, onWillStart, onWillUnmount, useState } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 
@@ -25,6 +25,8 @@ const defaultFilters = () => ({
     offset: 0,
 });
 
+const MAX_FOLDER_PRODUCTS = 500000;
+
 export class LqaMercadolibreCatalog extends Component {
     static template = "lqa_admin_panel.MercadolibreCatalog";
 
@@ -36,6 +38,7 @@ export class LqaMercadolibreCatalog extends Component {
             foldersLoading: true,
             savingSelection: false,
             savingFilteredSelection: false,
+            selectionJob: null,
             products: [],
             pagination: {},
             sort: {},
@@ -54,6 +57,13 @@ export class LqaMercadolibreCatalog extends Component {
 
         onWillStart(async () => {
             await Promise.all([this.loadProducts(), this.loadFolders()]);
+            await this.loadActiveSelectionJob();
+        });
+
+        onWillUnmount(() => {
+            if (this.selectionJobTimer) {
+                clearTimeout(this.selectionJobTimer);
+            }
         });
     }
 
@@ -97,6 +107,26 @@ export class LqaMercadolibreCatalog extends Component {
             );
         } finally {
             this.state.foldersLoading = false;
+        }
+    }
+
+    async loadActiveSelectionJob() {
+        try {
+            const job = await this.orm.call(
+                "lqa.mercadolibre.catalog.service",
+                "get_active_selection_job",
+                []
+            );
+            if (job) {
+                this.state.selectionJob = job;
+                this.state.selectedFolderId = String(job.folderId || "");
+                this.scheduleSelectionJobPolling();
+            }
+        } catch (error) {
+            this.notification.add(
+                error?.data?.message || "No se pudo recuperar el guardado en curso.",
+                { type: "warning" }
+            );
         }
     }
 
@@ -174,6 +204,13 @@ export class LqaMercadolibreCatalog extends Component {
             });
             return;
         }
+        if (total > MAX_FOLDER_PRODUCTS) {
+            this.notification.add(
+                `El filtro tiene ${this.formatNumber(total)} productos. El maximo por carpeta es ${this.formatNumber(MAX_FOLDER_PRODUCTS)}; refina el filtro antes de guardarlo.`,
+                { type: "warning" }
+            );
+            return;
+        }
         if (
             !window.confirm(
                 `Vas a guardar todos los productos del filtro actual (${this.formatNumber(total)}) en la carpeta seleccionada.`
@@ -183,18 +220,17 @@ export class LqaMercadolibreCatalog extends Component {
         }
         this.state.savingFilteredSelection = true;
         try {
-            const result = await this.orm.call(
+            const job = await this.orm.call(
                 "lqa.mercadolibre.catalog.service",
                 "save_filtered_products_to_folder",
                 [Number(this.state.selectedFolderId), { ...this.state.filters }]
             );
-            await this.loadFolders();
-            await this.loadFolderProducts();
-            this.clearSelection();
+            this.state.selectionJob = job;
             this.notification.add(
-                `Filtro guardado: ${result.added} nuevos, ${result.updated} actualizados de ${result.matched || result.total}.`,
-                { type: "success" }
+                "El guardado masivo fue enviado y continuara en segundo plano.",
+                { type: "info" }
             );
+            this.scheduleSelectionJobPolling();
         } catch (error) {
             this.notification.add(
                 error?.data?.message || "No se pudo guardar todo el filtro.",
@@ -202,6 +238,50 @@ export class LqaMercadolibreCatalog extends Component {
             );
         } finally {
             this.state.savingFilteredSelection = false;
+        }
+    }
+
+    scheduleSelectionJobPolling() {
+        if (this.selectionJobTimer) {
+            clearTimeout(this.selectionJobTimer);
+        }
+        if (!this.isSelectionJobRunning) {
+            return;
+        }
+        this.selectionJobTimer = setTimeout(() => this.pollSelectionJob(), 2500);
+    }
+
+    async pollSelectionJob() {
+        const jobId = this.state.selectionJob?.id;
+        if (!jobId) {
+            return;
+        }
+        try {
+            const job = await this.orm.call(
+                "lqa.mercadolibre.catalog.service",
+                "get_selection_job",
+                [jobId]
+            );
+            this.state.selectionJob = job;
+            if (job.state === "done") {
+                await Promise.all([this.loadFolders(), this.loadFolderProducts()]);
+                this.clearSelection();
+                this.notification.add(
+                    `Filtro guardado: ${this.formatNumber(job.added)} nuevos y ${this.formatNumber(job.updated)} actualizados.`,
+                    { type: "success" }
+                );
+            } else if (job.state === "failed") {
+                this.notification.add(job.error || "El guardado masivo fallo.", {
+                    type: "danger",
+                });
+            }
+        } catch (error) {
+            this.notification.add(
+                error?.data?.message || "No se pudo consultar el progreso del guardado.",
+                { type: "danger" }
+            );
+        } finally {
+            this.scheduleSelectionJobPolling();
         }
     }
 
@@ -367,6 +447,27 @@ export class LqaMercadolibreCatalog extends Component {
         return this.state.folders.find(
             (folder) => String(folder.id) === String(this.state.selectedFolderId)
         );
+    }
+
+    get isSelectionJobRunning() {
+        return ["queued", "running"].includes(this.state.selectionJob?.state);
+    }
+
+    get selectionJobProgress() {
+        const processed = Number(this.state.selectionJob?.processed || 0);
+        const matched = Number(this.state.selectionJob?.matched || 0);
+        if (!matched) {
+            return 0;
+        }
+        return Math.min(Math.round((processed / matched) * 100), 100);
+    }
+
+    get filterExceedsFolderLimit() {
+        return Number(this.state.pagination.total || 0) > MAX_FOLDER_PRODUCTS;
+    }
+
+    get maxFolderProducts() {
+        return MAX_FOLDER_PRODUCTS;
     }
 
     isSelected(itemId) {

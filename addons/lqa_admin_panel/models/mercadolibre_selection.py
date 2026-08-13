@@ -36,6 +36,44 @@ class LqaMercadolibreSelectionFolder(models.Model):
             folder.product_count = count_by_folder.get(folder.id, 0)
 
 
+class LqaMercadolibreSelectionJob(models.Model):
+    _name = "lqa.mercadolibre.selection.job"
+    _description = "Guardado masivo de seleccion MercadoLibre"
+    _order = "create_date desc, id desc"
+
+    folder_id = fields.Many2one(
+        "lqa.mercadolibre.selection.folder",
+        required=True,
+        ondelete="cascade",
+        index=True,
+    )
+    requested_by_id = fields.Many2one(
+        "res.users",
+        required=True,
+        readonly=True,
+    )
+    state = fields.Selection(
+        [
+            ("queued", "En cola"),
+            ("running", "Procesando"),
+            ("done", "Completado"),
+            ("failed", "Fallido"),
+        ],
+        required=True,
+        default="queued",
+        index=True,
+        readonly=True,
+    )
+    filters_json = fields.Text(required=True, readonly=True)
+    matched_count = fields.Integer(readonly=True)
+    processed_count = fields.Integer(readonly=True)
+    added_count = fields.Integer(readonly=True)
+    updated_count = fields.Integer(readonly=True)
+    error_message = fields.Text(readonly=True)
+    started_at = fields.Datetime(readonly=True)
+    finished_at = fields.Datetime(readonly=True)
+
+
 class LqaMercadolibreSelectionItem(models.Model):
     _name = "lqa.mercadolibre.selection.item"
     _description = "Producto seleccionado MercadoLibre"

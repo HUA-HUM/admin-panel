@@ -1,8 +1,11 @@
-from math import ceil
+import base64
+import io
 import json
+from math import ceil
 import threading
 
 import requests
+import xlsxwriter
 
 from odoo import _, api, fields, models, SUPERUSER_ID
 from odoo.exceptions import AccessError, UserError
@@ -138,6 +141,25 @@ class LqaMercadolibrePromotionsService(models.AbstractModel):
             timeout=self._timeout(),
         )
         return self._normalize_stats(response or {})
+
+    @api.model
+    def download_stats_xlsx(self, stats=None):
+        """Build the workbook from data already loaded by the UI.
+
+        Reusing the payload avoids repeating the expensive CPE stats request when the
+        user only wants to download the dashboard summary.
+        """
+        self._check_access()
+        normalized = self._normalize_export_stats(stats or {})
+        content = self._build_stats_xlsx(normalized)
+        return {
+            "filename": "central-promociones-resumen.xlsx",
+            "content": base64.b64encode(content).decode("ascii"),
+            "mimetype": (
+                "application/vnd.openxmlformats-officedocument."
+                "spreadsheetml.sheet"
+            ),
+        }
 
     @api.model
     def get_promotions(self, filters=None):
@@ -502,10 +524,169 @@ class LqaMercadolibrePromotionsService(models.AbstractModel):
                     ],
                 }
             )
+        coverage_source = stats.get("coverage") or stats.get("summary") or stats
+        total_with_promotion = self._first_int(
+            coverage_source,
+            [
+                "totalMlas",
+                "totalMLAs",
+                "total_mlas",
+                "totalItems",
+                "itemsWithPromotion",
+                "items_with_promotion",
+                "total",
+            ],
+            total or sum(card["total"] for card in cards),
+        )
+        unique_mlas = self._first_int(
+            coverage_source,
+            [
+                "uniqueMlas",
+                "uniqueMLAs",
+                "unique_mlas",
+                "totalUniqueMlas",
+                "uniqueItems",
+                "unique_items",
+                "distinctItemIds",
+                "distinct_item_ids",
+                "totalUniqueItems",
+            ],
+            0,
+        )
+        unique_skus = self._first_int(
+            coverage_source,
+            [
+                "uniqueSkus",
+                "uniqueSKUs",
+                "unique_skus",
+                "distinctSkus",
+                "distinct_skus",
+                "totalUniqueSkus",
+                "totalSkus",
+            ],
+            0,
+        )
         return {
             "total": total or sum(card["total"] for card in cards),
             "cards": cards,
+            "coverage": {
+                "mlas_with_promotion": total_with_promotion,
+                "unique_mlas": unique_mlas,
+                "unique_skus": unique_skus,
+                "has_unique_mlas": unique_mlas > 0,
+                "has_unique_skus": unique_skus > 0,
+            },
         }
+
+    def _normalize_export_stats(self, stats):
+        coverage = stats.get("coverage") or {}
+        cards = []
+        for raw_card in stats.get("cards") or []:
+            statuses = []
+            for raw_status in raw_card.get("statuses") or []:
+                statuses.append(
+                    {
+                        "label": str(raw_status.get("label") or ""),
+                        "value": self._as_int(raw_status.get("value"), 0),
+                    }
+                )
+            cards.append(
+                {
+                    "label": str(raw_card.get("label") or ""),
+                    "total": self._as_int(raw_card.get("total"), 0),
+                    "statuses": statuses,
+                }
+            )
+        return {
+            "total": self._as_int(stats.get("total"), 0),
+            "coverage": {
+                "mlas_with_promotion": self._as_int(
+                    coverage.get("mlas_with_promotion"), 0
+                ),
+                "unique_mlas": self._as_int(coverage.get("unique_mlas"), 0),
+                "unique_skus": self._as_int(coverage.get("unique_skus"), 0),
+                "has_unique_mlas": bool(coverage.get("has_unique_mlas")),
+                "has_unique_skus": bool(coverage.get("has_unique_skus")),
+            },
+            "cards": cards,
+        }
+
+    def _build_stats_xlsx(self, stats):
+        buffer = io.BytesIO()
+        workbook = xlsxwriter.Workbook(buffer, {"in_memory": True})
+        title_format = workbook.add_format(
+            {"bold": True, "font_size": 16, "font_color": "#18212f"}
+        )
+        header_format = workbook.add_format(
+            {
+                "bold": True,
+                "font_color": "#ffffff",
+                "bg_color": "#2563eb",
+                "border": 1,
+                "border_color": "#1d4ed8",
+            }
+        )
+        label_format = workbook.add_format(
+            {"bold": True, "bg_color": "#eff4ff", "border": 1, "border_color": "#dbe4f0"}
+        )
+        integer_format = workbook.add_format(
+            {"num_format": "#,##0", "border": 1, "border_color": "#dbe4f0"}
+        )
+
+        summary = workbook.add_worksheet("Resumen")
+        summary.set_column("A:A", 34)
+        summary.set_column("B:B", 20)
+        summary.write("A1", "Central de Promociones", title_format)
+        summary.write_row("A3", ["Indicador", "Cantidad"], header_format)
+        coverage = stats["coverage"]
+        summary_rows = [
+            ("Promociones registradas", stats["total"]),
+            ("MLAs con promocion", coverage["mlas_with_promotion"]),
+            (
+                "MLAs unicos (sin duplicados)",
+                coverage["unique_mlas"] if coverage["has_unique_mlas"] else None,
+            ),
+            (
+                "SKUs unicos",
+                coverage["unique_skus"] if coverage["has_unique_skus"] else None,
+            ),
+        ]
+        for row_index, (label, value) in enumerate(summary_rows, start=3):
+            summary.write(row_index, 0, label, label_format)
+            if value is None:
+                summary.write(row_index, 1, "No informado por CPE", integer_format)
+            else:
+                summary.write_number(row_index, 1, value, integer_format)
+        summary.freeze_panes(3, 0)
+
+        detail = workbook.add_worksheet("Estados por tipo")
+        detail.set_column("A:A", 22)
+        detail.set_column("B:B", 24)
+        detail.set_column("C:C", 18)
+        detail.write_row("A1", ["Tipo", "Estado", "Cantidad"], header_format)
+        row_index = 1
+        for card in stats["cards"]:
+            detail.write(row_index, 0, card["label"], label_format)
+            detail.write(row_index, 1, "Total", label_format)
+            detail.write_number(row_index, 2, card["total"], integer_format)
+            row_index += 1
+            for status in card["statuses"]:
+                detail.write(row_index, 0, card["label"])
+                detail.write(row_index, 1, status["label"])
+                detail.write_number(row_index, 2, status["value"], integer_format)
+                row_index += 1
+        detail.autofilter(0, 0, max(row_index - 1, 1), 2)
+        detail.freeze_panes(1, 0)
+
+        workbook.close()
+        buffer.seek(0)
+        return buffer.read()
+
+    def _first_int(self, payload, keys, default=0):
+        for key in keys:
+            if payload.get(key) not in (None, ""):
+                return self._as_int(payload.get(key), default)
+        return default
 
     def _normalize_promotion(self, promotion):
         prices = promotion.get("prices") or {}

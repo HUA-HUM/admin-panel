@@ -49,8 +49,20 @@ export class LqaMercadolibrePromotions extends Component {
             loadingOrders: false,
             loadingAnalytics: false,
             loadingActions: false,
+            loadingSeconds: 0,
+            downloadingStats: false,
             runningAction: false,
-            stats: { total: 0, cards: [] },
+            stats: {
+                total: 0,
+                cards: [],
+                coverage: {
+                    mlas_with_promotion: 0,
+                    unique_mlas: 0,
+                    unique_skus: 0,
+                    has_unique_mlas: false,
+                    has_unique_skus: false,
+                },
+            },
             promotions: { items: [], pagination: {} },
             catalogs: { items: [], summary: {}, pagination: {} },
             orders: { items: [], summary: {}, pagination: {} },
@@ -77,6 +89,7 @@ export class LqaMercadolibrePromotions extends Component {
         });
 
         onMounted(() => {
+            this.startLoadingClock();
             this.loadStats();
             this.loadPromotions();
         });
@@ -85,20 +98,42 @@ export class LqaMercadolibrePromotions extends Component {
             if (this.actionPollingTimer) {
                 clearTimeout(this.actionPollingTimer);
             }
+            if (this.loadingClockTimer) {
+                clearInterval(this.loadingClockTimer);
+            }
         });
     }
 
     async refreshCurrent() {
-        await this.loadStats();
+        const requests = [this.loadStats()];
         if (this.state.activeTab === "central") {
-            await this.loadPromotions();
+            requests.push(this.loadPromotions());
         } else if (this.state.activeTab === "catalogs") {
-            await this.loadCatalogs();
+            requests.push(this.loadCatalogs());
         } else if (this.state.activeTab === "orders") {
-            await Promise.all([this.loadOrders(), this.loadAnalytics()]);
+            requests.push(this.loadOrders(), this.loadAnalytics());
         } else if (this.state.activeTab === "actions") {
-            await this.loadActionsContext();
+            requests.push(this.loadActionsContext());
         }
+        await Promise.all(requests);
+    }
+
+    startLoadingClock() {
+        if (this.loadingClockTimer) {
+            return;
+        }
+        this.state.loadingSeconds = 0;
+        this.loadingClockTimer = setInterval(() => {
+            this.state.loadingSeconds += 1;
+        }, 1000);
+    }
+
+    stopLoadingClockIfIdle() {
+        if (this.isLoading || !this.loadingClockTimer) {
+            return;
+        }
+        clearInterval(this.loadingClockTimer);
+        this.loadingClockTimer = null;
     }
 
     async setTab(tab) {
@@ -119,6 +154,7 @@ export class LqaMercadolibrePromotions extends Component {
 
     async loadStats() {
         this.state.loadingStats = true;
+        this.startLoadingClock();
         try {
             this.state.stats = await this.orm.call(
                 "lqa.mercadolibre.promotions.service",
@@ -129,11 +165,13 @@ export class LqaMercadolibrePromotions extends Component {
             this.notifyError(error, "No se pudieron cargar las estadisticas.");
         } finally {
             this.state.loadingStats = false;
+            this.stopLoadingClockIfIdle();
         }
     }
 
     async loadPromotions() {
         this.state.loadingPromotions = true;
+        this.startLoadingClock();
         try {
             this.state.promotions = await this.orm.call(
                 "lqa.mercadolibre.promotions.service",
@@ -144,11 +182,13 @@ export class LqaMercadolibrePromotions extends Component {
             this.notifyError(error, "No se pudieron cargar las promociones.");
         } finally {
             this.state.loadingPromotions = false;
+            this.stopLoadingClockIfIdle();
         }
     }
 
     async loadCatalogs() {
         this.state.loadingCatalogs = true;
+        this.startLoadingClock();
         try {
             this.state.catalogs = await this.orm.call(
                 "lqa.mercadolibre.promotions.service",
@@ -159,11 +199,13 @@ export class LqaMercadolibrePromotions extends Component {
             this.notifyError(error, "No se pudo cargar el catalogo de promociones.");
         } finally {
             this.state.loadingCatalogs = false;
+            this.stopLoadingClockIfIdle();
         }
     }
 
     async loadOrders() {
         this.state.loadingOrders = true;
+        this.startLoadingClock();
         try {
             this.state.orders = await this.orm.call(
                 "lqa.mercadolibre.promotions.service",
@@ -174,11 +216,13 @@ export class LqaMercadolibrePromotions extends Component {
             this.notifyError(error, "No se pudieron cargar las ordenes.");
         } finally {
             this.state.loadingOrders = false;
+            this.stopLoadingClockIfIdle();
         }
     }
 
     async loadAnalytics() {
         this.state.loadingAnalytics = true;
+        this.startLoadingClock();
         try {
             this.state.analytics = await this.orm.call(
                 "lqa.mercadolibre.promotions.service",
@@ -189,11 +233,13 @@ export class LqaMercadolibrePromotions extends Component {
             this.notifyError(error, "No se pudo cargar el analytics de aporte ML.");
         } finally {
             this.state.loadingAnalytics = false;
+            this.stopLoadingClockIfIdle();
         }
     }
 
     async loadActionsContext() {
         this.state.loadingActions = true;
+        this.startLoadingClock();
         try {
             const context = await this.orm.call(
                 "lqa.mercadolibre.promotions.service",
@@ -209,7 +255,41 @@ export class LqaMercadolibrePromotions extends Component {
             this.notifyError(error, "No se pudo cargar la seccion de acciones.");
         } finally {
             this.state.loadingActions = false;
+            this.stopLoadingClockIfIdle();
         }
+    }
+
+    async downloadStatsXlsx() {
+        this.state.downloadingStats = true;
+        try {
+            const result = await this.orm.call(
+                "lqa.mercadolibre.promotions.service",
+                "download_stats_xlsx",
+                [{ ...this.state.stats }]
+            );
+            this.downloadBase64File(result.filename, result.content, result.mimetype);
+        } catch (error) {
+            this.notifyError(error, "No se pudo generar el Excel de promociones.");
+        } finally {
+            this.state.downloadingStats = false;
+        }
+    }
+
+    downloadBase64File(filename, content, mimetype) {
+        const binary = window.atob(content || "");
+        const bytes = new Uint8Array(binary.length);
+        for (let index = 0; index < binary.length; index++) {
+            bytes[index] = binary.charCodeAt(index);
+        }
+        const blob = new Blob([bytes], { type: mimetype });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = filename || "central-promociones-resumen.xlsx";
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        URL.revokeObjectURL(url);
     }
 
     scheduleActionPolling() {
@@ -349,6 +429,56 @@ export class LqaMercadolibrePromotions extends Component {
             this.state.orders.pagination.next_offset ?? fallback
         );
         await this.loadOrders();
+    }
+
+    get isLoading() {
+        return (
+            this.state.loadingStats ||
+            this.state.loadingPromotions ||
+            this.state.loadingCatalogs ||
+            this.state.loadingOrders ||
+            this.state.loadingAnalytics ||
+            this.state.loadingActions
+        );
+    }
+
+    get loadingTitle() {
+        if (
+            this.state.activeTab === "central" &&
+            this.state.loadingStats &&
+            this.state.loadingPromotions
+        ) {
+            return "Preparando la Central de Promociones";
+        }
+        if (this.state.activeTab === "central" && this.state.loadingPromotions) {
+            return "Cargando promociones";
+        }
+        if (this.state.activeTab === "catalogs" && this.state.loadingCatalogs) {
+            return "Cargando catalogo de campanas";
+        }
+        if (
+            this.state.activeTab === "orders" &&
+            (this.state.loadingOrders || this.state.loadingAnalytics)
+        ) {
+            return "Cargando ordenes y aporte de Mercado Libre";
+        }
+        if (
+            (this.state.activeTab === "actions" || this.state.activeTab === "datadog") &&
+            this.state.loadingActions
+        ) {
+            return "Cargando acciones operativas";
+        }
+        return "Actualizando datos en segundo plano";
+    }
+
+    get loadingMessage() {
+        if (this.state.loadingSeconds >= 45) {
+            return "CPE sigue procesando un volumen grande de datos. Podes permanecer en esta pantalla; la consulta continua activa.";
+        }
+        if (this.state.loadingSeconds >= 15) {
+            return "La respuesta esta tardando un poco mas de lo habitual por el volumen de informacion.";
+        }
+        return "Estamos consultando CPE y organizando la informacion para mostrarla.";
     }
 
     get filteredPromotions() {
