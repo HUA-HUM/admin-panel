@@ -21,6 +21,9 @@ class LqaRetailersService(models.AbstractModel):
     DEFAULT_MADRE_API_URL = "https://api.madre.loquieroaca.com"
     DEFAULT_PRODUCTS_API_URL = "https://api.products.loquieroaca.com"
     DEFAULT_ORDERS_PROXY_URL = "https://order.api.loquieroaca.com/orders"
+    DEFAULT_FRAVEGA_VTEX_ORDERS_URL = (
+        "https://api.marketplace.loquieroaca.com/fravega/vtex/orders"
+    )
     FRAVEGA_IMAGE_BASE_URL = "https://images.fravega.com"
     FRAVEGA_IMAGE_DEFAULT_SIZE = "f500"
     DEFAULT_TIMEOUT_SECONDS = 60
@@ -401,6 +404,184 @@ class LqaRetailersService(models.AbstractModel):
             timeout=self._orders_timeout(),
         )
         return self._normalize_orders_response(response, mode)
+
+    @api.model
+    def get_fravega_orders(self, page=1):
+        """Vista temporal paginada de ordenes VTEX de Fravega."""
+        self._check_access()
+        page = min(max(self._as_int(page, 1), 1), 10000)
+        response = self.env["lqa.api.client"].request_absolute_json(
+            "GET",
+            self._fravega_vtex_orders_url(),
+            params={"page": page},
+            timeout=self._orders_timeout(),
+        )
+        payload = response if isinstance(response, dict) else {}
+        raw_orders = payload.get("list") if isinstance(payload.get("list"), list) else []
+        paging = payload.get("paging") if isinstance(payload.get("paging"), dict) else {}
+        current_page = max(self._as_int(paging.get("currentPage"), page), 1)
+        total_pages = max(self._as_int(paging.get("pages"), 1), 1)
+        total = max(self._as_int(paging.get("total"), len(raw_orders)), len(raw_orders))
+        per_page = max(self._as_int(paging.get("perPage"), len(raw_orders) or 15), 1)
+        return {
+            "items": [
+                self._normalize_fravega_order(order, index)
+                for index, order in enumerate(raw_orders)
+            ],
+            "pagination": {
+                "page": current_page,
+                "perPage": per_page,
+                "total": total,
+                "totalPages": total_pages,
+                "from": ((current_page - 1) * per_page) + 1 if total else 0,
+                "to": min(current_page * per_page, total),
+                "hasPrevious": current_page > 1,
+                "hasNext": current_page < total_pages,
+            },
+        }
+
+    @api.model
+    def get_fravega_order_invoicing(self, order_id):
+        """Detalle completo de facturacion/logistica para una orden VTEX."""
+        self._check_access()
+        order_id = self._clean(order_id)
+        if not order_id or not re.fullmatch(r"[A-Za-z0-9._-]+", order_id):
+            raise UserError(_("El identificador de la orden no es valido."))
+        response = self.env["lqa.api.client"].request_absolute_json(
+            "GET",
+            self._join_url(
+                self._fravega_vtex_orders_url(),
+                f"/{quote(order_id, safe='')}/invoicing",
+            ),
+            timeout=self._orders_timeout(),
+        )
+        return self._normalize_fravega_order_detail(response)
+
+    def _fravega_vtex_orders_url(self):
+        return (
+            os.environ.get("LQA_FRAVEGA_VTEX_ORDERS_URL", "").strip()
+            or self.DEFAULT_FRAVEGA_VTEX_ORDERS_URL
+        ).rstrip("/")
+
+    def _normalize_fravega_order(self, order, index):
+        order = order if isinstance(order, dict) else {}
+        order_id = self._clean(order.get("orderId"))
+        return {
+            "key": f"{order_id or 'fravega'}-{index}",
+            "id": order_id,
+            "sequence": self._clean(order.get("sequence")),
+            "marketplaceId": self._clean(order.get("marketPlaceOrderId")),
+            "status": self._clean(order.get("status")),
+            "statusDescription": self._clean(order.get("statusDescription")),
+            "createdAt": self._clean(order.get("creationDate")),
+            "updatedAt": self._clean(order.get("lastChange")),
+            "authorizedAt": self._clean(order.get("authorizedDate")),
+            "readyAt": self._clean(order.get("readyForHandlingDate")),
+            "shippingEstimatedAt": self._clean(order.get("ShippingEstimatedDate")),
+            "clientName": self._clean(order.get("clientName")),
+            "total": self._vtex_money(order.get("totalValue")),
+            "currency": self._clean(order.get("currencyCode")) or "ARS",
+            "totalItems": self._as_int(order.get("totalItems"), 0),
+            "origin": self._clean(order.get("origin")),
+            "isComplete": bool(order.get("orderIsComplete")),
+            "isDelivered": bool(order.get("isAllDelivered")),
+            "workflowError": bool(order.get("workflowInErrorState")),
+        }
+
+    def _normalize_fravega_order_detail(self, response):
+        payload = response if isinstance(response, dict) else {}
+        client = payload.get("clientProfileData")
+        client = client if isinstance(client, dict) else {}
+        shipping = payload.get("shippingData")
+        shipping = shipping if isinstance(shipping, dict) else {}
+        address = shipping.get("address")
+        address = address if isinstance(address, dict) else {}
+        logistics = shipping.get("logisticsInfo")
+        logistics = logistics if isinstance(logistics, list) else []
+        payment_data = payload.get("paymentData")
+        payment_data = payment_data if isinstance(payment_data, dict) else {}
+        transactions = payment_data.get("transactions")
+        transactions = transactions if isinstance(transactions, list) else []
+        payments = []
+        for transaction in transactions:
+            if not isinstance(transaction, dict):
+                continue
+            for payment in transaction.get("payments") or []:
+                if not isinstance(payment, dict):
+                    continue
+                connector = payment.get("connectorResponses")
+                connector = connector if isinstance(connector, dict) else {}
+                payments.append(
+                    {
+                        "method": self._clean(payment.get("paymentSystemName")),
+                        "group": self._clean(payment.get("group")),
+                        "installments": self._as_int(payment.get("installments"), 0),
+                        "value": self._vtex_money(payment.get("value")),
+                        "referenceValue": self._vtex_money(payment.get("referenceValue")),
+                        "acquirer": self._clean(connector.get("acquirer")),
+                        "authorization": self._clean(connector.get("authId")),
+                        "transactionId": self._clean(transaction.get("transactionId")),
+                    }
+                )
+        invoices = payload.get("invoices")
+        invoices = invoices if isinstance(invoices, list) else []
+        packages = payload.get("packageAttachment")
+        packages = packages if isinstance(packages, dict) else {}
+        package_items = packages.get("packages")
+        package_items = package_items if isinstance(package_items, list) else []
+        return {
+            "id": self._clean(payload.get("orderId")),
+            "sequence": self._clean(payload.get("sequence")),
+            "status": self._clean(payload.get("status")),
+            "createdAt": self._clean(payload.get("creationDate")),
+            "total": self._vtex_money(payload.get("value")),
+            "client": {
+                "name": " ".join(
+                    part
+                    for part in (
+                        self._clean(client.get("firstName")),
+                        self._clean(client.get("lastName")),
+                    )
+                    if part
+                ),
+                "email": self._clean(client.get("email")),
+                "documentType": self._clean(client.get("documentType")),
+                "document": self._clean(client.get("document")),
+                "phone": self._clean(client.get("phone")),
+                "isCorporate": bool(client.get("isCorporate")),
+            },
+            "address": {
+                "receiver": self._clean(address.get("receiverName")),
+                "street": self._clean(address.get("street")),
+                "number": self._clean(address.get("number")),
+                "complement": self._clean(address.get("complement")),
+                "neighborhood": self._clean(address.get("neighborhood")),
+                "postalCode": self._clean(address.get("postalCode")),
+                "city": self._clean(address.get("city")),
+                "state": self._clean(address.get("state")),
+                "country": self._clean(address.get("country")),
+            },
+            "logistics": [
+                {
+                    "itemId": self._clean(item.get("itemId")),
+                    "service": self._clean(item.get("selectedSla")),
+                    "channel": self._clean(item.get("selectedDeliveryChannel")),
+                    "company": self._clean(item.get("deliveryCompany")),
+                    "estimate": self._clean(item.get("shippingEstimate")),
+                    "estimatedAt": self._clean(item.get("shippingEstimateDate")),
+                }
+                for item in logistics
+                if isinstance(item, dict)
+            ],
+            "payments": payments,
+            "invoices": invoices,
+            "packages": package_items,
+            "rawJson": json.dumps(payload, ensure_ascii=False, indent=2, default=str),
+        }
+
+    def _vtex_money(self, value):
+        numeric_value = self._as_float(value, None)
+        return numeric_value / 100 if numeric_value is not None else None
 
     @api.model
     def refresh_published(self, marketplace_id, note=""):

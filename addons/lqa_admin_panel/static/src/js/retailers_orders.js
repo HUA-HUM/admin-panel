@@ -4,38 +4,19 @@ import { Component, onMounted, useState } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 
-const ORDER_MARKETPLACES = [
-    { id: "fravega", name: "Fravega" },
-    { id: "megatone", name: "Megatone" },
-    { id: "oncity", name: "OnCity" },
-];
-
-const emptyOverview = () => ({
-    mode: "last24",
-    range: { from: "", to: "" },
-    total: 0,
-    marketplaces: [],
+const emptyOrders = () => ({
     items: [],
-    errors: [],
+    pagination: {
+        page: 1,
+        perPage: 15,
+        total: 0,
+        totalPages: 1,
+        from: 0,
+        to: 0,
+        hasPrevious: false,
+        hasNext: false,
+    },
 });
-
-const toDateInput = (date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-};
-
-const defaultCustomRange = () => {
-    const today = new Date();
-    const from = new Date(today);
-    from.setDate(today.getDate() - 7);
-    return {
-        marketplace: "all",
-        from: toDateInput(from),
-        to: toDateInput(today),
-    };
-};
 
 export class LqaRetailersOrders extends Component {
     static template = "lqa_admin_panel.RetailersOrders";
@@ -44,155 +25,142 @@ export class LqaRetailersOrders extends Component {
         this.notification = useService("notification");
         this.orm = useService("orm");
         this.state = useState({
-            loading: false,
-            activeMode: "last24",
-            overview: emptyOverview(),
-            custom: defaultCustomRange(),
+            loading: true,
+            orders: emptyOrders(),
+            search: "",
+            selectedOrderId: "",
+            detail: null,
+            loadingDetail: false,
+            detailError: "",
+            showRaw: false,
         });
-
-        onMounted(() => this.loadMode("last24"));
+        onMounted(() => this.loadOrders(1));
     }
 
-    get marketplaceBreakdown() {
-        const totals = new Map();
-        for (const item of this.state.overview.marketplaces || []) {
-            const marketplace = String(item.marketplace || "").toLowerCase();
-            if (marketplace) {
-                totals.set(marketplace, Number(item.total || 0));
-            }
+    get visibleOrders() {
+        const query = String(this.state.search || "").trim().toLowerCase();
+        if (!query) {
+            return this.state.orders.items || [];
         }
-        const cards = ORDER_MARKETPLACES.map((marketplace) => ({
-            ...marketplace,
-            total: totals.get(marketplace.id) || 0,
-        }));
-        for (const [marketplace, total] of totals.entries()) {
-            if (!ORDER_MARKETPLACES.some((item) => item.id === marketplace)) {
-                cards.push({
-                    id: marketplace,
-                    name: this.marketplaceLabel(marketplace),
-                    total,
-                });
-            }
-        }
-        return cards;
+        return (this.state.orders.items || []).filter((order) =>
+            [order.id, order.sequence, order.clientName, order.status]
+                .some((value) => String(value || "").toLowerCase().includes(query))
+        );
     }
 
-    get rangeLabel() {
-        const range = this.state.overview.range || {};
-        if (range.from || range.to) {
-            return `${this.formatDateTime(range.from)} - ${this.formatDateTime(range.to)}`;
-        }
-        return this.modeLabel(this.state.activeMode);
+    get pageStats() {
+        const items = this.state.orders.items || [];
+        return {
+            ready: items.filter((item) => item.status === "ready-for-handling").length,
+            canceled: items.filter((item) => ["canceled", "cancelled"].includes(item.status)).length,
+            value: items.reduce((total, item) => total + (Number(item.total) || 0), 0),
+        };
     }
 
-    get totalErrors() {
-        return (this.state.overview.errors || []).length;
+    get visiblePages() {
+        const pagination = this.state.orders.pagination;
+        const start = Math.max(pagination.page - 2, 1);
+        const end = Math.min(start + 4, pagination.totalPages);
+        const adjustedStart = Math.max(end - 4, 1);
+        return Array.from(
+            { length: Math.max(end - adjustedStart + 1, 0) },
+            (_, index) => adjustedStart + index
+        );
     }
 
-    async loadMode(mode) {
+    async loadOrders(page = 1) {
         this.state.loading = true;
-        this.state.activeMode = mode;
         try {
-            this.state.overview = await this.orm.call(
+            this.state.orders = await this.orm.call(
                 "lqa.retailers.service",
-                "get_orders_overview",
-                [mode, {}]
+                "get_fravega_orders",
+                [Number(page) || 1]
             );
         } catch (error) {
-            this.state.overview = emptyOverview();
-            this.notifyError(error, "No se pudieron cargar las ordenes.");
+            this.state.orders = emptyOrders();
+            this.notifyError(error, "No se pudieron cargar las órdenes de Frávega.");
         } finally {
             this.state.loading = false;
         }
     }
 
-    async refresh() {
-        if (this.state.activeMode === "custom") {
-            await this.applyCustomRange();
+    async openOrder(order) {
+        if (!order?.id) {
             return;
         }
-        await this.loadMode(this.state.activeMode || "last24");
-    }
-
-    async applyCustomRange() {
-        if (!this.state.custom.from || !this.state.custom.to) {
-            this.notification.add("Indica fecha desde y hasta.", { type: "warning" });
-            return;
-        }
-        this.state.loading = true;
-        this.state.activeMode = "custom";
+        this.state.selectedOrderId = order.id;
+        this.state.detail = null;
+        this.state.detailError = "";
+        this.state.showRaw = false;
+        this.state.loadingDetail = true;
         try {
-            this.state.overview = await this.orm.call(
+            this.state.detail = await this.orm.call(
                 "lqa.retailers.service",
-                "get_orders_overview",
-                [
-                    "custom",
-                    {
-                        marketplace: this.state.custom.marketplace,
-                        from: this.dateInputToIso(this.state.custom.from, false),
-                        to: this.dateInputToIso(this.state.custom.to, true),
-                    },
-                ]
+                "get_fravega_order_invoicing",
+                [order.id]
             );
         } catch (error) {
-            this.notifyError(error, "No se pudo cargar el rango seleccionado.");
+            this.state.detailError =
+                error?.data?.message || "No se pudo obtener el detalle de la orden.";
         } finally {
-            this.state.loading = false;
+            this.state.loadingDetail = false;
         }
     }
 
-    dateInputToIso(value, endOfDay) {
-        return `${value}T${endOfDay ? "23:59:59.000Z" : "00:00:00.000Z"}`;
+    closeOrder() {
+        this.state.selectedOrderId = "";
+        this.state.detail = null;
+        this.state.detailError = "";
+        this.state.showRaw = false;
     }
 
-    modeLabel(mode) {
-        return (
-            {
-                last24: "Ultimas 24h",
-                recent24: "Recent 24h",
-                recent48: "Recent 48h",
-                recent72: "Recent 72h",
-                historical: "Historico",
-                custom: "Rango custom",
-            }[mode] || "Ordenes"
-        );
+    previousPage() {
+        const pagination = this.state.orders.pagination;
+        if (pagination.hasPrevious) {
+            this.loadOrders(pagination.page - 1);
+        }
     }
 
-    marketplaceLabel(value) {
-        return (
-            {
-                fravega: "Fravega",
-                megatone: "Megatone",
-                oncity: "OnCity",
-                "sin-marketplace": "Sin marketplace",
-            }[String(value || "").toLowerCase()] || this.humanize(value)
-        );
+    nextPage() {
+        const pagination = this.state.orders.pagination;
+        if (pagination.hasNext) {
+            this.loadOrders(pagination.page + 1);
+        }
     }
 
-    statusLabel(value) {
-        return (
-            {
-                PAID: "Pagada",
-                CANCELLED: "Cancelada",
-                CANCELED: "Cancelada",
-                PENDING: "Pendiente",
-                PROCESSING: "Procesando",
-                ERROR: "Error",
-                FAILED: "Fallida",
-                SUCCESS: "Correcta",
-            }[String(value || "").toUpperCase()] || this.humanize(value)
-        );
+    addressLine(address) {
+        if (!address) {
+            return "-";
+        }
+        return [
+            [address.street, address.number].filter(Boolean).join(" "),
+            address.complement,
+            [address.city, address.state].filter(Boolean).join(", "),
+            address.postalCode ? `CP ${address.postalCode}` : "",
+        ].filter(Boolean).join(" · ") || "-";
+    }
+
+    statusLabel(value, description = "") {
+        const labels = {
+            "ready-for-handling": "Lista para preparar",
+            "waiting-ffmt-authorization": "Esperando autorización",
+            canceled: "Cancelada",
+            cancelled: "Cancelada",
+            invoiced: "Facturada",
+            handling: "En preparación",
+        };
+        return labels[String(value || "").toLowerCase()] || description || this.humanize(value);
     }
 
     statusClass(value) {
-        const normalized = String(value || "").toUpperCase();
-        if (["PAID", "SUCCESS", "COMPLETED"].includes(normalized)) {
+        const normalized = String(value || "").toLowerCase();
+        if (["ready-for-handling", "invoiced", "completed"].includes(normalized)) {
             return "is-green";
         }
-        if (["CANCELLED", "CANCELED", "ERROR", "FAILED"].includes(normalized)) {
+        if (["canceled", "cancelled", "error", "failed"].includes(normalized)) {
             return "is-red";
         }
-        if (["PENDING", "PROCESSING", "IN_PROGRESS"].includes(normalized)) {
+        if (["waiting-ffmt-authorization", "handling", "pending"].includes(normalized)) {
             return "is-blue";
         }
         return "is-gray";
@@ -200,21 +168,13 @@ export class LqaRetailersOrders extends Component {
 
     humanize(value) {
         const cleanValue = String(value || "").trim();
-        if (!cleanValue) {
-            return "Sin dato";
-        }
         return cleanValue
-            .toLowerCase()
-            .replace(/[_-]+/g, " ")
-            .replace(/\b\w/g, (letter) => letter.toUpperCase());
+            ? cleanValue.toLowerCase().replace(/[_-]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase())
+            : "Sin dato";
     }
 
     formatNumber(value) {
-        const numericValue = Number(value);
-        if (!Number.isFinite(numericValue)) {
-            return "0";
-        }
-        return new Intl.NumberFormat("es-AR").format(numericValue);
+        return new Intl.NumberFormat("es-AR").format(Number(value) || 0);
     }
 
     formatCurrency(value) {
@@ -240,16 +200,14 @@ export class LqaRetailersOrders extends Component {
         return new Intl.DateTimeFormat("es-AR", {
             day: "2-digit",
             month: "2-digit",
-            year: "2-digit",
+            year: "numeric",
             hour: "2-digit",
             minute: "2-digit",
         }).format(date);
     }
 
     notifyError(error, fallback) {
-        this.notification.add(error?.data?.message || fallback, {
-            type: "danger",
-        });
+        this.notification.add(error?.data?.message || fallback, { type: "danger" });
     }
 }
 
