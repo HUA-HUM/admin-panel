@@ -557,7 +557,9 @@
 
 .o_lqa_meli_pricing_table_wrap {
     position: relative;
-    max-height: min(540px, calc(100vh - 390px));
+    height: calc(100vh - 390px);
+    min-height: 260px;
+    max-height: 540px;
     overflow: auto;
     scrollbar-gutter: stable;
     border: 1px solid #e1e7ef;
