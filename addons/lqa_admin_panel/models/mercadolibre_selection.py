@@ -84,6 +84,36 @@ class LqaMercadolibreSelectionJob(models.Model):
         ].process_pending_selection_jobs()
 
 
+class LqaMercadolibreCatalogQuery(models.Model):
+    _name = "lqa.mercadolibre.catalog.query"
+    _description = "Consulta asincronica del catalogo MercadoLibre"
+    _order = "create_date desc, id desc"
+
+    requested_by_id = fields.Many2one(
+        "res.users",
+        required=True,
+        readonly=True,
+        index=True,
+    )
+    state = fields.Selection(
+        [
+            ("queued", "En cola"),
+            ("running", "Consultando"),
+            ("done", "Completada"),
+            ("failed", "Fallida"),
+        ],
+        required=True,
+        default="queued",
+        readonly=True,
+        index=True,
+    )
+    filters_json = fields.Text(required=True, readonly=True)
+    result_json = fields.Text(readonly=True)
+    error_message = fields.Text(readonly=True)
+    started_at = fields.Datetime(readonly=True)
+    finished_at = fields.Datetime(readonly=True)
+
+
 class LqaMercadolibreSelectionItem(models.Model):
     _name = "lqa.mercadolibre.selection.item"
     _description = "Producto seleccionado MercadoLibre"

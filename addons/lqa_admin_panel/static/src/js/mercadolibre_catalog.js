@@ -35,6 +35,8 @@ export class LqaMercadolibreCatalog extends Component {
         this.orm = useService("orm");
         this.state = useState({
             loading: true,
+            catalogError: "",
+            catalogQueryId: null,
             foldersLoading: true,
             savingSelection: false,
             savingFilteredSelection: false,
@@ -56,35 +58,100 @@ export class LqaMercadolibreCatalog extends Component {
         });
 
         onWillStart(async () => {
-            await Promise.all([this.loadProducts(), this.loadFolders()]);
+            await this.loadFolders();
             await this.loadActiveSelectionJob();
+            await this.loadProducts();
         });
 
         onWillUnmount(() => {
             if (this.selectionJobTimer) {
                 clearTimeout(this.selectionJobTimer);
             }
+            if (this.catalogQueryTimer) {
+                clearTimeout(this.catalogQueryTimer);
+            }
         });
     }
 
     async loadProducts() {
+        if (this.catalogQueryTimer) {
+            clearTimeout(this.catalogQueryTimer);
+        }
         this.state.loading = true;
+        this.state.catalogError = "";
+        this.state.catalogQueryId = null;
         try {
-            const response = await this.orm.call(
+            const query = await this.orm.call(
                 "lqa.mercadolibre.catalog.service",
-                "get_products",
+                "start_products_query",
                 [{ ...this.state.filters }]
             );
-            this.state.products = response.products;
-            this.state.pagination = response.pagination;
-            this.state.sort = response.sort;
+            this.state.catalogQueryId = query.id;
+            if (query.state === "done") {
+                await this.pollCatalogQuery();
+            } else {
+                this.scheduleCatalogQueryPolling();
+            }
         } catch (error) {
-            this.notification.add(
-                error?.data?.message || "No se pudo cargar el catalogo MercadoLibre.",
-                { type: "danger" }
-            );
-        } finally {
             this.state.loading = false;
+            this.state.catalogError =
+                error?.data?.message || "No se pudo iniciar la consulta del catalogo.";
+        }
+    }
+
+    scheduleCatalogQueryPolling() {
+        if (this.catalogQueryTimer) {
+            clearTimeout(this.catalogQueryTimer);
+        }
+        if (!this.state.loading || !this.state.catalogQueryId) {
+            return;
+        }
+        this.catalogQueryTimer = setTimeout(
+            () => this.pollCatalogQuery(),
+            3000
+        );
+    }
+
+    async pollCatalogQuery() {
+        const queryId = this.state.catalogQueryId;
+        if (!queryId) {
+            return;
+        }
+        try {
+            const query = await this.orm.call(
+                "lqa.mercadolibre.catalog.service",
+                "get_products_query",
+                [queryId]
+            );
+            if (queryId !== this.state.catalogQueryId) {
+                return;
+            }
+            if (query.state === "done") {
+                const response = query.result || {};
+                this.state.products = response.products || [];
+                this.state.pagination = response.pagination || {};
+                this.state.sort = response.sort || {};
+                this.state.loading = false;
+                this.state.catalogError = "";
+            } else if (query.state === "failed") {
+                this.state.loading = false;
+                this.state.catalogError =
+                    query.error || "Catalog Sync API no pudo completar la consulta.";
+                if (this.state.products.length) {
+                    this.notification.add(
+                        `${this.state.catalogError} Se mantienen los resultados anteriores.`,
+                        { type: "warning" }
+                    );
+                }
+            }
+        } catch (error) {
+            if (queryId === this.state.catalogQueryId) {
+                this.state.loading = false;
+                this.state.catalogError =
+                    error?.data?.message || "No se pudo consultar el progreso.";
+            }
+        } finally {
+            this.scheduleCatalogQueryPolling();
         }
     }
 

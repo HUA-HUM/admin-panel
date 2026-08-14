@@ -89,6 +89,9 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
     FILTER_SELECTION_PAGE_RETRIES = 3
     FILTER_SELECTION_MAX_CYCLE_RETRIES = 10
     FILTER_SELECTION_API_TIMEOUT = 90
+    CATALOG_QUERY_TIMEOUT = 180
+    CATALOG_QUERY_RETRIES = 2
+    CATALOG_QUERY_CACHE_MINUTES = 5
 
     @api.model
     def get_products(self, filters=None):
@@ -113,6 +116,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
             "GET",
             endpoint,
             params=params,
+            timeout=self.CATALOG_QUERY_TIMEOUT,
         )
         products = response.get("products") or []
 
@@ -121,6 +125,151 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
             "sort": response.get("sort") or {},
             "products": [self._normalize_product(product) for product in products],
         }
+
+    @api.model
+    def start_products_query(self, filters=None):
+        self._check_access()
+        prepared_filters = dict(filters or {})
+        filters_json = json.dumps(
+            prepared_filters,
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+        cached_query = (
+            self.env["lqa.mercadolibre.catalog.query"]
+            .sudo()
+            .search(
+                [
+                    ("requested_by_id", "=", self.env.user.id),
+                    ("state", "=", "done"),
+                    ("filters_json", "=", filters_json),
+                    (
+                        "finished_at",
+                        ">=",
+                        fields.Datetime.now()
+                        - timedelta(minutes=self.CATALOG_QUERY_CACHE_MINUTES),
+                    ),
+                ],
+                order="id desc",
+                limit=1,
+            )
+        )
+        if cached_query:
+            return {
+                "id": cached_query.id,
+                "state": cached_query.state,
+                "cached": True,
+            }
+        query = self.env["lqa.mercadolibre.catalog.query"].sudo().create(
+            {
+                "requested_by_id": self.env.user.id,
+                "filters_json": filters_json,
+            }
+        )
+        thread = threading.Thread(
+            target=self._run_products_query,
+            args=(self.env.cr.dbname, query.id),
+            name=f"lqa-meli-catalog-query-{query.id}",
+            daemon=True,
+        )
+        self.env.cr.postcommit.add(thread.start)
+        return {"id": query.id, "state": query.state}
+
+    @api.model
+    def get_products_query(self, query_id):
+        self._check_access()
+        query = (
+            self.env["lqa.mercadolibre.catalog.query"]
+            .sudo()
+            .browse(self._as_int(query_id, 0))
+            .exists()
+        )
+        if not query:
+            raise UserError(_("La consulta del catalogo no existe."))
+        if (
+            not self.env.user.has_group("lqa_admin_panel.group_lqa_admin")
+            and query.requested_by_id != self.env.user
+        ):
+            raise AccessError(_("No tenes acceso a esta consulta."))
+        result = {}
+        if query.state == "done" and query.result_json:
+            try:
+                result = json.loads(query.result_json)
+            except ValueError:
+                result = {}
+        return {
+            "id": query.id,
+            "state": query.state,
+            "result": result,
+            "error": query.error_message or "",
+        }
+
+    @staticmethod
+    def _run_products_query(dbname, query_id):
+        with Registry(dbname).cursor() as cr:
+            env = api.Environment(cr, SUPERUSER_ID, {})
+            query = env["lqa.mercadolibre.catalog.query"].browse(query_id).exists()
+            if not query:
+                return
+            query.write(
+                {"state": "running", "started_at": fields.Datetime.now()}
+            )
+            cr.commit()
+            try:
+                filters = json.loads(query.filters_json or "{}")
+                service = env["lqa.mercadolibre.catalog.service"]
+                params = service._prepare_params(filters)
+                response = service._request_catalog_query(
+                    service._catalog_endpoint(),
+                    params,
+                )
+                products = response.get("products") or []
+                result = {
+                    "pagination": response.get("pagination") or {},
+                    "sort": response.get("sort") or {},
+                    "products": [
+                        service._normalize_product(product)
+                        for product in products
+                    ],
+                }
+                query.write(
+                    {
+                        "state": "done",
+                        "result_json": json.dumps(result, ensure_ascii=False),
+                        "error_message": False,
+                        "finished_at": fields.Datetime.now(),
+                    }
+                )
+            except Exception as error:
+                query.write(
+                    {
+                        "state": "failed",
+                        "error_message": str(error),
+                        "finished_at": fields.Datetime.now(),
+                    }
+                )
+            cr.commit()
+
+    def _request_catalog_query(self, endpoint, params):
+        last_error = None
+        for attempt in range(1, self.CATALOG_QUERY_RETRIES + 1):
+            try:
+                response = requests.get(
+                    endpoint,
+                    headers={"Accept": "application/json"},
+                    params=params,
+                    timeout=self.CATALOG_QUERY_TIMEOUT,
+                )
+                response.raise_for_status()
+                return response.json()
+            except (requests.RequestException, ValueError) as error:
+                last_error = error
+                if attempt < self.CATALOG_QUERY_RETRIES:
+                    time.sleep(attempt * 3)
+        raise UserError(
+            _("Catalog Sync API no respondio luego de %s intentos: %s")
+            % (self.CATALOG_QUERY_RETRIES, last_error)
+        )
 
     @api.model
     def get_selection_folders(self):

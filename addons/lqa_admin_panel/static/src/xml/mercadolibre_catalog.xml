@@ -33,8 +33,13 @@
                         >
                             Limpiar
                         </button>
-                        <button type="submit" class="btn btn-primary">
-                            Aplicar filtros
+                        <button
+                            type="submit"
+                            class="btn btn-primary"
+                            t-att-disabled="state.loading"
+                        >
+                            <t t-if="state.loading">Consultando...</t>
+                            <t t-else="">Aplicar filtros</t>
                         </button>
                     </div>
                 </div>
@@ -436,8 +441,14 @@
             <section class="o_lqa_meli_results">
                 <div class="o_lqa_meli_results__bar">
                     <div>
-                        <strong t-esc="formatNumber(state.pagination.total || 0)"/>
-                        <span>productos encontrados</span>
+                        <t t-if="state.loading and !state.products.length">
+                            <strong>Consultando</strong>
+                            <span>Catalog Sync API</span>
+                        </t>
+                        <t t-else="">
+                            <strong t-esc="formatNumber(state.pagination.total || 0)"/>
+                            <span>productos encontrados</span>
+                        </t>
                     </div>
                     <div t-if="state.pagination.total_pages">
                         Pagina
@@ -483,8 +494,23 @@
                     </div>
                 </div>
 
-                <div class="o_lqa_meli_loading" t-if="state.loading">
-                    Cargando productos...
+                <div class="o_lqa_meli_loading" t-if="state.loading and !state.products.length">
+                    <i class="fa fa-circle-o-notch fa-spin"/>
+                    <strong>Consultando el catalogo</strong>
+                    <span>
+                        Catalog Sync API esta procesando mucha informacion. Podes seguir
+                        usando el panel; la pantalla se actualizara automaticamente.
+                    </span>
+                </div>
+
+                <div class="o_lqa_meli_catalog_error" t-elif="state.catalogError and !state.products.length">
+                    <i class="fa fa-exclamation-circle"/>
+                    <strong>No se pudo completar la consulta</strong>
+                    <span t-esc="state.catalogError"/>
+                    <button type="button" class="btn btn-primary" t-on-click="loadProducts">
+                        <i class="fa fa-refresh"/>
+                        Reintentar
+                    </button>
                 </div>
 
                 <div class="o_lqa_meli_empty" t-elif="!state.products.length">

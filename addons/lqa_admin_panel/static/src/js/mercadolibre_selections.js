@@ -209,15 +209,18 @@ export class LqaMercadolibreSelections extends Component {
         }
         this.state.exportingFolderId = String(folder.id);
         try {
-            const result = await this.orm.call(
-                "lqa.mercadolibre.catalog.service",
-                "export_selection_folder_csv",
-                [folder.id, this.selectedColumnKeys]
-            );
-            this.downloadTextFile(result.filename, result.content);
+            const params = new URLSearchParams({
+                columns: this.selectedColumnKeys.join(","),
+            });
+            const anchor = document.createElement("a");
+            anchor.href = `/lqa_admin_panel/mercadolibre/selections/${encodeURIComponent(folder.id)}/csv?${params.toString()}`;
+            anchor.download = "";
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
             this.notification.add(
-                `CSV generado con ${this.formatNumber(result.count)} publicaciones.`,
-                { type: "success" }
+                `La descarga de ${this.formatNumber(folder.productCount)} publicaciones comenzo. El archivo se genera por lotes.`,
+                { type: "info" }
             );
         } catch (error) {
             this.notification.add(
@@ -227,20 +230,6 @@ export class LqaMercadolibreSelections extends Component {
         } finally {
             this.state.exportingFolderId = "";
         }
-    }
-
-    downloadTextFile(filename, content) {
-        const blob = new Blob([content || ""], {
-            type: "text/csv;charset=utf-8",
-        });
-        const url = URL.createObjectURL(blob);
-        const anchor = document.createElement("a");
-        anchor.href = url;
-        anchor.download = filename || "mercadolibre-seleccion.csv";
-        document.body.appendChild(anchor);
-        anchor.click();
-        anchor.remove();
-        URL.revokeObjectURL(url);
     }
 
     isSelectedFolder(folder) {

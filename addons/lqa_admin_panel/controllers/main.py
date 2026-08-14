@@ -1,6 +1,9 @@
+import csv
+import io
 import json
 
-from odoo import http
+from odoo import api, http
+from odoo.modules.registry import Registry
 from odoo.http import request
 
 
@@ -68,3 +71,83 @@ class LqaAdminPanelController(http.Controller):
             tlqv_code
         )
         return request.redirect(result["cdnUrl"], code=303)
+
+    @http.route(
+        "/lqa_admin_panel/mercadolibre/selections/<int:folder_id>/csv",
+        type="http",
+        auth="user",
+        methods=["GET"],
+        csrf=False,
+        sitemap=False,
+    )
+    def mercadolibre_selection_csv(self, folder_id, columns="", **kwargs):
+        service = request.env["lqa.mercadolibre.catalog.service"]
+        service._check_access()
+        folder = service._get_folder(folder_id)
+        column_map = {column[0]: column for column in service.CSV_COLUMNS}
+        requested_columns = [
+            value.strip()
+            for value in str(columns or "").split(",")
+            if value.strip() in column_map
+        ]
+        if not requested_columns:
+            requested_columns = list(service.DEFAULT_CSV_COLUMNS)
+
+        filename = (
+            f"{service._csv_safe_name(folder.name)}-mercadolibre.csv"
+        )
+        dbname = request.env.cr.dbname
+        uid = request.env.user.id
+        context = dict(request.env.context)
+
+        def stream_csv():
+            header_buffer = io.StringIO(newline="")
+            header_writer = csv.writer(header_buffer)
+            header_writer.writerow(
+                [column_map[key][1] for key in requested_columns]
+            )
+            yield ("\ufeff" + header_buffer.getvalue()).encode("utf-8")
+
+            last_id = 0
+            with Registry(dbname).cursor() as cr:
+                env = api.Environment(cr, uid, context)
+                export_service = env["lqa.mercadolibre.catalog.service"]
+                line_model = env["lqa.mercadolibre.selection.item"]
+                while True:
+                    lines = line_model.search(
+                        [
+                            ("folder_id", "=", folder_id),
+                            ("id", ">", last_id),
+                        ],
+                        order="id",
+                        limit=5000,
+                    )
+                    if not lines:
+                        break
+                    batch_buffer = io.StringIO(newline="")
+                    writer = csv.writer(batch_buffer)
+                    for line in lines:
+                        writer.writerow(
+                            [
+                                export_service._csv_line_value(
+                                    line,
+                                    column_map[key],
+                                )
+                                for key in requested_columns
+                            ]
+                        )
+                    last_id = lines[-1].id
+                    yield batch_buffer.getvalue().encode("utf-8")
+                    env.invalidate_all()
+
+        response = request.make_response(
+            stream_csv(),
+            headers=[
+                ("Content-Type", "text/csv; charset=utf-8"),
+                ("Content-Disposition", http.content_disposition(filename)),
+                ("X-Accel-Buffering", "no"),
+                ("Cache-Control", "no-store"),
+            ],
+        )
+        response.direct_passthrough = True
+        return response

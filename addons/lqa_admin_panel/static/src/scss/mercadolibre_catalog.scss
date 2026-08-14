@@ -524,13 +524,40 @@
 }
 
 .o_lqa_meli_loading,
-.o_lqa_meli_empty {
+.o_lqa_meli_empty,
+.o_lqa_meli_catalog_error {
     padding: 42px 20px;
     border: 1px solid #d7dee7;
     border-radius: 8px;
     background: #fff;
     color: #60758a;
     text-align: center;
+}
+
+.o_lqa_meli_loading,
+.o_lqa_meli_catalog_error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+
+    > i {
+        color: #3483fa;
+        font-size: 24px;
+    }
+
+    strong {
+        color: #1f2933;
+        font-size: 15px;
+    }
+
+    span {
+        max-width: 620px;
+    }
+}
+
+.o_lqa_meli_catalog_error > i {
+    color: #c0392b;
 }
 
 .o_lqa_meli_products {
