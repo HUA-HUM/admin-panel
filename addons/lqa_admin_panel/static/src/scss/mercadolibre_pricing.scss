@@ -4,7 +4,7 @@
     overflow-x: hidden;
     overflow-y: auto;
     padding: 24px;
-    background: #f4f6f8;
+    background: #f3f5f8;
     color: #1f2933;
 
     * {
@@ -27,8 +27,11 @@
     gap: 24px;
     margin-bottom: 18px;
     padding: 18px 22px;
+    border: 1px solid #e2e8f0;
     border-bottom: 4px solid #ffe600;
+    border-radius: 14px;
     background: #fff;
+    box-shadow: 0 8px 28px rgba(31, 41, 51, 0.06);
 
     p {
         margin: 0 0 3px;
@@ -70,8 +73,9 @@
 .o_lqa_meli_pricing_jobs__list,
 .o_lqa_meli_pricing_detail {
     border: 1px solid #d7dee7;
-    border-radius: 8px;
+    border-radius: 14px;
     background: #fff;
+    box-shadow: 0 8px 24px rgba(31, 41, 51, 0.045);
 }
 
 .o_lqa_meli_pricing_input {
@@ -80,6 +84,35 @@
 
 .o_lqa_meli_pricing_folder_import {
     grid-column: 1 / -1;
+    overflow: hidden;
+    padding: 20px;
+    border-color: #dce3ec;
+    background:
+        radial-gradient(circle at 100% 0, rgba(255, 230, 0, 0.11), transparent 32%),
+        #fff;
+}
+
+.o_lqa_meli_pricing_eyebrow {
+    margin: 0 0 4px;
+    color: #2d3277;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+}
+
+.o_lqa_meli_pricing_secure_badge {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 6px;
+    margin: 0 !important;
+    padding: 7px 10px;
+    border: 1px solid #d8e2f0;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.84);
+    color: #40556d !important;
+    font-size: 11px !important;
+    font-weight: 800;
 }
 
 .o_lqa_meli_pricing_folder_tools {
@@ -97,27 +130,139 @@
 
 .o_lqa_meli_pricing_import_status {
     position: relative;
+    overflow: hidden;
+    margin-top: 14px;
+    padding: 16px 16px 20px;
+    border: 1px solid #dce3ec;
+    border-radius: 12px;
+    background: rgba(248, 250, 252, 0.9);
+
+    &.is-done {
+        border-color: #b9dfd0;
+        background: linear-gradient(135deg, #f2fbf7, #fff);
+    }
+
+    &.is-failed {
+        border-color: #efc3c3;
+        background: linear-gradient(135deg, #fff7f7, #fff);
+    }
+}
+
+.o_lqa_meli_pricing_import_summary,
+.o_lqa_meli_pricing_import_title,
+.o_lqa_meli_pricing_import_actions,
+.o_lqa_meli_pricing_import_progress_label {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
+}
+
+.o_lqa_meli_pricing_import_summary,
+.o_lqa_meli_pricing_import_progress_label {
     justify-content: space-between;
     gap: 16px;
-    overflow: hidden;
-    margin-top: 12px;
-    padding: 12px 14px 16px;
-    border: 1px solid #d7dee7;
-    border-radius: 8px;
-    background: #f8fafc;
+}
 
-    span,
-    small {
+.o_lqa_meli_pricing_import_title {
+    min-width: 0;
+    gap: 11px;
+
+    strong,
+    span {
         display: block;
-        margin-top: 3px;
+    }
+
+    strong {
+        overflow: hidden;
+        color: #172334;
+        font-size: 16px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    span:not(.o_lqa_meli_pricing_import_icon) {
+        margin-top: 2px;
         color: #60758a;
+        font-size: 12px;
+        font-weight: 700;
+    }
+}
+
+.o_lqa_meli_pricing_import_icon {
+    display: grid !important;
+    flex: 0 0 38px;
+    width: 38px;
+    height: 38px;
+    place-items: center;
+    border-radius: 10px;
+    background: #2d3277;
+    color: #fff;
+}
+
+.o_lqa_meli_pricing_import_actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+
+    .btn {
+        min-height: 38px;
+        border-radius: 9px;
+        font-weight: 800;
+    }
+}
+
+.o_lqa_meli_pricing_import_kpis {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin: 14px 0 12px;
+
+    article {
+        padding: 10px 12px;
+        border: 1px solid #e3e9f0;
+        border-radius: 9px;
+        background: rgba(255, 255, 255, 0.82);
+    }
+
+    small,
+    strong {
+        display: block;
     }
 
     small {
-        color: #a22b2b;
+        color: #6a7c90;
+        font-size: 10px;
+        font-weight: 850;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
     }
+
+    strong {
+        margin-top: 3px;
+        color: #172334;
+        font-size: 17px;
+    }
+
+    .is-error strong {
+        color: #b42318;
+    }
+}
+
+.o_lqa_meli_pricing_import_progress_label {
+    margin-bottom: 7px;
+    color: #60758a;
+    font-size: 11px;
+    font-weight: 800;
+
+    strong {
+        color: #2d3277;
+    }
+}
+
+.o_lqa_meli_pricing_import_error {
+    display: block;
+    margin-top: 10px;
+    color: #a22b2b;
+    font-weight: 700;
 }
 
 .o_lqa_meli_pricing_import_track {
@@ -125,14 +270,15 @@
     right: 0;
     bottom: 0;
     left: 0;
-    height: 5px;
+    height: 6px;
     background: #e5eaf0;
 
     span {
         display: block;
         height: 100%;
         margin: 0;
-        background: #2d3277;
+        border-radius: 0 6px 6px 0;
+        background: linear-gradient(90deg, #2d3277, #5360c9);
         transition: width 0.25s ease;
     }
 }
@@ -205,6 +351,13 @@
     }
 }
 
+.o_lqa_meli_pricing_detail__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
 .o_lqa_meli_pricing_input textarea {
     min-height: 190px;
     margin-bottom: 12px;
@@ -275,6 +428,7 @@
 
 .o_lqa_meli_pricing_detail {
     min-width: 0;
+    min-height: 0;
     padding: 16px;
 }
 
@@ -402,9 +556,47 @@
 }
 
 .o_lqa_meli_pricing_table_wrap {
+    position: relative;
+    max-height: min(540px, calc(100vh - 390px));
     overflow: auto;
+    scrollbar-gutter: stable;
     border: 1px solid #e1e7ef;
-    border-radius: 8px;
+    border-radius: 10px;
+    background: #fff;
+}
+
+.o_lqa_meli_pricing_table_toolbar {
+    position: sticky;
+    z-index: 4;
+    top: 0;
+    display: flex;
+    min-width: 920px;
+    min-height: 50px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 10px;
+    border-bottom: 1px solid #e1e7ef;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(8px);
+    color: #60758a;
+    font-size: 12px;
+
+    div {
+        display: flex;
+        gap: 7px;
+    }
+
+    .btn {
+        min-height: 32px;
+        padding: 5px 9px;
+        border-color: #d7dee7;
+        border-radius: 7px;
+        background: #fff;
+        color: #334e68;
+        font-size: 12px;
+        font-weight: 800;
+    }
 }
 
 .o_lqa_meli_pricing_table {
@@ -421,7 +613,10 @@
     }
 
     th {
-        background: #f8fafc;
+        position: sticky;
+        z-index: 3;
+        top: 50px;
+        background: #f3f6f9;
         color: #60758a;
         font-size: 11px;
         font-weight: 850;
@@ -433,9 +628,15 @@
         font-size: 13px;
     }
 
+    tbody tr:hover td {
+        background: #f8fafc;
+    }
+
     small {
         display: block;
         max-width: 220px;
+        max-height: 64px;
+        overflow: auto;
         margin-top: 4px;
         color: #8a1f1f;
     }
@@ -474,5 +675,26 @@
 
     .o_lqa_meli_pricing_folder_tools {
         grid-template-columns: 1fr;
+    }
+
+    .o_lqa_meli_pricing_import_summary {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .o_lqa_meli_pricing_import_actions {
+        justify-content: stretch;
+
+        .btn {
+            flex: 1 1 auto;
+        }
+    }
+
+    .o_lqa_meli_pricing_import_kpis {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .o_lqa_meli_pricing_table_wrap {
+        max-height: 480px;
     }
 }

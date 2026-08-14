@@ -18,11 +18,15 @@
                 <article class="o_lqa_meli_pricing_input o_lqa_meli_pricing_folder_import">
                     <div class="o_lqa_meli_pricing_section_head">
                         <div>
-                            <h2>Desde Selecciones</h2>
+                            <p class="o_lqa_meli_pricing_eyebrow">Ejecución masiva</p>
+                            <h2>Procesar una selección completa</h2>
                             <span>
-                                Procesa una carpeta completa sin descargar ni volver a subir el CSV.
+                                Un solo proceso visible, lotes seguros en segundo plano y un Excel consolidado.
                             </span>
                         </div>
+                        <span class="o_lqa_meli_pricing_secure_badge">
+                            <i class="fa fa-shield"/> Proceso protegido
+                        </span>
                     </div>
                     <div class="o_lqa_meli_pricing_folder_tools">
                         <select class="form-select" t-model="state.selectedFolderId">
@@ -44,24 +48,74 @@
                             t-on-click="startFolderImport"
                         >
                             <t t-if="state.startingFolderImport">Preparando...</t>
-                            <t t-else="">Procesar carpeta</t>
+                            <t t-else="">Iniciar procesamiento</t>
                         </button>
                     </div>
-                    <div t-if="state.folderImport" t-att-class="'o_lqa_meli_pricing_import_status is-' + state.folderImport.state">
-                        <div>
-                            <strong t-esc="state.folderImport.folderName"/>
-                            <span>
-                                <t t-esc="formatNumber(state.folderImport.processed)"/> de
-                                <t t-esc="formatNumber(state.folderImport.total)"/> preparadas ·
-                                <t t-esc="formatNumber(state.folderImport.jobs)"/> jobs ·
-                                <t t-esc="formatNumber(state.folderImport.invalid)"/> inválidas
-                            </span>
-                            <small t-if="state.folderImport.error" t-esc="state.folderImport.error"/>
+                    <div t-if="state.folderImport" t-att-class="'o_lqa_meli_pricing_import_status is-' + state.folderImport.pricingState">
+                        <div class="o_lqa_meli_pricing_import_summary">
+                            <div class="o_lqa_meli_pricing_import_title">
+                                <span class="o_lqa_meli_pricing_import_icon"><i class="fa fa-folder-open"/></span>
+                                <div>
+                                    <strong t-esc="state.folderImport.folderName"/>
+                                    <span t-esc="stateLabel(state.folderImport.pricingState)"/>
+                                </div>
+                            </div>
+                            <div class="o_lqa_meli_pricing_import_actions">
+                                <button
+                                    t-if="state.folderImport.failedJobs"
+                                    type="button"
+                                    class="btn btn-secondary"
+                                    t-att-disabled="state.retryingFolderImport"
+                                    t-on-click="retryFolderImport"
+                                >
+                                    <i class="fa fa-refresh"/>
+                                    <t t-if="state.retryingFolderImport">Reintentando...</t>
+                                    <t t-else="">Reintentar errores</t>
+                                </button>
+                                <button
+                                    t-if="state.folderImport.canExport &amp;&amp; ['idle', 'failed'].includes(state.folderImport.exportState)"
+                                    type="button"
+                                    class="btn btn-primary"
+                                    t-att-disabled="state.generatingFolderExcel"
+                                    t-on-click="generateFolderExcel"
+                                >
+                                    <i class="fa fa-file-excel-o"/>
+                                    <t t-if="state.generatingFolderExcel">Preparando...</t>
+                                    <t t-else="">Generar Excel único</t>
+                                </button>
+                                <button
+                                    t-elif="['queued', 'running'].includes(state.folderImport.exportState)"
+                                    type="button"
+                                    class="btn btn-secondary"
+                                    disabled="disabled"
+                                >
+                                    <i class="fa fa-circle-o-notch fa-spin"/> Generando Excel...
+                                </button>
+                                <button
+                                    t-elif="state.folderImport.exportState === 'done'"
+                                    type="button"
+                                    class="btn btn-primary"
+                                    t-on-click="downloadFolderExcel"
+                                >
+                                    <i class="fa fa-download"/> Descargar Excel consolidado
+                                </button>
+                            </div>
                         </div>
-                        <strong><t t-esc="folderImportProgress"/>%</strong>
+                        <div class="o_lqa_meli_pricing_import_kpis">
+                            <article><small>Publicaciones</small><strong t-esc="formatNumber(state.folderImport.valid)"/></article>
+                            <article><small>Procesadas</small><strong t-esc="formatNumber(state.folderImport.success)"/></article>
+                            <article><small>En proceso</small><strong t-esc="formatNumber(state.folderImport.pendingJobs)"/></article>
+                            <article class="is-error"><small>Con error</small><strong t-esc="formatNumber(state.folderImport.failed)"/></article>
+                        </div>
+                        <div class="o_lqa_meli_pricing_import_progress_label">
+                            <span>Avance del procesamiento</span>
+                            <strong><t t-esc="folderPricingProgress"/>%</strong>
+                        </div>
                         <div class="o_lqa_meli_pricing_import_track">
-                            <span t-att-style="'width:' + folderImportProgress + '%'"/>
+                            <span t-att-style="'width:' + folderPricingProgress + '%'"/>
                         </div>
+                        <small t-if="state.folderImport.error" class="o_lqa_meli_pricing_import_error" t-esc="state.folderImport.error"/>
+                        <small t-if="state.folderImport.exportError" class="o_lqa_meli_pricing_import_error" t-esc="state.folderImport.exportError"/>
                     </div>
                 </article>
 
@@ -137,7 +191,7 @@
                 <aside class="o_lqa_meli_pricing_jobs__list">
                     <div class="o_lqa_meli_pricing_section_head">
                         <div>
-                            <h2>Jobs</h2>
+                            <h2>Procesos individuales</h2>
                             <span>
                                 <t t-esc="formatNumber(state.jobs.length)"/>
                                 recientes
@@ -156,7 +210,7 @@
                         Cargando jobs...
                     </div>
                     <div t-elif="!state.jobs.length" class="o_lqa_meli_pricing_empty">
-                        Todavia no hay jobs de pricing.
+                        Todavía no hay cargas CSV o manuales.
                     </div>
                     <div t-else="" class="o_lqa_meli_pricing_job_list">
                         <button
@@ -199,16 +253,29 @@
                                     <strong t-esc="formatDateTime(state.selectedJob.createdAt)"/>
                                 </span>
                             </div>
-                            <button
-                                type="button"
-                                class="btn btn-primary"
-                                t-att-disabled="!canDownload(state.selectedJob) || isDownloading(state.selectedJob)"
-                                t-on-click="() => this.downloadJobXlsx(state.selectedJob)"
-                            >
-                                <i class="fa fa-download"/>
-                                <t t-if="isDownloading(state.selectedJob)">Descargando...</t>
-                                <t t-else="">Descargar Excel</t>
-                            </button>
+                            <div class="o_lqa_meli_pricing_detail__actions">
+                                <button
+                                    t-if="state.selectedJob.state === 'failed'"
+                                    type="button"
+                                    class="btn btn-secondary"
+                                    t-att-disabled="isRetryingJob(state.selectedJob)"
+                                    t-on-click="() => this.retryJob(state.selectedJob)"
+                                >
+                                    <i class="fa fa-refresh"/>
+                                    <t t-if="isRetryingJob(state.selectedJob)">Reintentando...</t>
+                                    <t t-else="">Reintentar</t>
+                                </button>
+                                <button
+                                    type="button"
+                                    class="btn btn-primary"
+                                    t-att-disabled="!canDownload(state.selectedJob) || isDownloading(state.selectedJob)"
+                                    t-on-click="() => this.downloadJobXlsx(state.selectedJob)"
+                                >
+                                    <i class="fa fa-download"/>
+                                    <t t-if="isDownloading(state.selectedJob)">Descargando...</t>
+                                    <t t-else="">Descargar Excel</t>
+                                </button>
+                            </div>
                         </div>
 
                         <div class="o_lqa_meli_pricing_stats">
@@ -243,6 +310,20 @@
                             Todavia no hay detalle disponible.
                         </div>
                         <div t-else="" class="o_lqa_meli_pricing_table_wrap">
+                            <div class="o_lqa_meli_pricing_table_toolbar">
+                                <span>
+                                    Filas <strong t-esc="formatNumber(state.selectedJob.linePagination.from)"/>–<strong t-esc="formatNumber(state.selectedJob.linePagination.to)"/>
+                                    de <strong t-esc="formatNumber(state.selectedJob.linePagination.total)"/>
+                                </span>
+                                <div>
+                                    <button type="button" class="btn btn-secondary" t-att-disabled="!state.selectedJob.linePagination.hasPrevious" t-on-click="previousJobLines">
+                                        <i class="fa fa-chevron-left"/> Anterior
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" t-att-disabled="!state.selectedJob.linePagination.hasNext" t-on-click="nextJobLines">
+                                        Siguiente <i class="fa fa-chevron-right"/>
+                                    </button>
+                                </div>
+                            </div>
                             <table class="o_lqa_meli_pricing_table">
                                 <thead>
                                     <tr>

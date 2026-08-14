@@ -1,6 +1,7 @@
 import csv
 import io
 import json
+import os
 
 from odoo import api, http
 from odoo.modules.registry import Registry
@@ -145,6 +146,51 @@ class LqaAdminPanelController(http.Controller):
             headers=[
                 ("Content-Type", "text/csv; charset=utf-8"),
                 ("Content-Disposition", http.content_disposition(filename)),
+                ("X-Accel-Buffering", "no"),
+                ("Cache-Control", "no-store"),
+            ],
+        )
+        response.direct_passthrough = True
+        return response
+
+    @http.route(
+        "/lqa_admin_panel/mercadolibre/pricing/imports/<int:import_id>/xlsx",
+        type="http",
+        auth="user",
+        methods=["GET"],
+        csrf=False,
+        sitemap=False,
+    )
+    def mercadolibre_pricing_import_xlsx(self, import_id, **kwargs):
+        service = request.env["lqa.mercadolibre.pricing.service"]
+        service._check_access()
+        import_job = service._get_folder_import(import_id)
+        path = import_job.export_path or ""
+        if import_job.export_state != "done" or not os.path.isfile(path):
+            return request.not_found()
+
+        filename = (
+            f"{service._csv_safe_name(import_job.folder_id.name)}-pricing.xlsx"
+        )
+
+        def stream_xlsx():
+            with open(path, "rb") as export_file:
+                while True:
+                    chunk = export_file.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    yield chunk
+
+        response = request.make_response(
+            stream_xlsx(),
+            headers=[
+                (
+                    "Content-Type",
+                    "application/vnd.openxmlformats-officedocument."
+                    "spreadsheetml.sheet",
+                ),
+                ("Content-Disposition", http.content_disposition(filename)),
+                ("Content-Length", str(os.path.getsize(path))),
                 ("X-Accel-Buffering", "no"),
                 ("Cache-Control", "no-store"),
             ],

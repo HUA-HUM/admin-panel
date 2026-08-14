@@ -102,6 +102,18 @@ class LqaApiClient(models.AbstractModel):
                 timeout=timeout,
             )
             response.raise_for_status()
+        except requests.HTTPError as error:
+            detail = ""
+            try:
+                payload_detail = response.json()
+                detail = json.dumps(payload_detail, ensure_ascii=False)
+            except ValueError:
+                detail = (response.text or "").strip()
+            detail = detail[:1500]
+            message = _("La API respondio HTTP %s.") % response.status_code
+            if detail:
+                message = _("%s Detalle: %s") % (message, detail)
+            raise UserError(message) from error
         except requests.RequestException as error:
             raise UserError(_("No se pudo conectar con la API interna: %s") % error) from error
 

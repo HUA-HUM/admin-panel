@@ -28,10 +28,15 @@ export class LqaMercadolibrePricing extends Component {
             creatingCsv: false,
             creatingManual: false,
             downloadingJobId: "",
+            retryingJobId: "",
             selectionFolders: [],
             selectedFolderId: "",
             folderImport: null,
             startingFolderImport: false,
+            generatingFolderExcel: false,
+            retryingFolderImport: false,
+            jobLineOffset: 0,
+            jobLineLimit: 200,
         });
 
         onWillStart(async () => {
@@ -97,7 +102,7 @@ export class LqaMercadolibrePricing extends Component {
         }
     }
 
-    async loadJob(jobId, showLoader = true) {
+    async loadJob(jobId, showLoader = true, offset = null) {
         if (!jobId) {
             this.state.selectedJob = null;
             return;
@@ -105,11 +110,21 @@ export class LqaMercadolibrePricing extends Component {
         if (showLoader) {
             this.state.loadingJob = true;
         }
+        const isNewJob = String(jobId) !== String(this.state.selectedJobId);
+        if (isNewJob) {
+            this.state.jobLineOffset = 0;
+        } else if (offset !== null) {
+            this.state.jobLineOffset = Math.max(Number(offset) || 0, 0);
+        }
         try {
             this.state.selectedJob = await this.orm.call(
                 "lqa.mercadolibre.pricing.service",
                 "get_job",
-                [Number(jobId)]
+                [
+                    Number(jobId),
+                    this.state.jobLineLimit,
+                    this.state.jobLineOffset,
+                ]
             );
             this.state.selectedJobId = String(jobId);
         } catch (error) {
@@ -170,18 +185,29 @@ export class LqaMercadolibrePricing extends Component {
                 "get_active_folder_import",
                 []
             );
-            const previousState = this.state.folderImport?.state;
+            const previousState = this.state.folderImport?.pricingState;
+            const previousExportState = this.state.folderImport?.exportState;
             this.state.folderImport = importJob || null;
             if (
                 showNotification &&
-                importJob?.state === "done" &&
+                importJob?.pricingState === "done" &&
                 previousState &&
                 previousState !== "done"
             ) {
                 this.notification.add(
-                    `Carpeta preparada: ${this.formatNumber(importJob.jobs)} jobs creados.`,
+                    `Proceso finalizado: ${this.formatNumber(importJob.success)} publicaciones listas.`,
                     { type: "success" }
                 );
+            }
+            if (
+                showNotification &&
+                importJob?.exportState === "done" &&
+                previousExportState &&
+                previousExportState !== "done"
+            ) {
+                this.notification.add("El Excel consolidado está listo para descargar.", {
+                    type: "success",
+                });
             }
         } catch (error) {
             if (showNotification) {
@@ -208,7 +234,7 @@ export class LqaMercadolibrePricing extends Component {
                 [Number(this.state.selectedFolderId)]
             );
             this.notification.add(
-                "La carpeta se está dividiendo en jobs de pricing de hasta 5.000 publicaciones.",
+                "El procesamiento masivo comenzó. La pantalla mostrará un único proceso.",
                 { type: "info" }
             );
         } catch (error) {
@@ -229,6 +255,98 @@ export class LqaMercadolibrePricing extends Component {
 
     get isFolderImportRunning() {
         return ["queued", "running"].includes(this.state.folderImport?.state);
+    }
+
+    get folderPricingProgress() {
+        const total = Number(this.state.folderImport?.jobs || 0);
+        const completed = Number(this.state.folderImport?.completedJobs || 0);
+        return total ? Math.min(Math.round((completed / total) * 100), 100) : 0;
+    }
+
+    async generateFolderExcel() {
+        const importJob = this.state.folderImport;
+        if (!importJob?.id) {
+            return;
+        }
+        this.state.generatingFolderExcel = true;
+        try {
+            this.state.folderImport = await this.orm.call(
+                "lqa.mercadolibre.pricing.service",
+                "start_folder_import_export",
+                [importJob.id]
+            );
+            this.notification.add(
+                "Estamos generando un único Excel con todo el resultado.",
+                { type: "info" }
+            );
+        } catch (error) {
+            this.notification.add(
+                error?.data?.message || "No se pudo generar el Excel consolidado.",
+                { type: "danger" }
+            );
+        } finally {
+            this.state.generatingFolderExcel = false;
+        }
+    }
+
+    async retryFolderImport() {
+        const importJob = this.state.folderImport;
+        if (!importJob?.id) {
+            return;
+        }
+        this.state.retryingFolderImport = true;
+        try {
+            this.state.folderImport = await this.orm.call(
+                "lqa.mercadolibre.pricing.service",
+                "retry_failed_folder_jobs",
+                [importJob.id]
+            );
+            this.notification.add(
+                "Los lotes con error volvieron a la cola.",
+                { type: "success" }
+            );
+        } catch (error) {
+            this.notification.add(
+                error?.data?.message || "No se pudieron reintentar los errores.",
+                { type: "danger" }
+            );
+        } finally {
+            this.state.retryingFolderImport = false;
+        }
+    }
+
+    downloadFolderExcel() {
+        if (!this.state.folderImport?.downloadUrl) {
+            return;
+        }
+        const anchor = document.createElement("a");
+        anchor.href = this.state.folderImport.downloadUrl;
+        anchor.download = "";
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+    }
+
+    previousJobLines() {
+        const pagination = this.state.selectedJob?.linePagination;
+        if (pagination?.hasPrevious) {
+            this.loadJob(
+                this.state.selectedJobId,
+                true,
+                Math.max(pagination.offset - pagination.limit, 0)
+            );
+        }
+    }
+
+    nextJobLines() {
+        const pagination = this.state.selectedJob?.linePagination;
+        if (pagination?.hasNext) {
+            this.loadJob(
+                this.state.selectedJobId,
+                true,
+                pagination.offset + pagination.limit
+            );
+        }
     }
 
     clearCsv() {
@@ -318,6 +436,33 @@ export class LqaMercadolibrePricing extends Component {
         }
     }
 
+    async retryJob(job) {
+        this.state.retryingJobId = String(job.id);
+        try {
+            await this.orm.call(
+                "lqa.mercadolibre.pricing.service",
+                "retry_job",
+                [job.id]
+            );
+            await this.loadJobs(false);
+            this.notification.add(
+                "El job volvió a la cola y se procesará en lotes de 50.",
+                { type: "success" }
+            );
+        } catch (error) {
+            this.notification.add(
+                error?.data?.message || "No se pudo reintentar el job.",
+                { type: "danger" }
+            );
+        } finally {
+            this.state.retryingJobId = "";
+        }
+    }
+
+    isRetryingJob(job) {
+        return String(job?.id) === String(this.state.retryingJobId);
+    }
+
     downloadBase64File(filename, content, mimetype) {
         const binary = window.atob(content || "");
         const bytes = new Uint8Array(binary.length);
@@ -356,6 +501,9 @@ export class LqaMercadolibrePricing extends Component {
             {
                 pending: "En cola",
                 processing: "Procesando",
+                preparing: "Preparando lotes",
+                running: "Procesando",
+                queued: "En cola",
                 done: "Listo",
                 failed: "Error",
             }[state] || state

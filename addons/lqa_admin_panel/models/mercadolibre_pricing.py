@@ -4,6 +4,7 @@ from datetime import timedelta
 import io
 import json
 import os
+import tempfile
 import threading
 
 import xlsxwriter
@@ -44,6 +45,12 @@ class LqaMercadolibrePricingJob(models.Model):
         readonly=True,
     )
     input_filename = fields.Char(readonly=True)
+    import_id = fields.Many2one(
+        "lqa.mercadolibre.pricing.import",
+        readonly=True,
+        index=True,
+        ondelete="set null",
+    )
     input_count = fields.Integer(readonly=True)
     success_count = fields.Integer(readonly=True)
     failed_count = fields.Integer(readonly=True)
@@ -71,6 +78,7 @@ class LqaMercadolibrePricingJob(models.Model):
         service = self.env["lqa.mercadolibre.pricing.service"].sudo()
         for job in jobs:
             service.process_job(job.id)
+        service.queue_ready_folder_exports()
 
 
 class LqaMercadolibrePricingImport(models.Model):
@@ -113,6 +121,23 @@ class LqaMercadolibrePricingImport(models.Model):
     started_at = fields.Datetime(readonly=True)
     last_progress_at = fields.Datetime(readonly=True)
     finished_at = fields.Datetime(readonly=True)
+    export_state = fields.Selection(
+        [
+            ("idle", "Pendiente"),
+            ("queued", "En cola"),
+            ("running", "Generando"),
+            ("done", "Listo"),
+            ("failed", "Error"),
+        ],
+        default="idle",
+        required=True,
+        readonly=True,
+        index=True,
+    )
+    export_path = fields.Char(readonly=True)
+    export_error = fields.Text(readonly=True)
+    export_started_at = fields.Datetime(readonly=True)
+    export_finished_at = fields.Datetime(readonly=True)
 
 
 class LqaMercadolibrePricingItem(models.Model):
@@ -195,7 +220,7 @@ class LqaMercadolibrePricingService(models.AbstractModel):
     )
     REQUIRED_FIELDS = ("mla", "categoryId", "publicationType", "sku", "salePrice")
     MAX_ITEMS = 5000
-    REQUEST_CHUNK_SIZE = 100
+    REQUEST_CHUNK_SIZE = 50
     CSV_OUTPUT_COLUMNS = (
         ("mla", "input.mla"),
         ("sku", "input.sku"),
@@ -485,6 +510,7 @@ class LqaMercadolibrePricingService(models.AbstractModel):
                             "user_id": import_job.user_id.id,
                             "source_type": "folder",
                             "input_filename": import_job.folder_id.name,
+                            "import_id": import_job.id,
                             "input_count": len(rows),
                             "line_ids": [
                                 fields.Command.create(
@@ -520,7 +546,58 @@ class LqaMercadolibrePricingService(models.AbstractModel):
             )
             self.env.cr.commit()
 
+    def _folder_import_jobs(self, import_job):
+        job_model = self.env["lqa.mercadolibre.pricing.job"].sudo()
+        jobs = job_model.search(
+            [("import_id", "=", import_job.id)],
+            order="id",
+        )
+        if jobs or not import_job.folder_id:
+            return jobs
+
+        # Compatibilidad con procesos iniciados antes de agregar import_id.
+        legacy_jobs = job_model.search(
+            [
+                ("import_id", "=", False),
+                ("source_type", "=", "folder"),
+                ("user_id", "=", import_job.user_id.id),
+                ("input_filename", "=", import_job.folder_id.name),
+                ("create_date", ">=", import_job.create_date),
+            ],
+            order="id",
+        )
+        if legacy_jobs:
+            legacy_jobs.write({"import_id": import_job.id})
+        return legacy_jobs
+
     def _folder_import_to_dict(self, import_job):
+        jobs = self._folder_import_jobs(import_job)
+        pending_jobs = jobs.filtered(lambda job: job.state in {"pending", "processing"})
+        failed_jobs = jobs.filtered(lambda job: job.state == "failed")
+        completed_jobs = jobs - pending_jobs
+        success_count = sum(jobs.mapped("success_count"))
+        failed_count = sum(jobs.mapped("failed_count"))
+        pricing_complete = bool(jobs) and not pending_jobs and import_job.state == "done"
+        if import_job.state in {"queued", "running"}:
+            pricing_state = "preparing"
+        elif pending_jobs:
+            pricing_state = "processing"
+        elif failed_jobs:
+            pricing_state = "failed"
+        elif pricing_complete:
+            pricing_state = "done"
+        else:
+            pricing_state = import_job.state
+        export_ready = bool(
+            import_job.export_state == "done"
+            and import_job.export_path
+            and os.path.isfile(import_job.export_path)
+        )
+        export_state = (
+            "failed"
+            if import_job.export_state == "done" and not export_ready
+            else import_job.export_state
+        )
         return {
             "id": import_job.id,
             "folderId": import_job.folder_id.id,
@@ -530,15 +607,264 @@ class LqaMercadolibrePricingService(models.AbstractModel):
             "processed": import_job.processed_count,
             "valid": import_job.valid_count,
             "invalid": import_job.invalid_count,
-            "jobs": import_job.job_count,
+            "jobs": len(jobs) or import_job.job_count,
+            "completedJobs": len(completed_jobs),
+            "pendingJobs": len(pending_jobs),
+            "failedJobs": len(failed_jobs),
+            "success": success_count,
+            "failed": failed_count,
+            "pricingState": pricing_state,
+            "pricingComplete": pricing_complete,
+            "exportState": export_state,
+            "exportError": (
+                import_job.export_error
+                or (
+                    _("El archivo vencio; podes generarlo nuevamente.")
+                    if import_job.export_state == "done" and not export_ready
+                    else ""
+                )
+            ),
+            "canExport": pricing_complete,
+            "downloadUrl": (
+                f"/lqa_admin_panel/mercadolibre/pricing/imports/{import_job.id}/xlsx"
+                if export_ready
+                else ""
+            ),
             "error": import_job.error_message or "",
         }
+
+    @api.model
+    def queue_ready_folder_exports(self):
+        import_model = self.env["lqa.mercadolibre.pricing.import"].sudo()
+        candidates = import_model.search(
+            [("state", "=", "done"), ("export_state", "=", "idle")],
+            order="id",
+            limit=5,
+        )
+        for import_job in candidates:
+            jobs = self._folder_import_jobs(import_job)
+            if not jobs or jobs.filtered(
+                lambda job: job.state in {"pending", "processing", "failed"}
+            ):
+                continue
+            self._queue_folder_export(import_job)
+        return True
+
+    @api.model
+    def retry_failed_folder_jobs(self, import_id):
+        self._check_access()
+        import_job = self._get_folder_import(import_id)
+        failed_jobs = self._folder_import_jobs(import_job).filtered(
+            lambda job: job.state == "failed"
+        )
+        if not failed_jobs:
+            raise UserError(_("No hay lotes con error para reintentar."))
+        failed_jobs.mapped("line_ids").write(
+            {
+                "state": "pending",
+                "response_json": False,
+                "error_message": False,
+            }
+        )
+        failed_jobs.write(
+            {
+                "state": "pending",
+                "success_count": 0,
+                "failed_count": 0,
+                "error_message": False,
+                "result_csv": False,
+                "started_at": False,
+                "finished_at": False,
+                "notified": False,
+            }
+        )
+        old_path = import_job.export_path
+        import_job.write(
+            {
+                "export_state": "idle",
+                "export_path": False,
+                "export_error": False,
+                "export_started_at": False,
+                "export_finished_at": False,
+            }
+        )
+        if old_path and os.path.isfile(old_path):
+            os.unlink(old_path)
+        return self._folder_import_to_dict(import_job)
+
+    @api.model
+    def start_folder_import_export(self, import_id):
+        self._check_access()
+        import_job = self._get_folder_import(import_id)
+        jobs = self._folder_import_jobs(import_job)
+        if not jobs or jobs.filtered(
+            lambda job: job.state in {"pending", "processing"}
+        ):
+            raise UserError(
+                _("El procesamiento debe terminar antes de generar el Excel.")
+            )
+        export_ready = bool(
+            import_job.export_state == "done"
+            and import_job.export_path
+            and os.path.isfile(import_job.export_path)
+        )
+        if import_job.export_state not in {"queued", "running"} and not export_ready:
+            self._queue_folder_export(import_job)
+        return self._folder_import_to_dict(import_job)
+
+    def _queue_folder_export(self, import_job):
+        import_job.write(
+            {
+                "export_state": "queued",
+                "export_error": False,
+                "export_started_at": False,
+                "export_finished_at": False,
+            }
+        )
+        thread = threading.Thread(
+            target=self._run_folder_import_export,
+            args=(self.env.cr.dbname, import_job.id),
+            name=f"lqa-meli-pricing-export-{import_job.id}",
+            daemon=True,
+        )
+        self.env.cr.postcommit.add(thread.start)
+
+    @staticmethod
+    def _run_folder_import_export(dbname, import_id):
+        with Registry(dbname).cursor() as cr:
+            env = api.Environment(cr, SUPERUSER_ID, {})
+            service = env["lqa.mercadolibre.pricing.service"]
+            import_job = env[
+                "lqa.mercadolibre.pricing.import"
+            ].browse(import_id).exists()
+            if not import_job:
+                return
+            path = ""
+            try:
+                import_job.write(
+                    {
+                        "export_state": "running",
+                        "export_started_at": fields.Datetime.now(),
+                        "export_error": False,
+                    }
+                )
+                cr.commit()
+                path = service._build_folder_import_xlsx(import_job)
+                previous_path = import_job.export_path
+                import_job.write(
+                    {
+                        "export_state": "done",
+                        "export_path": path,
+                        "export_finished_at": fields.Datetime.now(),
+                    }
+                )
+                cr.commit()
+                if previous_path and previous_path != path and os.path.isfile(previous_path):
+                    os.unlink(previous_path)
+            except Exception as error:
+                if path and os.path.isfile(path):
+                    os.unlink(path)
+                import_job.write(
+                    {
+                        "export_state": "failed",
+                        "export_error": str(error),
+                        "export_finished_at": fields.Datetime.now(),
+                    }
+                )
+                cr.commit()
+
+    def _build_folder_import_xlsx(self, import_job):
+        if import_job.valid_count > 1048575:
+            raise UserError(
+                _("El resultado supera el limite de filas de una hoja de Excel.")
+            )
+        descriptor, path = tempfile.mkstemp(
+            prefix=f"lqa-pricing-{import_job.id}-",
+            suffix=".xlsx",
+        )
+        os.close(descriptor)
+        workbook = xlsxwriter.Workbook(
+            path,
+            {
+                "constant_memory": True,
+                "strings_to_formulas": False,
+                "strings_to_urls": False,
+            },
+        )
+        try:
+            worksheet = workbook.add_worksheet("Pricing consolidado")
+            worksheet.hide_gridlines(2)
+            worksheet.freeze_panes(1, 0)
+            formats = self._xlsx_formats(workbook)
+            for column_index, (header, _, _, width) in enumerate(
+                self.XLSX_OUTPUT_COLUMNS
+            ):
+                worksheet.write(0, column_index, header, formats["header"])
+                worksheet.set_column(column_index, column_index, width)
+            worksheet.set_row(0, 26)
+
+            row_index = 1
+            item_model = self.env["lqa.mercadolibre.pricing.item"].sudo()
+            for job in self._folder_import_jobs(import_job):
+                last_id = 0
+                while True:
+                    lines = item_model.search(
+                        [("job_id", "=", job.id), ("id", ">", last_id)],
+                        order="id",
+                        limit=5000,
+                    )
+                    if not lines:
+                        break
+                    for line in lines:
+                        row_source = self._result_row_source(line)
+                        for column_index, (_, value_path, value_type, _) in enumerate(
+                            self.XLSX_OUTPUT_COLUMNS
+                        ):
+                            self._write_xlsx_value(
+                                worksheet,
+                                row_index,
+                                column_index,
+                                self._nested_value(row_source, value_path),
+                                value_type,
+                                formats,
+                                is_error_column=value_path == "error",
+                            )
+                        row_index += 1
+                    last_id = lines[-1].id
+                    self.env.invalidate_all()
+
+            last_row = max(row_index - 1, 1)
+            worksheet.autofilter(
+                0,
+                0,
+                last_row,
+                len(self.XLSX_OUTPUT_COLUMNS) - 1,
+            )
+            worksheet.conditional_format(
+                1,
+                6,
+                last_row,
+                6,
+                {
+                    "type": "text",
+                    "criteria": "containing",
+                    "value": "Error",
+                    "format": formats["error"],
+                },
+            )
+            workbook.close()
+            return path
+        except Exception:
+            workbook.close()
+            if os.path.isfile(path):
+                os.unlink(path)
+            raise
 
     @api.model
     def get_jobs(self, limit=30):
         self._check_access()
         limit = min(max(self._as_int(limit, 30), 1), 100)
-        domain = []
+        domain = [("source_type", "!=", "folder")]
         if not self.env.user.has_group("lqa_admin_panel.group_lqa_admin"):
             domain.append(("user_id", "=", self.env.user.id))
         jobs = self.env["lqa.mercadolibre.pricing.job"].search(
@@ -549,10 +875,59 @@ class LqaMercadolibrePricingService(models.AbstractModel):
         return [self._job_to_dict(job) for job in jobs]
 
     @api.model
-    def get_job(self, job_id):
+    def get_job(self, job_id, limit=200, offset=0):
         self._check_access()
         job = self._get_job(job_id)
-        return self._job_to_dict(job, include_lines=True)
+        limit = min(max(self._as_int(limit, 200), 25), 500)
+        offset = max(self._as_int(offset, 0), 0)
+        line_model = self.env["lqa.mercadolibre.pricing.item"]
+        domain = [("job_id", "=", job.id)]
+        total = line_model.search_count(domain)
+        lines = line_model.search(
+            domain,
+            order="sequence asc, id asc",
+            limit=limit,
+            offset=offset,
+        )
+        data = self._job_to_dict(job)
+        data["lines"] = [line.to_panel_dict() for line in lines]
+        data["linePagination"] = {
+            "offset": offset,
+            "limit": limit,
+            "total": total,
+            "from": offset + 1 if total else 0,
+            "to": min(offset + len(lines), total),
+            "hasPrevious": offset > 0,
+            "hasNext": offset + len(lines) < total,
+        }
+        return data
+
+    @api.model
+    def retry_job(self, job_id):
+        self._check_access()
+        job = self._get_job(job_id)
+        if job.state != "failed":
+            raise UserError(_("Solo se pueden reintentar jobs con error."))
+        job.line_ids.write(
+            {
+                "state": "pending",
+                "response_json": False,
+                "error_message": False,
+            }
+        )
+        job.write(
+            {
+                "state": "pending",
+                "success_count": 0,
+                "failed_count": 0,
+                "error_message": False,
+                "result_csv": False,
+                "started_at": False,
+                "finished_at": False,
+                "notified": False,
+            }
+        )
+        return self._job_to_dict(job)
 
     @api.model
     def process_job(self, job_id):
@@ -594,6 +969,7 @@ class LqaMercadolibrePricingService(models.AbstractModel):
         jobs = self.env["lqa.mercadolibre.pricing.job"].search(
             [
                 ("user_id", "=", self.env.user.id),
+                ("source_type", "!=", "folder"),
                 ("state", "in", ["done", "failed"]),
                 ("notified", "=", False),
             ],
@@ -704,6 +1080,42 @@ class LqaMercadolibrePricingService(models.AbstractModel):
                 ]
             )
         return buffer.getvalue()
+
+    def _xlsx_formats(self, workbook):
+        return {
+            "header": workbook.add_format(
+                {
+                    "bold": True,
+                    "font_color": "#FFFFFF",
+                    "bg_color": "#2D3277",
+                    "border": 1,
+                    "border_color": "#D7DEE7",
+                    "align": "center",
+                    "valign": "vcenter",
+                }
+            ),
+            "text": workbook.add_format({"valign": "top"}),
+            "error": workbook.add_format(
+                {
+                    "font_color": "#A22B2B",
+                    "bg_color": "#FFF0F0",
+                    "text_wrap": True,
+                    "valign": "top",
+                }
+            ),
+            "money": workbook.add_format(
+                {
+                    "num_format": '$ #,##0.00;[Red]-$ #,##0.00',
+                    "valign": "top",
+                }
+            ),
+            "decimal": workbook.add_format(
+                {"num_format": "#,##0.00", "valign": "top"}
+            ),
+            "percentage": workbook.add_format(
+                {"num_format": "0.00%", "valign": "top"}
+            ),
+        }
 
     def _build_result_xlsx(self, job):
         output = io.BytesIO()
@@ -992,6 +1404,19 @@ class LqaMercadolibrePricingService(models.AbstractModel):
         ):
             raise AccessError(_("No tenes permisos para ver este job."))
         return job
+
+    def _get_folder_import(self, import_id):
+        import_job = self.env["lqa.mercadolibre.pricing.import"].sudo().browse(
+            self._as_int(import_id, 0)
+        ).exists()
+        if not import_job:
+            raise UserError(_("El proceso masivo de pricing no existe."))
+        if (
+            not self.env.user.has_group("lqa_admin_panel.group_lqa_admin")
+            and import_job.user_id != self.env.user
+        ):
+            raise AccessError(_("No tenes permisos para ver este proceso."))
+        return import_job
 
     def _job_to_dict(self, job, include_lines=False):
         data = {
