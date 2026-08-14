@@ -16,7 +16,7 @@ class LqaAutomeliSelectionFolder(models.Model):
         string="Productos",
     )
     product_count = fields.Integer(
-        string="Productos",
+        string="Cantidad de productos",
         compute="_compute_product_count",
     )
     active = fields.Boolean(default=True)

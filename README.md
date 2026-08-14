@@ -139,10 +139,15 @@ Para actualizaciones posteriores:
 
 ```bash
 docker compose --env-file .env.production -f docker-compose.prod.yml \
-  run --rm odoo odoo -c /etc/odoo/odoo.conf -d lqa_panel_prod \
+  stop odoo
+docker compose --env-file .env.production -f docker-compose.prod.yml \
+  run --rm --no-deps odoo odoo -c /etc/odoo/odoo.conf -d lqa_panel_prod \
   -u lqa_admin_panel --stop-after-init --no-http
 docker compose --env-file .env.production -f docker-compose.prod.yml up -d
 ```
+
+Detener Odoo antes del upgrade evita que un cron o request mantenga bloqueados
+registros que el instalador necesita actualizar. PostgreSQL permanece activo.
 
 Backup manual:
 
