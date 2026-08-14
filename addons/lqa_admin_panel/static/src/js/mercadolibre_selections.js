@@ -40,6 +40,7 @@ const DEFAULT_COLUMNS = [
     "listing_type_id",
     "price",
     "available_quantity",
+    "category_id",
     "permalink",
 ];
 

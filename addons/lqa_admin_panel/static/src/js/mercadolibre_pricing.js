@@ -7,6 +7,7 @@ import { useService } from "@web/core/utils/hooks";
 const MANUAL_TEMPLATE = `mla,sku,tipo_publicacion,precio,categoria,meliContributionPercentage
 MLA2228742950,B0F47N62NN,gold_special,731399,MLA31040,2.4
 MLA987654321,SKU456,gold_pro,85000,MLA410558,`;
+const MAX_DIRECT_CSV_BYTES = 10 * 1024 * 1024;
 
 export class LqaMercadolibrePricing extends Component {
     static template = "lqa_admin_panel.MercadolibrePricing";
@@ -27,14 +28,25 @@ export class LqaMercadolibrePricing extends Component {
             creatingCsv: false,
             creatingManual: false,
             downloadingJobId: "",
+            selectionFolders: [],
+            selectedFolderId: "",
+            folderImport: null,
+            startingFolderImport: false,
         });
 
         onWillStart(async () => {
-            await this.loadJobs();
+            await Promise.all([
+                this.loadJobs(),
+                this.loadSelectionFolders(),
+                this.loadFolderImport(),
+            ]);
         });
 
         onMounted(() => {
-            this.refreshTimer = window.setInterval(() => this.loadJobs(false), 10000);
+            this.refreshTimer = window.setInterval(
+                () => this.refreshWorkspace(),
+                10000
+            );
         });
 
         onWillUnmount(() => {
@@ -115,10 +127,108 @@ export class LqaMercadolibrePricing extends Component {
         if (!file) {
             return;
         }
+        if (file.size > MAX_DIRECT_CSV_BYTES) {
+            event.target.value = "";
+            this.notification.add(
+                "Este CSV es demasiado grande para la carga directa. Elegí la carpeta guardada en la sección 'Desde Selecciones'.",
+                { type: "warning" }
+            );
+            return;
+        }
         this.state.csvName = file.name;
         this.state.csvContent = await file.text();
         event.target.value = "";
         this.notification.add(`Archivo listo: ${file.name}`, { type: "success" });
+    }
+
+    async refreshWorkspace() {
+        await Promise.all([this.loadJobs(false), this.loadFolderImport(false)]);
+    }
+
+    async loadSelectionFolders() {
+        try {
+            this.state.selectionFolders = await this.orm.call(
+                "lqa.mercadolibre.catalog.service",
+                "get_selection_folders",
+                []
+            );
+            if (!this.state.selectedFolderId && this.state.selectionFolders.length) {
+                this.state.selectedFolderId = String(this.state.selectionFolders[0].id);
+            }
+        } catch (error) {
+            this.notification.add(
+                error?.data?.message || "No se pudieron cargar las carpetas guardadas.",
+                { type: "danger" }
+            );
+        }
+    }
+
+    async loadFolderImport(showNotification = true) {
+        try {
+            const importJob = await this.orm.call(
+                "lqa.mercadolibre.pricing.service",
+                "get_active_folder_import",
+                []
+            );
+            const previousState = this.state.folderImport?.state;
+            this.state.folderImport = importJob || null;
+            if (
+                showNotification &&
+                importJob?.state === "done" &&
+                previousState &&
+                previousState !== "done"
+            ) {
+                this.notification.add(
+                    `Carpeta preparada: ${this.formatNumber(importJob.jobs)} jobs creados.`,
+                    { type: "success" }
+                );
+            }
+        } catch (error) {
+            if (showNotification) {
+                this.notification.add(
+                    error?.data?.message || "No se pudo consultar la importación.",
+                    { type: "danger" }
+                );
+            }
+        }
+    }
+
+    async startFolderImport() {
+        if (!this.state.selectedFolderId) {
+            this.notification.add("Elegí una carpeta de Selecciones.", {
+                type: "warning",
+            });
+            return;
+        }
+        this.state.startingFolderImport = true;
+        try {
+            this.state.folderImport = await this.orm.call(
+                "lqa.mercadolibre.pricing.service",
+                "start_selection_folder_import",
+                [Number(this.state.selectedFolderId)]
+            );
+            this.notification.add(
+                "La carpeta se está dividiendo en jobs de pricing de hasta 5.000 publicaciones.",
+                { type: "info" }
+            );
+        } catch (error) {
+            this.notification.add(
+                error?.data?.message || "No se pudo iniciar el procesamiento de la carpeta.",
+                { type: "danger" }
+            );
+        } finally {
+            this.state.startingFolderImport = false;
+        }
+    }
+
+    get folderImportProgress() {
+        const total = Number(this.state.folderImport?.total || 0);
+        const processed = Number(this.state.folderImport?.processed || 0);
+        return total ? Math.min(Math.round((processed / total) * 100), 100) : 0;
+    }
+
+    get isFolderImportRunning() {
+        return ["queued", "running"].includes(this.state.folderImport?.state);
     }
 
     clearCsv() {

@@ -1,13 +1,16 @@
 import base64
 import csv
+from datetime import timedelta
 import io
 import json
 import os
+import threading
 
 import xlsxwriter
 
-from odoo import _, api, fields, models
+from odoo import _, api, fields, models, SUPERUSER_ID
 from odoo.exceptions import AccessError, UserError
+from odoo.modules.registry import Registry
 
 
 class LqaMercadolibrePricingJob(models.Model):
@@ -35,7 +38,7 @@ class LqaMercadolibrePricingJob(models.Model):
         index=True,
     )
     source_type = fields.Selection(
-        selection=[("csv", "CSV"), ("manual", "Manual")],
+        selection=[("csv", "CSV"), ("manual", "Manual"), ("folder", "Carpeta")],
         default="csv",
         required=True,
         readonly=True,
@@ -57,6 +60,9 @@ class LqaMercadolibrePricingJob(models.Model):
 
     @api.model
     def _cron_process_pending_jobs(self, limit=2):
+        self.env[
+            "lqa.mercadolibre.pricing.service"
+        ].sudo().process_pending_folder_imports()
         jobs = self.search(
             [("state", "=", "pending")],
             order="create_date asc, id asc",
@@ -65,6 +71,48 @@ class LqaMercadolibrePricingJob(models.Model):
         service = self.env["lqa.mercadolibre.pricing.service"].sudo()
         for job in jobs:
             service.process_job(job.id)
+
+
+class LqaMercadolibrePricingImport(models.Model):
+    _name = "lqa.mercadolibre.pricing.import"
+    _description = "Importacion de carpeta a Pricing MercadoLibre"
+    _order = "create_date desc, id desc"
+
+    folder_id = fields.Many2one(
+        "lqa.mercadolibre.selection.folder",
+        required=True,
+        readonly=True,
+        ondelete="cascade",
+        index=True,
+    )
+    user_id = fields.Many2one(
+        "res.users",
+        required=True,
+        readonly=True,
+        index=True,
+    )
+    state = fields.Selection(
+        [
+            ("queued", "En cola"),
+            ("running", "Preparando jobs"),
+            ("done", "Completada"),
+            ("failed", "Fallida"),
+        ],
+        required=True,
+        default="queued",
+        readonly=True,
+        index=True,
+    )
+    total_count = fields.Integer(readonly=True)
+    processed_count = fields.Integer(readonly=True)
+    valid_count = fields.Integer(readonly=True)
+    invalid_count = fields.Integer(readonly=True)
+    job_count = fields.Integer(readonly=True)
+    cursor_id = fields.Integer(readonly=True)
+    error_message = fields.Text(readonly=True)
+    started_at = fields.Datetime(readonly=True)
+    last_progress_at = fields.Datetime(readonly=True)
+    finished_at = fields.Datetime(readonly=True)
 
 
 class LqaMercadolibrePricingItem(models.Model):
@@ -289,6 +337,202 @@ class LqaMercadolibrePricingService(models.AbstractModel):
             }
         )
         return self._job_to_dict(job)
+
+    @api.model
+    def start_selection_folder_import(self, folder_id):
+        self._check_access()
+        folder = self.env[
+            "lqa.mercadolibre.catalog.service"
+        ]._get_folder(folder_id)
+        active = (
+            self.env["lqa.mercadolibre.pricing.import"]
+            .sudo()
+            .search(
+                [
+                    ("folder_id", "=", folder.id),
+                    ("state", "in", ["queued", "running"]),
+                ],
+                limit=1,
+            )
+        )
+        if active:
+            return self._folder_import_to_dict(active)
+        total = self.env[
+            "lqa.mercadolibre.selection.item"
+        ].search_count([("folder_id", "=", folder.id)])
+        if not total:
+            raise UserError(_("La carpeta seleccionada no tiene publicaciones."))
+        import_job = self.env["lqa.mercadolibre.pricing.import"].sudo().create(
+            {
+                "folder_id": folder.id,
+                "user_id": self.env.user.id,
+                "total_count": total,
+            }
+        )
+        thread = threading.Thread(
+            target=self._run_folder_import,
+            args=(self.env.cr.dbname, import_job.id),
+            name=f"lqa-meli-pricing-import-{import_job.id}",
+            daemon=True,
+        )
+        self.env.cr.postcommit.add(thread.start)
+        return self._folder_import_to_dict(import_job)
+
+    @api.model
+    def get_active_folder_import(self):
+        self._check_access()
+        domain = [("user_id", "=", self.env.user.id)]
+        import_job = (
+            self.env["lqa.mercadolibre.pricing.import"]
+            .sudo()
+            .search(domain, order="id desc", limit=1)
+        )
+        return self._folder_import_to_dict(import_job) if import_job else False
+
+    @api.model
+    def process_pending_folder_imports(self):
+        import_model = self.env["lqa.mercadolibre.pricing.import"].sudo()
+        stale_before = fields.Datetime.now() - timedelta(minutes=5)
+        stale = import_model.search(
+            [
+                ("state", "=", "running"),
+                "|",
+                ("last_progress_at", "=", False),
+                ("last_progress_at", "<", stale_before),
+            ]
+        )
+        if stale:
+            stale.write({"state": "queued"})
+        import_job = (
+            import_model
+            .search([("state", "=", "queued")], order="id", limit=1)
+        )
+        if import_job:
+            self._process_folder_import(import_job, max_batches=1)
+        return True
+
+    @staticmethod
+    def _run_folder_import(dbname, import_id):
+        with Registry(dbname).cursor() as cr:
+            env = api.Environment(cr, SUPERUSER_ID, {})
+            import_job = env[
+                "lqa.mercadolibre.pricing.import"
+            ].browse(import_id).exists()
+            if not import_job:
+                return
+            env["lqa.mercadolibre.pricing.service"]._process_folder_import(
+                import_job
+            )
+            cr.commit()
+
+    def _process_folder_import(self, import_job, max_batches=None):
+        import_job.write(
+            {
+                "state": "running",
+                "started_at": import_job.started_at or fields.Datetime.now(),
+                "last_progress_at": fields.Datetime.now(),
+                "error_message": False,
+            }
+        )
+        self.env.cr.commit()
+        batches = 0
+        try:
+            while True:
+                lines = self.env[
+                    "lqa.mercadolibre.selection.item"
+                ].search(
+                    [
+                        ("folder_id", "=", import_job.folder_id.id),
+                        ("id", ">", import_job.cursor_id),
+                    ],
+                    order="id",
+                    limit=self.MAX_ITEMS,
+                )
+                if not lines:
+                    import_job.write(
+                        {
+                            "state": "done",
+                            "finished_at": fields.Datetime.now(),
+                            "last_progress_at": fields.Datetime.now(),
+                        }
+                    )
+                    self.env.cr.commit()
+                    return
+
+                rows = []
+                invalid = 0
+                for line in lines:
+                    row = {
+                        "mla": self._clean(line.item_id),
+                        "categoryId": self._clean(line.category_id),
+                        "publicationType": self._clean(line.listing_type_id),
+                        "sku": self._clean(line.sku),
+                        "salePrice": line.price,
+                    }
+                    if all(
+                        row.get(field) not in (None, "")
+                        for field in self.REQUIRED_FIELDS
+                    ):
+                        rows.append(row)
+                    else:
+                        invalid += 1
+
+                if rows:
+                    part = import_job.job_count + 1
+                    self.env["lqa.mercadolibre.pricing.job"].sudo().create(
+                        {
+                            "name": f"{import_job.folder_id.name} - parte {part:03d}",
+                            "user_id": import_job.user_id.id,
+                            "source_type": "folder",
+                            "input_filename": import_job.folder_id.name,
+                            "input_count": len(rows),
+                            "line_ids": [
+                                fields.Command.create(
+                                    self._line_values(row, index)
+                                )
+                                for index, row in enumerate(rows, start=1)
+                            ],
+                        }
+                    )
+                import_job.write(
+                    {
+                        "processed_count": import_job.processed_count + len(lines),
+                        "valid_count": import_job.valid_count + len(rows),
+                        "invalid_count": import_job.invalid_count + invalid,
+                        "job_count": import_job.job_count + (1 if rows else 0),
+                        "cursor_id": lines[-1].id,
+                        "last_progress_at": fields.Datetime.now(),
+                    }
+                )
+                self.env.cr.commit()
+                batches += 1
+                if max_batches and batches >= max_batches:
+                    import_job.write({"state": "queued"})
+                    self.env.cr.commit()
+                    return
+        except Exception as error:
+            import_job.write(
+                {
+                    "state": "failed",
+                    "error_message": str(error),
+                    "finished_at": fields.Datetime.now(),
+                }
+            )
+            self.env.cr.commit()
+
+    def _folder_import_to_dict(self, import_job):
+        return {
+            "id": import_job.id,
+            "folderId": import_job.folder_id.id,
+            "folderName": import_job.folder_id.name,
+            "state": import_job.state,
+            "total": import_job.total_count,
+            "processed": import_job.processed_count,
+            "valid": import_job.valid_count,
+            "invalid": import_job.invalid_count,
+            "jobs": import_job.job_count,
+            "error": import_job.error_message or "",
+        }
 
     @api.model
     def get_jobs(self, limit=30):

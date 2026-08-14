@@ -78,6 +78,65 @@
     padding: 16px;
 }
 
+.o_lqa_meli_pricing_folder_import {
+    grid-column: 1 / -1;
+}
+
+.o_lqa_meli_pricing_folder_tools {
+    display: grid;
+    grid-template-columns: minmax(260px, 1fr) auto;
+    gap: 10px;
+
+    .btn {
+        min-height: 40px;
+        border-color: #2d3277;
+        background: #2d3277;
+        font-weight: 800;
+    }
+}
+
+.o_lqa_meli_pricing_import_status {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    overflow: hidden;
+    margin-top: 12px;
+    padding: 12px 14px 16px;
+    border: 1px solid #d7dee7;
+    border-radius: 8px;
+    background: #f8fafc;
+
+    span,
+    small {
+        display: block;
+        margin-top: 3px;
+        color: #60758a;
+    }
+
+    small {
+        color: #a22b2b;
+    }
+}
+
+.o_lqa_meli_pricing_import_track {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 5px;
+    background: #e5eaf0;
+
+    span {
+        display: block;
+        height: 100%;
+        margin: 0;
+        background: #2d3277;
+        transition: width 0.25s ease;
+    }
+}
+
 .o_lqa_meli_pricing_section_head {
     display: flex;
     align-items: flex-start;
@@ -411,5 +470,9 @@
 
     .o_lqa_meli_pricing_stats {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .o_lqa_meli_pricing_folder_tools {
+        grid-template-columns: 1fr;
     }
 }

@@ -15,11 +15,61 @@
             </header>
 
             <section class="o_lqa_meli_pricing_workspace">
+                <article class="o_lqa_meli_pricing_input o_lqa_meli_pricing_folder_import">
+                    <div class="o_lqa_meli_pricing_section_head">
+                        <div>
+                            <h2>Desde Selecciones</h2>
+                            <span>
+                                Procesa una carpeta completa sin descargar ni volver a subir el CSV.
+                            </span>
+                        </div>
+                    </div>
+                    <div class="o_lqa_meli_pricing_folder_tools">
+                        <select class="form-select" t-model="state.selectedFolderId">
+                            <option value="">Elegir carpeta</option>
+                            <option
+                                t-foreach="state.selectionFolders"
+                                t-as="folder"
+                                t-key="folder.id"
+                                t-att-value="folder.id"
+                            >
+                                <t t-esc="folder.name"/> ·
+                                <t t-esc="formatNumber(folder.productCount)"/> publicaciones
+                            </option>
+                        </select>
+                        <button
+                            type="button"
+                            class="btn btn-primary"
+                            t-att-disabled="!state.selectedFolderId || state.startingFolderImport || isFolderImportRunning"
+                            t-on-click="startFolderImport"
+                        >
+                            <t t-if="state.startingFolderImport">Preparando...</t>
+                            <t t-else="">Procesar carpeta</t>
+                        </button>
+                    </div>
+                    <div t-if="state.folderImport" t-att-class="'o_lqa_meli_pricing_import_status is-' + state.folderImport.state">
+                        <div>
+                            <strong t-esc="state.folderImport.folderName"/>
+                            <span>
+                                <t t-esc="formatNumber(state.folderImport.processed)"/> de
+                                <t t-esc="formatNumber(state.folderImport.total)"/> preparadas ·
+                                <t t-esc="formatNumber(state.folderImport.jobs)"/> jobs ·
+                                <t t-esc="formatNumber(state.folderImport.invalid)"/> inválidas
+                            </span>
+                            <small t-if="state.folderImport.error" t-esc="state.folderImport.error"/>
+                        </div>
+                        <strong><t t-esc="folderImportProgress"/>%</strong>
+                        <div class="o_lqa_meli_pricing_import_track">
+                            <span t-att-style="'width:' + folderImportProgress + '%'"/>
+                        </div>
+                    </div>
+                </article>
+
                 <article class="o_lqa_meli_pricing_input">
                     <div class="o_lqa_meli_pricing_section_head">
                         <div>
                             <h2>Cargar CSV</h2>
-                            <span>Columnas: mla, sku, tipo_publicacion, precio, categoria.</span>
+                            <span>Hasta 5.000 filas. Columnas: mla, sku, tipo_publicacion, precio, categoria.</span>
                         </div>
                         <span t-if="state.csvName" class="o_lqa_meli_pricing_file">
                             <i class="fa fa-file-text-o"/>

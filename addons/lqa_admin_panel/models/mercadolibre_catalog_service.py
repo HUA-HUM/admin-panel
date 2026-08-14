@@ -80,6 +80,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
         "listing_type_id",
         "price",
         "available_quantity",
+        "category_id",
         "permalink",
     )
     MAX_FILTER_SELECTION_ROWS = 500000
