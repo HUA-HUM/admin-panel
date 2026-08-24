@@ -1639,6 +1639,20 @@
     }
 }
 
+.o_lqa_accounting__live {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--lqa-muted-strong);
+    font-size: 13px;
+    font-weight: 600;
+
+    i {
+        font-size: 11px;
+        color: var(--lqa-red);
+    }
+}
+
 .o_lqa_accounting__progress {
     display: flex;
     align-items: center;

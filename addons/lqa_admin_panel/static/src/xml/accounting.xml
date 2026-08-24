@@ -975,7 +975,16 @@
                                         <h2>Progreso del lote</h2>
                                         <p>
                                             <t t-esc="formatNumber(state.facturacion.queue.status.totalJobs)"/> jobs ·
-                                            actualizado <t t-esc="formatDate(state.facturacion.queue.status.checkedAt)"/>
+                                            <span
+                                                t-if="state.facturacion.queue.polling"
+                                                class="o_lqa_accounting__live"
+                                            >
+                                                <i class="fa fa-circle-o-notch fa-spin"/>
+                                                consultando Invoice API
+                                            </span>
+                                            <t t-else="">
+                                                actualizado <t t-esc="formatDate(state.facturacion.queue.status.checkedAt)"/>
+                                            </t>
                                         </p>
                                     </div>
                                     <span

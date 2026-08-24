@@ -122,6 +122,7 @@ export class LqaAccounting extends Component {
                     selectedBatchId: "",
                     status: null,
                     loadingStatus: false,
+                    polling: false,
                     autoRefresh: true,
                     manualBatchId: "",
                 },
@@ -783,7 +784,9 @@ export class LqaAccounting extends Component {
         const queue = this.state.facturacion.queue;
         queue.loadingBatches = true;
         try {
-            const batches = await this.orm.call(
+            // silent: el indicador global de Odoo bloquea la pantalla entera.
+            // El estado de carga se muestra dentro del panel de la cola.
+            const batches = await this.orm.silent.call(
                 "lqa.accounting.service",
                 "get_invoice_batches",
                 [20]
@@ -836,9 +839,11 @@ export class LqaAccounting extends Component {
         }
         if (showLoader) {
             queue.loadingStatus = true;
+        } else {
+            queue.polling = true;
         }
         try {
-            const status = await this.orm.call(
+            const status = await this.orm.silent.call(
                 "lqa.accounting.service",
                 "get_invoice_batch_status",
                 [batchId]
@@ -855,6 +860,7 @@ export class LqaAccounting extends Component {
             this.notifyError(error, "No se pudo consultar el estado del lote.");
         } finally {
             queue.loadingStatus = false;
+            queue.polling = false;
         }
     }
 
@@ -904,6 +910,7 @@ export class LqaAccounting extends Component {
             window.clearInterval(this.queueTimer);
             this.queueTimer = null;
         }
+        this.state.facturacion.queue.polling = false;
     }
 
     async copyBatchId(batchId) {
@@ -944,7 +951,7 @@ export class LqaAccounting extends Component {
         issues.loading = true;
         try {
             if (!issues.reasons.length) {
-                const meta = await this.orm.call(
+                const meta = await this.orm.silent.call(
                     "lqa.accounting.service",
                     "get_invoice_issue_reasons",
                     []
@@ -952,7 +959,7 @@ export class LqaAccounting extends Component {
                 issues.reasons = meta.reasons || [];
                 issues.statuses = meta.statuses || [];
             }
-            issues.result = await this.orm.call(
+            issues.result = await this.orm.silent.call(
                 "lqa.accounting.service",
                 "get_invoice_issues",
                 [
