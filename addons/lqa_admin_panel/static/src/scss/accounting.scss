@@ -920,8 +920,7 @@
     }
 }
 
-.o_lqa_accounting__client_tabs.is-comprobantes_tabs,
-.o_lqa_accounting__client_tabs.is-facturacion_tabs {
+.o_lqa_accounting__client_tabs.is-comprobantes_tabs {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;
     margin-top: 18px;
@@ -955,117 +954,6 @@
     }
 }
 
-.o_lqa_accounting__client_tabs.is-facturacion_tabs {
-    width: 100%;
-    max-width: 560px;
-    margin-top: 12px;
-    padding: 4px;
-    border-radius: 12px;
-
-    .o_lqa_accounting__client_tab {
-        min-height: 40px;
-        grid-template-columns: 24px minmax(0, 1fr);
-        padding: 7px 10px;
-
-        span {
-            width: 24px;
-            height: 24px;
-            border-radius: 7px;
-            font-size: 11px;
-        }
-
-        strong {
-            font-size: 13px;
-        }
-
-        small {
-            display: none;
-        }
-    }
-}
-
-.o_lqa_accounting__workflow_section {
-    display: grid;
-    gap: 16px;
-    padding: 4px;
-    border-radius: var(--lqa-radius);
-    background: transparent;
-}
-
-.o_lqa_accounting__tab_panel {
-    animation: lqaAccountingTabIn 0.18s ease-out;
-}
-
-@keyframes lqaAccountingTabIn {
-    from {
-        opacity: 0;
-        transform: translateY(4px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.o_lqa_accounting__section_head {
-    display: grid;
-    grid-template-columns: 44px minmax(0, 1fr) auto;
-    gap: 14px;
-    align-items: center;
-    padding: 0 4px;
-
-    p,
-    h2,
-    span {
-        margin: 0;
-    }
-
-    p {
-        color: var(--lqa-red-dark);
-        font-size: 10px;
-        font-weight: 700;
-        letter-spacing: 0.03em;
-        text-transform: uppercase;
-    }
-
-    h2 {
-        margin-top: 4px;
-        color: var(--lqa-ink);
-        font-size: 20px;
-        font-weight: 700;
-        letter-spacing: -0.01em;
-        line-height: 1.2;
-    }
-
-    span {
-        display: block;
-        max-width: 880px;
-        margin-top: 6px;
-        color: var(--lqa-muted-strong);
-        font-size: 13px;
-        line-height: 1.5;
-    }
-}
-
-.o_lqa_accounting__section_index {
-    display: inline-flex;
-    width: 44px;
-    height: 44px;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--lqa-radius-sm);
-    background: var(--lqa-red-soft);
-    color: var(--lqa-red-dark);
-    font-size: 17px;
-    font-weight: 800;
-}
-
-.o_lqa_accounting__records_grid {
-    display: grid;
-    grid-template-columns: minmax(280px, 0.42fr) minmax(0, 1fr);
-    gap: 16px;
-}
 
 // ---------------------------------------------------------------------
 // isXubio: module landing
@@ -1369,161 +1257,226 @@
     margin-top: 18px;
 }
 
-.o_lqa_accounting__invoice_create_grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.55fr);
-}
+.o_lqa_accounting__segmented {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    gap: 2px;
+    padding: 3px;
+    border-radius: 999px;
+    background: var(--lqa-chip);
 
-.o_lqa_accounting__invoice_form {
-    display: grid;
-    gap: 16px;
-    padding: 20px 22px;
-}
+    button {
+        min-height: 30px;
+        padding: 0 16px;
+        border: 0;
+        border-radius: 999px;
+        background: transparent;
+        color: var(--lqa-muted-strong);
+        font-size: 12.5px;
+        font-weight: 700;
+        white-space: nowrap;
+        cursor: pointer;
+        transition:
+            background-color 0.15s ease,
+            color 0.15s ease,
+            box-shadow 0.15s ease;
 
-.o_lqa_accounting__creation_mode_switch {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-    padding: 18px 22px;
-    border-bottom: 1px solid var(--lqa-border-soft);
-    background: #fbfcfd;
+        &:hover:not(.is-active) {
+            color: var(--lqa-ink);
+        }
 
-    .o_lqa_accounting__mode_option {
-        min-height: 72px;
+        &.is-active {
+            background: var(--lqa-surface);
+            color: var(--lqa-ink);
+            box-shadow: 0 1px 2px rgba(16, 16, 24, 0.09);
+        }
+    }
+
+    &.is-live button.is-active {
+        background: var(--lqa-red-dark);
+        color: #fff;
+        box-shadow: none;
     }
 }
 
 .o_lqa_accounting__filters.is-invoice_fields {
-    grid-template-columns: minmax(220px, 1fr) minmax(180px, 0.45fr);
-    padding: 0;
+    grid-template-columns: minmax(220px, 1fr) minmax(180px, 0.5fr);
+    align-items: start;
+    padding-bottom: 4px;
     border-bottom: 0;
 }
 
-.o_lqa_accounting__mode_switch {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+.o_lqa_accounting__hint {
+    display: block;
+    margin-top: 6px;
+    color: var(--lqa-muted);
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: 0;
+    line-height: 1.4;
+    text-transform: none;
+}
+
+.o_lqa_accounting__mini_label {
+    color: var(--lqa-muted-strong);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.o_lqa_accounting__mode_row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    padding: 12px 22px 0;
+}
+
+.o_lqa_accounting__mode_control {
+    display: inline-flex;
+    align-items: center;
     gap: 10px;
 }
 
-.o_lqa_accounting__mode_option {
-    min-height: 88px;
-    padding: 14px;
-    border: 1px solid var(--lqa-border);
-    border-radius: 12px;
-    background: #fff;
-    color: var(--lqa-ink);
-    text-align: left;
-    transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
-
-    strong,
-    span {
-        display: block;
-    }
-
-    strong {
-        font-size: 14px;
-        font-weight: 800;
-    }
-
-    span {
-        margin-top: 6px;
-        color: var(--lqa-muted-strong);
-        font-size: 12.5px;
-        line-height: 1.4;
-    }
-
-    &.is-active {
-        border-color: var(--lqa-red);
-        background: #fffafa;
-        box-shadow: 0 0 0 3px var(--lqa-red-soft);
-    }
+.o_lqa_accounting__mode_hint {
+    margin: 0;
+    color: var(--lqa-muted-strong);
+    font-size: 12.5px;
+    line-height: 1.4;
 }
 
 .o_lqa_accounting__note_field {
     display: block;
-    color: var(--lqa-ink-soft);
+    padding: 16px 22px 0;
+    color: var(--lqa-muted-strong);
     font-size: 10.5px;
-    font-weight: 800;
-    letter-spacing: 0.04em;
+    font-weight: 700;
+    letter-spacing: 0.03em;
     text-transform: uppercase;
 
     textarea {
         display: block;
         width: 100%;
-        min-height: 84px;
-        margin-top: 8px;
-        padding: 12px 13px;
+        min-height: 62px;
+        margin-top: 7px;
+        padding: 10px 12px;
         resize: vertical;
-        border: 1px solid rgba(128, 147, 178, 0.35);
-        border-radius: 10px;
-        background: #fff;
+        border: 1px solid var(--lqa-border);
+        border-radius: var(--lqa-radius-sm);
+        background: var(--lqa-bg);
         color: var(--lqa-ink);
+        font-family: inherit;
+        font-size: 13.5px;
+        letter-spacing: 0;
+        line-height: 1.45;
+        text-transform: none;
+        transition:
+            border-color 0.15s ease,
+            background-color 0.15s ease,
+            box-shadow 0.15s ease;
+
+        &:focus {
+            border-color: var(--lqa-red);
+            background: var(--lqa-surface);
+            box-shadow: 0 0 0 3px var(--lqa-red-soft);
+            outline: none;
+        }
+    }
+
+    &.is-bulk_codes textarea {
+        min-height: 132px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
         font-size: 13px;
-        line-height: 1.4;
     }
 }
 
-.o_lqa_accounting__field_help {
-    display: block;
-    margin-top: 8px;
-    color: var(--lqa-muted-strong);
-    font-size: 12px;
-    font-weight: 500;
-    letter-spacing: 0;
-    line-height: 1.4;
-    text-transform: none;
+.o_lqa_accounting__count_chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
 
-    strong {
-        color: var(--lqa-ink);
-        font-weight: 800;
+    > span {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 6px;
+        padding: 5px 11px;
+        border-radius: 999px;
+        background: var(--lqa-chip);
+        letter-spacing: 0;
+        text-transform: none;
+
+        small {
+            color: var(--lqa-muted-strong);
+            font-size: 11.5px;
+            font-weight: 600;
+        }
+
+        strong {
+            color: var(--lqa-ink);
+            font-size: 12.5px;
+            font-weight: 800;
+        }
+
+        &.is-warn {
+            background: var(--lqa-amber-soft);
+
+            small,
+            strong {
+                color: var(--lqa-amber-dark);
+            }
+        }
     }
 }
 
 .o_lqa_accounting__filters.is-bulk_fields {
-    grid-template-columns: minmax(180px, 320px);
+    grid-template-columns: minmax(180px, 300px);
+    padding-top: 16px;
 }
 
-.o_lqa_accounting__invoice_guardrail {
-    padding: 20px 22px;
-    border-left: 1px solid var(--lqa-border-soft);
-    background: #fbfcfd;
-
-    h3 {
-        margin: 0 0 10px;
-        font-size: 15px;
-        font-weight: 800;
-    }
-
-    ul,
-    ol {
-        display: grid;
-        gap: 8px;
-        margin: 0;
-        padding-left: 18px;
-        color: var(--lqa-muted-strong);
-        font-size: 12.5px;
-        line-height: 1.45;
-    }
-
-    p {
-        margin: 14px 0 0;
-        color: var(--lqa-muted-strong);
-        font-size: 12.5px;
-        line-height: 1.45;
-    }
-}
-
-.o_lqa_accounting__batch_id,
-.o_lqa_accounting__bulk_result_actions {
+.o_lqa_accounting__form_footer {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
-    margin: 18px 22px 0;
-    padding: 15px 16px;
-    border: 1px solid var(--lqa-border-soft);
-    border-radius: 12px;
+    flex-wrap: wrap;
+    gap: 12px 16px;
+    margin-top: 20px;
+    padding: 16px 22px;
+    border-top: 1px solid var(--lqa-border-soft);
     background: #fbfcfd;
+
+    p {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0;
+        color: var(--lqa-muted-strong);
+        font-size: 12.5px;
+        line-height: 1.4;
+    }
+
+    i {
+        color: var(--lqa-muted);
+    }
+}
+
+.o_lqa_accounting__batch_bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px 16px;
+    padding: 16px 22px;
+    border-top: 1px solid var(--lqa-border-soft);
+    background: #fbfcfd;
+}
+
+.o_lqa_accounting__batch_meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 28px;
 
     small,
     strong {
@@ -1539,7 +1492,7 @@
     }
 
     strong {
-        margin-top: 5px;
+        margin-top: 4px;
         overflow-wrap: anywhere;
         color: var(--lqa-ink);
         font-size: 13px;
@@ -1547,13 +1500,48 @@
     }
 }
 
-.o_lqa_accounting__bulk_result_actions {
-    margin-top: 0;
-    margin-bottom: 22px;
+.o_lqa_accounting__batch_actions {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
 
     .o_lqa_accounting__primary {
-        flex: 0 0 auto;
         text-decoration: none;
+    }
+}
+
+.o_lqa_accounting__disclosure {
+    border-top: 1px solid var(--lqa-border-soft);
+
+    summary {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 14px 22px;
+        color: var(--lqa-muted-strong);
+        font-size: 12.5px;
+        font-weight: 700;
+        cursor: pointer;
+        list-style: none;
+        user-select: none;
+
+        &::-webkit-details-marker {
+            display: none;
+        }
+
+        &:hover {
+            color: var(--lqa-ink);
+        }
+
+        i {
+            font-size: 10px;
+            transition: transform 0.15s ease;
+        }
+    }
+
+    &[open] summary i {
+        transform: rotate(90deg);
     }
 }
 
@@ -1618,13 +1606,17 @@
 
     li {
         display: grid;
-        grid-template-columns: 160px 120px minmax(0, 1fr);
+        grid-template-columns: 160px auto minmax(0, 1fr);
         align-items: center;
-        gap: 10px;
+        gap: 12px;
         padding: 10px 12px;
         border: 1px solid var(--lqa-border-soft);
         border-radius: 12px;
         background: #fbfcfd;
+    }
+
+    .o_lqa_accounting__pill {
+        justify-self: start;
     }
 
     strong {
@@ -1641,9 +1633,9 @@
 }
 
 .o_lqa_accounting__code.is-invoice_payload {
-    max-height: 260px;
-    margin: 0 22px 22px;
-    border-radius: 12px;
+    max-height: 300px;
+    margin: 0;
+    border-radius: 0;
 }
 
 .o_lqa_accounting__table.is-invoice_jobs {
@@ -2289,14 +2281,6 @@
     grid-template-columns: repeat(5, minmax(120px, 1fr));
 }
 
-.o_lqa_accounting__backfill_layout.is-cache_refresh {
-    grid-template-columns: minmax(260px, 0.6fr) minmax(220px, 0.4fr);
-}
-
-.o_lqa_accounting__filters.is-cache_refresh {
-    grid-template-columns: minmax(180px, 280px);
-}
-
 .o_lqa_accounting__backfill_summary {
     display: grid;
     grid-template-columns: repeat(5, minmax(120px, 1fr));
@@ -2330,10 +2314,6 @@
         font-size: 15px;
         font-weight: 800;
     }
-}
-
-.o_lqa_accounting__backfill_summary.is-cache_refresh {
-    grid-template-columns: repeat(4, minmax(140px, 1fr));
 }
 
 .o_lqa_accounting__code {
@@ -2841,10 +2821,7 @@
     .o_lqa_accounting__modules,
     .o_lqa_accounting__records_grid,
     .o_lqa_accounting__invoice_blueprint,
-    .o_lqa_accounting__invoice_create_grid,
     .o_lqa_accounting__invoice_result_grid,
-    .o_lqa_accounting__mode_switch,
-    .o_lqa_accounting__creation_mode_switch,
     .o_lqa_accounting__filters.is-invoice_fields,
     .o_lqa_accounting__inline_form,
     .o_lqa_accounting__filters {
@@ -2893,15 +2870,19 @@
         grid-template-columns: 1fr;
     }
 
-    .o_lqa_accounting__invoice_guardrail {
-        border-top: 1px solid var(--lqa-border-soft);
-        border-left: 0;
-    }
-
-    .o_lqa_accounting__batch_id,
-    .o_lqa_accounting__bulk_result_actions {
+    .o_lqa_accounting__batch_bar,
+    .o_lqa_accounting__form_footer {
         align-items: flex-start;
         flex-direction: column;
+    }
+
+    .o_lqa_accounting__batch_actions,
+    .o_lqa_accounting__form_footer .o_lqa_accounting__primary {
+        width: 100%;
+    }
+
+    .o_lqa_accounting__batch_actions > * {
+        flex: 1 1 auto;
     }
 
     .o_lqa_accounting__admin_overview {

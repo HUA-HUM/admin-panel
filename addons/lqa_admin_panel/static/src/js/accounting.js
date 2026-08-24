@@ -114,7 +114,6 @@ export class LqaAccounting extends Component {
                 result: emptyXubio(),
             },
             facturacion: {
-                activeTab: "create",
                 creationMode: "single",
                 invoice: {
                     running: false,
@@ -135,13 +134,6 @@ export class LqaAccounting extends Component {
                         tlqvCodes: "",
                         issueDate: inputDate(today),
                         dryRun: true,
-                    },
-                },
-                cache: {
-                    running: false,
-                    result: null,
-                    form: {
-                        pageSize: 100,
                     },
                 },
             },
@@ -267,7 +259,7 @@ export class LqaAccounting extends Component {
             await Promise.all([this.loadXubioExportColumns(), this.searchComprobantes()]);
             return;
         }
-        if (this.isXubioFacturacion && this.state.facturacion.activeTab === "create") {
+        if (this.isXubioFacturacion) {
             await this.loadInvoiceCreationJobs(
                 this.state.facturacion.invoice.selectedJob?.id || false
             );
@@ -291,15 +283,6 @@ export class LqaAccounting extends Component {
         this.state.xubio.activeTab = tab;
         if (tab === "list") {
             this.loadArcaData();
-        }
-    }
-
-    async setFacturacionTab(tab) {
-        this.state.facturacion.activeTab = tab;
-        if (tab === "create") {
-            await this.loadInvoiceCreationJobs(
-                this.state.facturacion.invoice.selectedJob?.id || false
-            );
         }
     }
 
@@ -639,37 +622,6 @@ export class LqaAccounting extends Component {
             this.notifyError(error, "No se pudo ejecutar el backfill de comprobantes.");
         } finally {
             this.state.xubio.backfill.running = false;
-        }
-    }
-
-    async runXubioTlqvCacheRefresh() {
-        const form = this.state.facturacion.cache.form;
-        const pageSize = Number(form.pageSize || 100);
-        if (!Number.isFinite(pageSize) || pageSize < 1) {
-            this.notification.add("Page size debe ser mayor a cero.", {
-                type: "warning",
-            });
-            return;
-        }
-
-        this.state.facturacion.cache.running = true;
-        this.state.facturacion.cache.result = null;
-        try {
-            const result = await this.orm.call(
-                "lqa.accounting.service",
-                "refresh_xubio_stock_bue_tlqv_cache",
-                [{ pageSize }]
-            );
-            this.state.facturacion.cache.result = result;
-            const jobId = result?.payload?.jobId || result?.jobId || "";
-            this.notification.add(
-                `Actualizacion de cache TLQV encolada${jobId ? `: job ${jobId}` : ""}.`,
-                { type: "success" }
-            );
-        } catch (error) {
-            this.notifyError(error, "No se pudo actualizar el cache TLQV.");
-        } finally {
-            this.state.facturacion.cache.running = false;
         }
     }
 
