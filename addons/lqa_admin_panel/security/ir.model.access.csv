@@ -25,6 +25,7 @@ access_lqa_google_merchant_performance_query_user,lqa.google.merchant.performanc
 access_lqa_accounting_tlqv_client_job_user,lqa.accounting.tlqv.client.job user,model_lqa_accounting_tlqv_client_job,lqa_admin_panel.group_lqa_commercial_user,1,0,0,0
 access_lqa_accounting_tlqv_client_line_user,lqa.accounting.tlqv.client.line user,model_lqa_accounting_tlqv_client_line,lqa_admin_panel.group_lqa_commercial_user,1,0,0,0
 access_lqa_accounting_invoice_creation_job_user,lqa.accounting.invoice.creation.job user,model_lqa_accounting_invoice_creation_job,lqa_admin_panel.group_lqa_commercial_user,1,0,0,0
+access_lqa_accounting_invoice_batch_user,lqa.accounting.invoice.batch user,model_lqa_accounting_invoice_batch,lqa_admin_panel.group_lqa_commercial_user,1,0,0,0
 access_lqa_panel_module_admin,lqa.panel.module admin,model_lqa_panel_module,lqa_admin_panel.group_lqa_admin,1,1,1,1
 access_lqa_panel_section_admin,lqa.panel.section admin,model_lqa_panel_section,lqa_admin_panel.group_lqa_admin,1,1,1,1
 access_lqa_automeli_catalog_item_admin,lqa.automeli.catalog.item admin,model_lqa_automeli_catalog_item,lqa_admin_panel.group_lqa_admin,1,1,1,1
@@ -51,3 +52,4 @@ access_lqa_google_merchant_performance_query_admin,lqa.google.merchant.performan
 access_lqa_accounting_tlqv_client_job_admin,lqa.accounting.tlqv.client.job admin,model_lqa_accounting_tlqv_client_job,lqa_admin_panel.group_lqa_admin,1,1,1,1
 access_lqa_accounting_tlqv_client_line_admin,lqa.accounting.tlqv.client.line admin,model_lqa_accounting_tlqv_client_line,lqa_admin_panel.group_lqa_admin,1,1,1,1
 access_lqa_accounting_invoice_creation_job_admin,lqa.accounting.invoice.creation.job admin,model_lqa_accounting_invoice_creation_job,lqa_admin_panel.group_lqa_admin,1,1,1,1
+access_lqa_accounting_invoice_batch_admin,lqa.accounting.invoice.batch admin,model_lqa_accounting_invoice_batch,lqa_admin_panel.group_lqa_admin,1,1,1,1

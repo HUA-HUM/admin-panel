@@ -138,6 +138,44 @@ class LqaAccountingInvoiceCreationJob(models.Model):
     finished_at = fields.Datetime(readonly=True)
 
 
+class LqaAccountingInvoiceBatch(models.Model):
+    _name = "lqa.accounting.invoice.batch"
+    _description = "Lote de facturacion TLQV encolado en Invoice API"
+    _order = "create_date desc, id desc"
+
+    batch_id = fields.Char(required=True, readonly=True, index=True)
+    queue_name = fields.Char(readonly=True)
+    user_id = fields.Many2one(
+        "res.users",
+        required=True,
+        readonly=True,
+        index=True,
+        default=lambda self: self.env.user,
+    )
+    state = fields.Selection(
+        selection=[
+            ("queued", "En cola"),
+            ("running", "Procesando"),
+            ("done", "Terminado"),
+            ("expired", "Purgado"),
+        ],
+        default="queued",
+        required=True,
+        readonly=True,
+        index=True,
+    )
+    dry_run = fields.Boolean(readonly=True)
+    issue_date = fields.Date(readonly=True)
+    total_requested = fields.Integer(readonly=True)
+    total_unique = fields.Integer(readonly=True)
+    total_duplicated = fields.Integer(readonly=True)
+    total_queued = fields.Integer(readonly=True)
+    bull_dashboard_url = fields.Char(readonly=True)
+    counts_snapshot = fields.Text(readonly=True)
+    results_snapshot = fields.Text(readonly=True)
+    last_checked_at = fields.Datetime(readonly=True)
+
+
 class LqaAccountingService(models.AbstractModel):
     _name = "lqa.accounting.service"
     _description = "Servicio contable ARCA"
@@ -146,6 +184,30 @@ class LqaAccountingService(models.AbstractModel):
     DEFAULT_MADRE_API_URL = "https://api.madre.loquieroaca.com"
     DEFAULT_TIMEOUT_SECONDS = 120
     MAX_TLQV_CODES = 2000
+    INVOICE_ISSUE_REASONS = [
+        "ALREADY_BILLED",
+        "BILLING_VALIDATION_UNAVAILABLE",
+        "ORDER_STATUS_NOT_INVOICEABLE",
+        "ORDER_DETAILS_NOT_FOUND",
+        "MISSING_BUYER_CUIT",
+        "MISSING_FISCAL_RAZON_SOCIAL",
+        "MISSING_FISCAL_CONDICION_IMPOSITIVA",
+        "FISCAL_INFO_UNAVAILABLE",
+        "INVALID_FISCAL_DOCUMENT",
+        "XUBIO_CLIENT_ALREADY_EXISTS",
+        "XUBIO_EXISTING_CLIENT_LOOKUP_FAILED",
+        "TLQV_SHEET_ITEM_NOT_FOUND",
+        "MADRE_SHEET_ITEM_NOT_FOUND",
+        "SPREADSHEET_SOURCE_DATA_UNAVAILABLE",
+        "XUBIO_CLIENTE_ID_NOT_AVAILABLE",
+        "INVOICE_BUILD_FAILED",
+        "INVALID_INVOICE_ISSUE_DATE",
+        "XUBIO_INVOICE_CREATION_FAILED",
+        "XUBIO_INVOICE_DATE_SEQUENCE_ERROR",
+        "TLQV_INVOICE_FLOW_BLOCKED",
+        "TLQV_INVOICE_JOB_FAILED",
+    ]
+    INVOICE_ISSUE_STATUSES = ["open", "resolved", "ignored"]
     TLQV_PATTERN = re.compile(r"TLQV[-\s]?(\d+)", re.IGNORECASE)
     HEADER_ALIASES = {
         "tlqv",
@@ -668,14 +730,356 @@ class LqaAccountingService(models.AbstractModel):
             )
 
         bull_board_path = self._clean(payload.get("bullBoardPath")) or "/admin/queues"
+        bull_dashboard_url = self._join_url(self._invoice_base_url(), bull_board_path)
+        batch = self._store_invoice_batch(payload, body, bull_dashboard_url)
         return {
             "ok": True,
             "request": body,
             "statusCode": response["status_code"],
             "payload": payload,
-            "bullDashboardUrl": self._join_url(self._invoice_base_url(), bull_board_path),
+            "bullDashboardUrl": bull_dashboard_url,
+            "batch": self._invoice_batch_to_dict(batch) if batch else False,
             "executedAt": fields.Datetime.to_string(fields.Datetime.now()),
         }
+
+    # ------------------------------------------------------------------
+    # Seguimiento de la cola de Invoice API
+    # ------------------------------------------------------------------
+
+    @api.model
+    def get_invoice_batches(self, limit=20):
+        """Lotes encolados por el panel, con el ultimo snapshot conocido."""
+        self._check_access()
+        limit = min(max(self._as_int(limit, 20), 1), 100)
+        domain = []
+        if not self.env.user.has_group("lqa_admin_panel.group_lqa_admin"):
+            domain.append(("user_id", "=", self.env.user.id))
+        batches = (
+            self.env["lqa.accounting.invoice.batch"]
+            .sudo()
+            .search(domain, limit=limit)
+        )
+        return [self._invoice_batch_to_dict(batch) for batch in batches]
+
+    @api.model
+    def get_invoice_batch_status(self, batch_id):
+        """Consulta el estado vivo de un lote y refresca el snapshot local."""
+        self._check_access()
+        batch_id = self._clean(batch_id)
+        if not batch_id:
+            raise UserError(_("Falta el Batch ID a consultar."))
+
+        response = self._request_json(
+            "GET",
+            self._join_url(
+                self._invoice_base_url(),
+                "/internal/tlqv-invoice/facturas/bulk/%s" % quote(batch_id, safe=""),
+            ),
+            headers=self._invoice_headers(),
+            timeout=self._timeout(),
+        )
+        payload = response["payload"] if isinstance(response["payload"], dict) else {}
+        if not response["ok"]:
+            message = self._clean(
+                payload.get("message")
+                or payload.get("error")
+                or response.get("text")
+                or response.get("status_code")
+            )
+            raise UserError(
+                _("Invoice API no pudo devolver el estado del lote: %s")
+                % (message or _("sin detalle"))
+            )
+
+        counts = payload.get("counts") if isinstance(payload.get("counts"), dict) else {}
+        results = payload.get("results") if isinstance(payload.get("results"), dict) else {}
+        found = bool(payload.get("found"))
+        jobs = [
+            self._invoice_batch_job_to_dict(job)
+            for job in self._response_items(payload.get("jobs"))
+        ]
+
+        record = (
+            self.env["lqa.accounting.invoice.batch"]
+            .sudo()
+            .search([("batch_id", "=", batch_id)], limit=1)
+        )
+        if record:
+            record.write(
+                {
+                    "state": self._invoice_batch_state(found, counts, payload),
+                    "queue_name": self._clean(payload.get("queueName"))
+                    or record.queue_name,
+                    "counts_snapshot": self._json_dumps(counts),
+                    "results_snapshot": self._json_dumps(results),
+                    "last_checked_at": fields.Datetime.now(),
+                }
+            )
+
+        return {
+            "batchId": self._clean(payload.get("batchId")) or batch_id,
+            "queueName": self._clean(payload.get("queueName")),
+            "found": found,
+            "state": self._invoice_batch_state(found, counts, payload),
+            "totalJobs": self._as_int(payload.get("totalJobs"), 0),
+            "counts": {
+                key: self._as_int(counts.get(key), 0)
+                for key in ("completed", "failed", "active", "waiting", "delayed", "paused")
+            },
+            "results": {
+                key: self._as_int(results.get(key), 0)
+                for key in ("created", "skipped", "blocked", "failed", "pending")
+            },
+            "jobs": jobs,
+            "batch": self._invoice_batch_to_dict(record) if record else False,
+            "checkedAt": fields.Datetime.to_string(fields.Datetime.now()),
+        }
+
+    # ------------------------------------------------------------------
+    # Comprobantes que no se pudieron facturar
+    # ------------------------------------------------------------------
+
+    @api.model
+    def get_invoice_issues(self, filters=None):
+        """Snapshot central de TLQVs bloqueados guardados en Madre."""
+        self._check_access()
+        filters = filters if isinstance(filters, dict) else {}
+        params = {}
+
+        reason = self._clean(filters.get("reason")).upper()
+        if reason:
+            if reason not in self.INVOICE_ISSUE_REASONS:
+                raise UserError(_("Motivo de bloqueo no valido: %s") % reason)
+            params["reason"] = reason
+
+        status = self._clean(filters.get("status")).lower()
+        if status:
+            if status not in self.INVOICE_ISSUE_STATUSES:
+                raise UserError(_("Estado de issue no valido: %s") % status)
+            params["status"] = status
+
+        limit = min(max(self._as_int(filters.get("limit"), 100), 1), 500)
+        params["limit"] = limit
+
+        response = self._request_json(
+            "GET",
+            self._join_url(self._invoice_base_url(), "/internal/tlqv-invoice/issues"),
+            params=params,
+            headers=self._invoice_headers(),
+            timeout=self._timeout(),
+        )
+        payload = response["payload"] if isinstance(response["payload"], dict) else {}
+        if not response["ok"]:
+            message = self._clean(
+                payload.get("message")
+                or payload.get("error")
+                or response.get("text")
+                or response.get("status_code")
+            )
+            raise UserError(
+                _("Invoice API no pudo devolver los comprobantes bloqueados: %s")
+                % (message or _("sin detalle"))
+            )
+
+        items = [
+            self._invoice_issue_to_dict(item)
+            for item in self._response_items(payload.get("items"))
+        ]
+        by_reason = {}
+        for item in items:
+            key = item["reason"] or "-"
+            by_reason[key] = by_reason.get(key, 0) + 1
+        return {
+            "items": items,
+            "total": len(items),
+            "limit": limit,
+            "truncated": len(items) >= limit,
+            "byReason": [
+                {"reason": key, "count": value}
+                for key, value in sorted(
+                    by_reason.items(), key=lambda pair: (-pair[1], pair[0])
+                )
+            ],
+            "filters": {"reason": reason, "status": status, "limit": limit},
+            "checkedAt": fields.Datetime.to_string(fields.Datetime.now()),
+        }
+
+    @api.model
+    def get_invoice_issue_reasons(self):
+        self._check_access()
+        return {
+            "reasons": list(self.INVOICE_ISSUE_REASONS),
+            "statuses": list(self.INVOICE_ISSUE_STATUSES),
+        }
+
+    @api.model
+    def get_invoice_issues_by_tlqv(self, tlqv_code):
+        """Detalle de todos los issues asociados a un TLQV puntual."""
+        self._check_access()
+        tlqv_code = self._normalize_tlqv(tlqv_code)
+        if not tlqv_code:
+            raise UserError(_("Ingresa un codigo TLQV valido."))
+
+        response = self._request_json(
+            "GET",
+            self._join_url(
+                self._invoice_base_url(),
+                "/internal/tlqv-invoice/issues/%s" % quote(tlqv_code, safe=""),
+            ),
+            headers=self._invoice_headers(),
+            timeout=self._timeout(),
+        )
+        payload = response["payload"] if isinstance(response["payload"], dict) else {}
+        if not response["ok"]:
+            message = self._clean(
+                payload.get("message")
+                or payload.get("error")
+                or response.get("text")
+                or response.get("status_code")
+            )
+            raise UserError(
+                _("Invoice API no pudo devolver los issues de %s: %s")
+                % (tlqv_code, message or _("sin detalle"))
+            )
+        return {
+            "tlqvCode": tlqv_code,
+            "items": [
+                self._invoice_issue_to_dict(item)
+                for item in self._response_items(payload.get("items"))
+            ],
+        }
+
+    # ------------------------------------------------------------------
+    # Helpers de seguimiento
+    # ------------------------------------------------------------------
+
+    def _store_invoice_batch(self, payload, body, bull_dashboard_url):
+        batch_id = self._clean(payload.get("batchId"))
+        if not batch_id:
+            return False
+        model = self.env["lqa.accounting.invoice.batch"].sudo()
+        existing = model.search([("batch_id", "=", batch_id)], limit=1)
+        values = {
+            "batch_id": batch_id,
+            "queue_name": self._clean(payload.get("queueName")),
+            "dry_run": bool(body.get("dryRun")),
+            "issue_date": body.get("issueDate") or False,
+            "total_requested": self._as_int(payload.get("totalRequested"), 0),
+            "total_unique": self._as_int(payload.get("totalUnique"), 0),
+            "total_duplicated": self._as_int(payload.get("totalDuplicated"), 0),
+            "total_queued": self._as_int(payload.get("totalQueued"), 0),
+            "bull_dashboard_url": bull_dashboard_url,
+            "state": "queued",
+        }
+        if existing:
+            existing.write(values)
+            return existing
+        values["user_id"] = self.env.user.id
+        return model.create(values)
+
+    def _invoice_batch_state(self, found, counts, payload):
+        if not found:
+            return "expired"
+        pending = sum(
+            self._as_int(counts.get(key), 0)
+            for key in ("active", "waiting", "delayed", "paused")
+        )
+        if pending:
+            return "running"
+        total_jobs = self._as_int(payload.get("totalJobs"), 0)
+        finished = self._as_int(counts.get("completed"), 0) + self._as_int(
+            counts.get("failed"), 0
+        )
+        if total_jobs and finished >= total_jobs:
+            return "done"
+        return "running"
+
+    def _invoice_batch_to_dict(self, batch):
+        if not batch:
+            return False
+        return {
+            "id": batch.id,
+            "batchId": batch.batch_id,
+            "queueName": batch.queue_name or "",
+            "state": batch.state,
+            "dryRun": batch.dry_run,
+            "issueDate": fields.Date.to_string(batch.issue_date)
+            if batch.issue_date
+            else "",
+            "totalRequested": batch.total_requested,
+            "totalUnique": batch.total_unique,
+            "totalDuplicated": batch.total_duplicated,
+            "totalQueued": batch.total_queued,
+            "bullDashboardUrl": batch.bull_dashboard_url or "",
+            "counts": self._loads(batch.counts_snapshot),
+            "results": self._loads(batch.results_snapshot),
+            "user": batch.user_id.name,
+            "createdAt": fields.Datetime.to_string(batch.create_date),
+            "lastCheckedAt": fields.Datetime.to_string(batch.last_checked_at)
+            if batch.last_checked_at
+            else "",
+        }
+
+    def _invoice_batch_job_to_dict(self, job):
+        job = job if isinstance(job, dict) else {}
+        transaccion_id = job.get("transaccionId")
+        return {
+            "jobId": self._clean(job.get("jobId")),
+            "tlqvCode": self._clean(job.get("tlqvCode")),
+            "state": self._clean(job.get("state")),
+            "status": self._clean(job.get("status")),
+            "attemptsMade": self._as_int(job.get("attemptsMade"), 0),
+            "created": bool(job.get("created")),
+            "skipped": bool(job.get("skipped")),
+            "transaccionId": self._as_int(transaccion_id, 0) if transaccion_id else 0,
+            "numeroDocumento": self._clean(job.get("numeroDocumento")),
+            "message": self._clean(
+                job.get("message")
+                or job.get("failedReason")
+                or job.get("reason")
+                or self._first_blocker_message(job.get("blockers"))
+            ),
+            "reason": self._clean(
+                job.get("reason") or self._first_blocker_code(job.get("blockers"))
+            ),
+        }
+
+    def _invoice_issue_to_dict(self, item):
+        item = item if isinstance(item, dict) else {}
+        metadata = item.get("metadata") if isinstance(item.get("metadata"), dict) else {}
+        return {
+            "id": item.get("id") or 0,
+            "tlqvCode": self._clean(item.get("tlqvCode")),
+            "reason": self._clean(item.get("reason")).upper(),
+            "status": self._clean(item.get("status")).lower() or "open",
+            "source": self._clean(item.get("source") or metadata.get("source")),
+            "message": self._clean(item.get("message")),
+            "occurrences": self._as_int(item.get("occurrences"), 0),
+            "firstSeenAt": self._clean(item.get("firstSeenAt")),
+            "lastSeenAt": self._clean(item.get("lastSeenAt")),
+        }
+
+    def _first_blocker_code(self, blockers):
+        for blocker in self._response_items(blockers):
+            if isinstance(blocker, dict) and blocker.get("code"):
+                return blocker.get("code")
+        return ""
+
+    def _first_blocker_message(self, blockers):
+        for blocker in self._response_items(blockers):
+            if isinstance(blocker, dict) and blocker.get("message"):
+                return blocker.get("message")
+        return ""
+
+    @staticmethod
+    def _loads(value):
+        if not value:
+            return {}
+        try:
+            parsed = json.loads(value)
+        except (TypeError, ValueError):
+            return {}
+        return parsed if isinstance(parsed, dict) else {}
 
     @api.model
     def get_invoice_creation_jobs(self, limit=30):

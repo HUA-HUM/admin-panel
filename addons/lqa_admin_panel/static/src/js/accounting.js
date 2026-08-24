@@ -1,6 +1,6 @@
 /** @odoo-module **/
 
-import { Component, onWillStart, useState } from "@odoo/owl";
+import { Component, onWillStart, onWillUnmount, useState } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 
@@ -114,7 +114,28 @@ export class LqaAccounting extends Component {
                 result: emptyXubio(),
             },
             facturacion: {
+                activeTab: "create",
                 creationMode: "single",
+                queue: {
+                    loadingBatches: false,
+                    batches: [],
+                    selectedBatchId: "",
+                    status: null,
+                    loadingStatus: false,
+                    autoRefresh: true,
+                    manualBatchId: "",
+                },
+                issues: {
+                    loading: false,
+                    result: null,
+                    reasons: [],
+                    statuses: [],
+                    filters: {
+                        reason: "",
+                        status: "open",
+                        limit: 100,
+                    },
+                },
                 invoice: {
                     running: false,
                     loadingJobs: false,
@@ -139,11 +160,14 @@ export class LqaAccounting extends Component {
             },
         });
 
+        this.queueTimer = null;
+
         onWillStart(async () => {
             if (this.isWorkspace) {
                 await this.loadArcaData();
             }
         });
+        onWillUnmount(() => this.stopQueuePolling());
     }
 
     get isDashboard() {
@@ -260,10 +284,32 @@ export class LqaAccounting extends Component {
             return;
         }
         if (this.isXubioFacturacion) {
-            await this.loadInvoiceCreationJobs(
-                this.state.facturacion.invoice.selectedJob?.id || false
-            );
+            await this.loadFacturacionTabData();
         }
+    }
+
+    async loadFacturacionTabData() {
+        const tab = this.state.facturacion.activeTab;
+        if (tab === "queue") {
+            await this.loadInvoiceBatches();
+            return;
+        }
+        if (tab === "issues") {
+            await this.loadInvoiceIssues();
+            return;
+        }
+        await this.loadInvoiceCreationJobs(
+            this.state.facturacion.invoice.selectedJob?.id || false
+        );
+    }
+
+    async setFacturacionTab(tab) {
+        const allowed = ["create", "queue", "issues"];
+        this.state.facturacion.activeTab = allowed.includes(tab) ? tab : "create";
+        if (this.state.facturacion.activeTab !== "queue") {
+            this.stopQueuePolling();
+        }
+        await this.loadFacturacionTabData();
     }
 
     setTab(tab) {
@@ -729,6 +775,258 @@ export class LqaAccounting extends Component {
         }
     }
 
+    // ------------------------------------------------------------------
+    // Seguimiento de la cola de Invoice API
+    // ------------------------------------------------------------------
+
+    async loadInvoiceBatches(preferBatchId = "") {
+        const queue = this.state.facturacion.queue;
+        queue.loadingBatches = true;
+        try {
+            const batches = await this.orm.call(
+                "lqa.accounting.service",
+                "get_invoice_batches",
+                [20]
+            );
+            queue.batches = batches;
+            if (preferBatchId) {
+                // Un Batch ID pegado a mano puede no estar en la lista local:
+                // igual se puede consultar contra Invoice API.
+                if (queue.selectedBatchId !== preferBatchId) {
+                    queue.selectedBatchId = preferBatchId;
+                    queue.status = null;
+                }
+            } else {
+                const target =
+                    batches.find((b) => b.batchId === queue.selectedBatchId) ||
+                    batches[0] ||
+                    null;
+                if (target && target.batchId !== queue.selectedBatchId) {
+                    queue.selectedBatchId = target.batchId;
+                    queue.status = null;
+                }
+            }
+            if (queue.selectedBatchId) {
+                await this.refreshBatchStatus(false);
+            } else {
+                this.stopQueuePolling();
+            }
+        } catch (error) {
+            this.notifyError(error, "No se pudieron cargar los lotes encolados.");
+        } finally {
+            queue.loadingBatches = false;
+        }
+    }
+
+    async selectInvoiceBatch(batchId) {
+        const queue = this.state.facturacion.queue;
+        if (queue.selectedBatchId === batchId) {
+            return;
+        }
+        queue.selectedBatchId = batchId;
+        queue.status = null;
+        await this.refreshBatchStatus();
+    }
+
+    async refreshBatchStatus(showLoader = true) {
+        const queue = this.state.facturacion.queue;
+        const batchId = queue.selectedBatchId;
+        if (!batchId) {
+            return;
+        }
+        if (showLoader) {
+            queue.loadingStatus = true;
+        }
+        try {
+            const status = await this.orm.call(
+                "lqa.accounting.service",
+                "get_invoice_batch_status",
+                [batchId]
+            );
+            queue.status = status;
+            if (status.batch) {
+                queue.batches = queue.batches.map((batch) =>
+                    batch.batchId === status.batchId ? status.batch : batch
+                );
+            }
+            this.syncQueuePolling();
+        } catch (error) {
+            this.stopQueuePolling();
+            this.notifyError(error, "No se pudo consultar el estado del lote.");
+        } finally {
+            queue.loadingStatus = false;
+        }
+    }
+
+    async trackBatch(batchId) {
+        const target = String(batchId || "").trim();
+        if (!target) {
+            this.notification.add("Ingresa un Batch ID para seguir.", {
+                type: "warning",
+            });
+            return;
+        }
+        this.state.facturacion.activeTab = "queue";
+        this.state.facturacion.queue.selectedBatchId = target;
+        this.state.facturacion.queue.status = null;
+        await this.loadInvoiceBatches(target);
+    }
+
+    async trackBulkResultBatch() {
+        const batchId =
+            this.state.facturacion.bulk.result?.payload?.batchId ||
+            this.state.facturacion.bulk.result?.batch?.batchId ||
+            "";
+        await this.trackBatch(batchId);
+    }
+
+    toggleQueueAutoRefresh() {
+        const queue = this.state.facturacion.queue;
+        queue.autoRefresh = !queue.autoRefresh;
+        this.syncQueuePolling();
+    }
+
+    syncQueuePolling() {
+        const queue = this.state.facturacion.queue;
+        const isLive = ["queued", "running"].includes(queue.status?.state);
+        if (!queue.autoRefresh || !isLive || this.state.facturacion.activeTab !== "queue") {
+            this.stopQueuePolling();
+            return;
+        }
+        if (this.queueTimer) {
+            return;
+        }
+        this.queueTimer = window.setInterval(() => this.refreshBatchStatus(false), 5000);
+    }
+
+    stopQueuePolling() {
+        if (this.queueTimer) {
+            window.clearInterval(this.queueTimer);
+            this.queueTimer = null;
+        }
+    }
+
+    async copyBatchId(batchId) {
+        const value = String(batchId || "").trim();
+        if (!value) {
+            return;
+        }
+        try {
+            await navigator.clipboard.writeText(value);
+            this.notification.add("Batch ID copiado.", { type: "success" });
+        } catch (_error) {
+            this.notification.add("No se pudo copiar el Batch ID.", { type: "warning" });
+        }
+    }
+
+    get queueFailedJobs() {
+        const jobs = this.state.facturacion.queue.status?.jobs || [];
+        return jobs.filter((job) =>
+            ["failed", "blocked"].includes(String(job.status || job.state).toLowerCase())
+        );
+    }
+
+    get queueProgressPercent() {
+        const status = this.state.facturacion.queue.status;
+        if (!status || !status.totalJobs) {
+            return 0;
+        }
+        const done = (status.counts?.completed || 0) + (status.counts?.failed || 0);
+        return Math.min(100, Math.round((done / status.totalJobs) * 100));
+    }
+
+    // ------------------------------------------------------------------
+    // Comprobantes que no se pudieron facturar
+    // ------------------------------------------------------------------
+
+    async loadInvoiceIssues() {
+        const issues = this.state.facturacion.issues;
+        issues.loading = true;
+        try {
+            if (!issues.reasons.length) {
+                const meta = await this.orm.call(
+                    "lqa.accounting.service",
+                    "get_invoice_issue_reasons",
+                    []
+                );
+                issues.reasons = meta.reasons || [];
+                issues.statuses = meta.statuses || [];
+            }
+            issues.result = await this.orm.call(
+                "lqa.accounting.service",
+                "get_invoice_issues",
+                [
+                    {
+                        reason: issues.filters.reason || "",
+                        status: issues.filters.status || "",
+                        limit: Number(issues.filters.limit) || 100,
+                    },
+                ]
+            );
+        } catch (error) {
+            this.notifyError(error, "No se pudieron cargar los comprobantes bloqueados.");
+        } finally {
+            issues.loading = false;
+        }
+    }
+
+    async filterIssuesByReason(reason) {
+        const issues = this.state.facturacion.issues;
+        issues.filters.reason = issues.filters.reason === reason ? "" : reason;
+        await this.loadInvoiceIssues();
+    }
+
+    resetIssueFilters() {
+        const issues = this.state.facturacion.issues;
+        issues.filters.reason = "";
+        issues.filters.status = "open";
+        issues.filters.limit = 100;
+        return this.loadInvoiceIssues();
+    }
+
+    async retryIssueTlqv(tlqvCode) {
+        const code = String(tlqvCode || "").trim();
+        if (!code) {
+            return;
+        }
+        this.state.facturacion.activeTab = "create";
+        this.state.facturacion.creationMode = "single";
+        this.state.facturacion.invoice.form.tlqvCode = code;
+        this.state.facturacion.invoice.form.dryRun = true;
+        this.stopQueuePolling();
+        await this.loadInvoiceCreationJobs();
+        this.notification.add(
+            `${code} cargado en el formulario. Simula antes de crear.`,
+            { type: "info" }
+        );
+    }
+
+    issueReasonLabel(reason) {
+        return this.humanize(reason);
+    }
+
+    issueStatusClass(status) {
+        const key = String(status || "").toLowerCase();
+        if (key === "resolved") {
+            return "is-green";
+        }
+        if (key === "ignored") {
+            return "is-blue";
+        }
+        return "is-red";
+    }
+
+    issueStatusLabel(status) {
+        const key = String(status || "").toLowerCase();
+        return (
+            {
+                open: "Abierto",
+                resolved: "Resuelto",
+                ignored: "Ignorado",
+            }[key] || this.humanize(status)
+        );
+    }
+
     selectInvoiceJob(job) {
         this.state.facturacion.invoice.selectedJob = job;
     }
@@ -903,19 +1201,41 @@ export class LqaAccounting extends Component {
                 success: "Creado",
                 issue: "Con issue",
                 skipped: "Omitido",
+                created: "Creada",
+                running: "Procesando",
+                expired: "Purgado",
+                active: "Activo",
+                waiting: "En espera",
+                delayed: "Demorado",
+                paused: "Pausado",
+                pending: "Pendiente",
             }[key] || this.humanize(value)
         );
     }
 
     stateClass(value) {
         const key = String(value || "").toLowerCase();
-        if (["done", "success", "completed"].includes(key)) {
+        if (["done", "success", "completed", "created"].includes(key)) {
             return "is-green";
         }
-        if (["partial", "issue", "skipped", "queued", "processing"].includes(key)) {
+        if (
+            [
+                "partial",
+                "issue",
+                "skipped",
+                "queued",
+                "processing",
+                "running",
+                "active",
+                "waiting",
+                "delayed",
+                "paused",
+                "pending",
+            ].includes(key)
+        ) {
             return "is-amber";
         }
-        if (["failed", "error", "blocked"].includes(key)) {
+        if (["failed", "error", "blocked", "expired"].includes(key)) {
             return "is-red";
         }
         return "is-blue";

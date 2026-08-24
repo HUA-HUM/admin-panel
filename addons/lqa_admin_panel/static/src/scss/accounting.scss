@@ -1506,7 +1506,7 @@
     flex-wrap: wrap;
     gap: 8px;
 
-    .o_lqa_accounting__primary {
+    a {
         text-decoration: none;
     }
 }
@@ -1543,6 +1543,224 @@
     &[open] summary i {
         transform: rotate(90deg);
     }
+}
+
+// ---------------------------------------------------------------------
+// Facturacion: navegacion de secciones
+// ---------------------------------------------------------------------
+
+.o_lqa_accounting__section_nav {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px;
+    width: 100%;
+    max-width: 1400px;
+    margin: 14px auto 0;
+    padding: 3px;
+    border-radius: 999px;
+    background: var(--lqa-chip);
+
+    button {
+        min-height: 32px;
+        padding: 0 18px;
+        border: 0;
+        border-radius: 999px;
+        background: transparent;
+        color: var(--lqa-muted-strong);
+        font-size: 13px;
+        font-weight: 700;
+        white-space: nowrap;
+        cursor: pointer;
+        transition:
+            background-color 0.15s ease,
+            color 0.15s ease,
+            box-shadow 0.15s ease;
+
+        &:hover:not(.is-active) {
+            color: var(--lqa-ink);
+        }
+
+        &.is-active {
+            background: var(--lqa-surface);
+            color: var(--lqa-ink);
+            box-shadow: 0 1px 2px rgba(16, 16, 24, 0.09);
+        }
+    }
+}
+
+.o_lqa_accounting__head_actions {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+
+    .o_lqa_accounting__ghost.is-on {
+        background: var(--lqa-green-soft);
+        color: var(--lqa-green-dark);
+    }
+}
+
+// ---------------------------------------------------------------------
+// Facturacion: seguimiento de cola
+// ---------------------------------------------------------------------
+
+.o_lqa_accounting__filters.is-queue_filters {
+    grid-template-columns: minmax(240px, 1fr) minmax(240px, 1fr) auto;
+    align-items: end;
+    border-bottom: 0;
+}
+
+.o_lqa_accounting__inline_action {
+    display: flex;
+    align-items: center;
+    padding-bottom: 1px;
+}
+
+.o_lqa_accounting__notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin: 18px 22px;
+    padding: 14px 16px;
+    border-radius: var(--lqa-radius-sm);
+    color: var(--lqa-muted-strong);
+    font-size: 13px;
+    line-height: 1.45;
+
+    i {
+        margin-top: 2px;
+        font-size: 13px;
+    }
+
+    &.is-warn {
+        background: var(--lqa-amber-soft);
+        color: var(--lqa-amber-dark);
+    }
+}
+
+.o_lqa_accounting__progress {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 20px 22px 4px;
+
+    strong {
+        min-width: 44px;
+        color: var(--lqa-ink);
+        font-size: 14px;
+        font-weight: 800;
+        text-align: right;
+    }
+}
+
+.o_lqa_accounting__progress_track {
+    position: relative;
+    flex: 1 1 auto;
+    height: 8px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--lqa-chip);
+
+    span {
+        display: block;
+        height: 100%;
+        border-radius: 999px;
+        background: var(--lqa-red-dark);
+        transition: width 0.4s ease;
+    }
+}
+
+.o_lqa_accounting__invoice_result_grid.is-queue_results {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+
+    strong {
+        font-size: 17px;
+    }
+}
+
+.o_lqa_accounting__queue_counts {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px 12px;
+    padding: 0 22px 18px;
+
+    .o_lqa_accounting__count_chips {
+        margin-top: 0;
+    }
+}
+
+.o_lqa_accounting__table.is-queue_jobs {
+    min-width: 900px;
+}
+
+// ---------------------------------------------------------------------
+// Facturacion: comprobantes bloqueados
+// ---------------------------------------------------------------------
+
+.o_lqa_accounting__filters.is-issue_filters {
+    grid-template-columns: minmax(220px, 1fr) minmax(160px, 0.6fr) minmax(120px, 0.4fr);
+    border-bottom: 0;
+}
+
+.o_lqa_accounting__reason_chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 18px 22px 4px;
+
+    button {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 7px;
+        padding: 6px 12px;
+        border: 1px solid transparent;
+        border-radius: 999px;
+        background: var(--lqa-chip);
+        cursor: pointer;
+        transition:
+            background-color 0.15s ease,
+            border-color 0.15s ease;
+
+        small {
+            color: var(--lqa-muted-strong);
+            font-size: 11.5px;
+            font-weight: 600;
+        }
+
+        strong {
+            color: var(--lqa-ink);
+            font-size: 12.5px;
+            font-weight: 800;
+        }
+
+        &:hover {
+            background: #e7e7ea;
+        }
+
+        &.is-active {
+            border-color: var(--lqa-red);
+            background: var(--lqa-red-soft);
+
+            small,
+            strong {
+                color: var(--lqa-red-dark);
+            }
+        }
+    }
+}
+
+.o_lqa_accounting__table.is-issues {
+    min-width: 1100px;
+}
+
+.o_lqa_accounting__table td.is-detail {
+    max-width: 320px;
+    overflow: hidden;
+    color: var(--lqa-muted-strong);
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .o_lqa_accounting__invoice_result_grid {
@@ -2822,6 +3040,9 @@
     .o_lqa_accounting__records_grid,
     .o_lqa_accounting__invoice_blueprint,
     .o_lqa_accounting__invoice_result_grid,
+    .o_lqa_accounting__invoice_result_grid.is-queue_results,
+    .o_lqa_accounting__filters.is-queue_filters,
+    .o_lqa_accounting__filters.is-issue_filters,
     .o_lqa_accounting__filters.is-invoice_fields,
     .o_lqa_accounting__inline_form,
     .o_lqa_accounting__filters {
