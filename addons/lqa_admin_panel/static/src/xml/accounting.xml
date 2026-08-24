@@ -1142,7 +1142,16 @@
                                                 </td>
                                                 <td t-esc="formatNumber(job.attemptsMade)"/>
                                                 <td t-esc="job.numeroDocumento || '-'"/>
-                                                <td class="is-detail" t-esc="job.message || job.reason || '-'"/>
+                                                <td
+                                                    class="is-detail"
+                                                    t-att-title="job.message || job.reason || ''"
+                                                    t-on-click="() => this.toggleDetail('job-' + (job.jobId || job.tlqvCode))"
+                                                >
+                                                    <span
+                                                        t-att-class="isDetailExpanded('job-' + (job.jobId || job.tlqvCode)) ? 'is-open' : ''"
+                                                        t-esc="job.message || job.reason || '-'"
+                                                    />
+                                                </td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -1284,7 +1293,16 @@
                                             <td t-esc="humanize(issue.source) || '-'"/>
                                             <td t-esc="formatNumber(issue.occurrences)"/>
                                             <td t-esc="formatDate(issue.lastSeenAt)"/>
-                                            <td class="is-detail" t-esc="issue.message || '-'"/>
+                                            <td
+                                                class="is-detail"
+                                                t-att-title="issue.message || ''"
+                                                t-on-click="() => this.toggleDetail('issue-' + (issue.id || issue.tlqvCode + issue.reason))"
+                                            >
+                                                <span
+                                                    t-att-class="isDetailExpanded('issue-' + (issue.id || issue.tlqvCode + issue.reason)) ? 'is-open' : ''"
+                                                    t-esc="issue.message || '-'"
+                                                />
+                                            </td>
                                             <td>
                                                 <button
                                                     type="button"

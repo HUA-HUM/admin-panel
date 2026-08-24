@@ -1766,15 +1766,101 @@
 }
 
 .o_lqa_accounting__table.is-issues {
-    min-width: 1100px;
+    min-width: 1180px;
 }
 
 .o_lqa_accounting__table td.is-detail {
-    max-width: 320px;
-    overflow: hidden;
     color: var(--lqa-muted-strong);
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    cursor: pointer;
+
+    span {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 3;
+        overflow: hidden;
+        line-height: 1.45;
+        overflow-wrap: anywhere;
+        white-space: normal;
+        word-break: break-word;
+    }
+
+    // Los mensajes de upstream pueden traer un stack trace entero:
+    // al expandir se limita el alto y scrollea dentro de la celda.
+    span.is-open {
+        display: block;
+        max-height: 220px;
+        overflow-y: auto;
+        -webkit-line-clamp: unset;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 12px;
+    }
+
+    &:hover span:not(.is-open) {
+        color: var(--lqa-ink);
+    }
+}
+
+// Anchos fijos en las columnas cortas para que Detalle se quede con el resto.
+.o_lqa_accounting__table.is-issues {
+    th:nth-child(1),
+    td:nth-child(1) {
+        width: 118px;
+    }
+
+    th:nth-child(2),
+    td:nth-child(2) {
+        width: 186px;
+    }
+
+    th:nth-child(3),
+    td:nth-child(3) {
+        width: 104px;
+    }
+
+    th:nth-child(4),
+    td:nth-child(4) {
+        width: 130px;
+    }
+
+    th:nth-child(5),
+    td:nth-child(5) {
+        width: 68px;
+    }
+
+    th:nth-child(6),
+    td:nth-child(6) {
+        width: 148px;
+        white-space: nowrap;
+    }
+
+    th:nth-child(8),
+    td:nth-child(8) {
+        width: 116px;
+    }
+}
+
+.o_lqa_accounting__table.is-queue_jobs {
+    th:nth-child(1),
+    td:nth-child(1) {
+        width: 130px;
+    }
+
+    th:nth-child(2),
+    td:nth-child(2),
+    th:nth-child(3),
+    td:nth-child(3) {
+        width: 130px;
+    }
+
+    th:nth-child(4),
+    td:nth-child(4) {
+        width: 86px;
+    }
+
+    th:nth-child(5),
+    td:nth-child(5) {
+        width: 178px;
+    }
 }
 
 .o_lqa_accounting__invoice_result_grid {

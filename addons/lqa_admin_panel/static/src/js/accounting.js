@@ -116,6 +116,7 @@ export class LqaAccounting extends Component {
             facturacion: {
                 activeTab: "create",
                 creationMode: "single",
+                expandedDetails: {},
                 queue: {
                     loadingBatches: false,
                     batches: [],
@@ -1006,6 +1007,15 @@ export class LqaAccounting extends Component {
             `${code} cargado en el formulario. Simula antes de crear.`,
             { type: "info" }
         );
+    }
+
+    toggleDetail(key) {
+        const map = this.state.facturacion.expandedDetails;
+        map[key] = !map[key];
+    }
+
+    isDetailExpanded(key) {
+        return Boolean(this.state.facturacion.expandedDetails[key]);
     }
 
     issueReasonLabel(reason) {
