@@ -104,7 +104,11 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
     CATALOG_QUERY_CACHE_MINUTES = 5
     MLA_FILE_MAX_BYTES = 20 * 1024 * 1024
     MLA_FILE_ENRICH_BATCH_SIZE = 20
-    MLA_FILE_FETCH_CONCURRENCY = 10
+    # Catalog API esta topeada en ~0.65 req/s para este origen: con 1 request
+    # concurrente cada uno tarda 1.5s y con 10 tarda 11.3s, o sea el mismo
+    # throughput con siete veces peor latencia. Mas concurrencia solo acerca
+    # cada request al timeout de 25s sin traer un solo MLA extra por segundo.
+    MLA_FILE_FETCH_CONCURRENCY = 4
     MLA_FILE_INLINE_CYCLES = 5
     MLA_FILE_API_TIMEOUT = 25
     MLA_FILE_PAGE_RETRIES = 2
