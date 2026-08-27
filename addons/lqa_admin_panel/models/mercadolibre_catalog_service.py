@@ -1,7 +1,7 @@
 import base64
 import csv
 import logging
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, wait
 from datetime import datetime, timedelta
 import io
 import json
@@ -109,6 +109,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
     MLA_FILE_API_TIMEOUT = 25
     MLA_FILE_PAGE_RETRIES = 2
     MLA_FILE_SAVE_BATCH_SIZE = 500
+    MLA_FILE_BATCH_DEADLINE = 90
     JOB_HEARTBEAT_STALE_MINUTES = 5
 
     @api.model
@@ -862,17 +863,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
                 )
                 for code in codes
             ]
-            with ThreadPoolExecutor(
-                max_workers=min(self.MLA_FILE_FETCH_CONCURRENCY, len(codes))
-            ) as executor:
-                responses = list(
-                    executor.map(
-                        lambda params: self._request_mla_file_page(
-                            endpoint, params
-                        ),
-                        params_list,
-                    )
-                )
+            responses = self._fetch_mla_pages(endpoint, params_list)
 
             products = []
             not_found = 0
@@ -938,6 +929,58 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
                 return snapshot(completed=False, progressed=True)
 
         return snapshot(completed=True, progressed=True)
+
+    def _fetch_mla_pages(self, endpoint, params_list):
+        """Fetch a batch of lookups under a hard wall-clock deadline.
+
+        requests' `timeout` does not cover DNS resolution: getaddrinfo has no
+        timeout of its own, so an unreachable resolver blocks every worker
+        thread indefinitely and the import stalls with nothing in the log. We
+        therefore bound the whole batch ourselves and walk away from stragglers
+        -- shutdown(wait=False) so a wedged thread cannot hold the import
+        hostage. Whatever did not finish is reported as a lookup error, which
+        still advances the cursor.
+        """
+        executor = ThreadPoolExecutor(
+            max_workers=min(self.MLA_FILE_FETCH_CONCURRENCY, len(params_list))
+        )
+        try:
+            futures = [
+                executor.submit(self._request_mla_file_page, endpoint, params)
+                for params in params_list
+            ]
+            done, pending = wait(futures, timeout=self.MLA_FILE_BATCH_DEADLINE)
+            if pending:
+                _logger.warning(
+                    "%s de %s consultas a Catalog API no respondieron en %ss; "
+                    "el lote sigue sin ellas",
+                    len(pending),
+                    len(futures),
+                    self.MLA_FILE_BATCH_DEADLINE,
+                )
+            responses = []
+            for future in futures:
+                if future not in done:
+                    future.cancel()
+                    responses.append(
+                        {
+                            "products": [],
+                            "_lookup_error": _("La consulta no respondio a tiempo."),
+                        }
+                    )
+                    continue
+                try:
+                    responses.append(future.result())
+                except Exception as error:  # noqa: BLE001 - se reporta por fila
+                    responses.append(
+                        {
+                            "products": [],
+                            "_lookup_error": self._format_job_error(error),
+                        }
+                    )
+            return responses
+        finally:
+            executor.shutdown(wait=False)
 
     def _request_mla_file_page(self, endpoint, params):
         try:
