@@ -27,6 +27,39 @@ const defaultFilters = () => ({
 
 const MAX_FOLDER_PRODUCTS = 500000;
 
+const CSV_COLUMNS = [
+    { key: "item_id", label: "MLA" },
+    { key: "title", label: "Titulo" },
+    { key: "sku", label: "SKU" },
+    { key: "brand", label: "Marca" },
+    { key: "status", label: "Estado" },
+    { key: "condition", label: "Condicion" },
+    { key: "listing_type_id", label: "Tipo publicacion" },
+    { key: "price", label: "Precio" },
+    { key: "currency_id", label: "Moneda" },
+    { key: "available_quantity", label: "Stock" },
+    { key: "revenue", label: "Facturacion" },
+    { key: "orders_count", label: "Ordenes" },
+    { key: "units_sold", label: "Unidades vendidas" },
+    { key: "total_visits", label: "Visitas" },
+    { key: "order_conversion_rate", label: "Conversion ordenes" },
+    { key: "category_id", label: "Categoria" },
+    { key: "domain_id", label: "Dominio" },
+    { key: "permalink", label: "Link publicacion" },
+    { key: "date_created", label: "Fecha creacion" },
+    { key: "last_updated", label: "Ultima actualizacion" },
+    { key: "catalog_sold_quantity", label: "Ventas catalogo" },
+    { key: "avg_ticket", label: "Ticket promedio" },
+    { key: "first_order_date", label: "Primera orden" },
+    { key: "last_order_date", label: "Ultima orden" },
+    { key: "unit_conversion_rate", label: "Conversion unidades" },
+];
+
+const DEFAULT_EXPORT_COLUMNS = [
+    "item_id", "title", "sku", "status", "listing_type_id",
+    "price", "available_quantity", "category_id", "permalink",
+];
+
 export class LqaMercadolibreCatalog extends Component {
     static template = "lqa_admin_panel.MercadolibreCatalog";
 
@@ -55,11 +88,21 @@ export class LqaMercadolibreCatalog extends Component {
             showDeleteConfirmation: false,
             deleting: false,
             appKey: "default",
+            showExportModal: false,
+            exportColumns: {},
+            exportPartCount: "1",
+            startingExport: false,
+            cancellingExport: false,
+            exportJob: null,
         });
+        this.state.exportColumns = Object.fromEntries(
+            CSV_COLUMNS.map((column) => [column.key, DEFAULT_EXPORT_COLUMNS.includes(column.key)])
+        );
 
         onWillStart(async () => {
             await this.loadFolders();
             await this.loadActiveSelectionJob();
+            await this.loadActiveExport();
             await this.loadProducts();
         });
 
@@ -70,7 +113,177 @@ export class LqaMercadolibreCatalog extends Component {
             if (this.catalogQueryTimer) {
                 clearTimeout(this.catalogQueryTimer);
             }
+            if (this.exportTimer) {
+                clearTimeout(this.exportTimer);
+            }
         });
+    }
+
+    async loadActiveExport() {
+        try {
+            const job = await this.orm.call(
+                "lqa.mercadolibre.catalog.service",
+                "get_active_catalog_export",
+                []
+            );
+            this.state.exportJob = job || null;
+            this.scheduleExportPoll();
+        } catch {
+            this.state.exportJob = null;
+        }
+    }
+
+    get exportCsvColumns() {
+        return CSV_COLUMNS;
+    }
+
+    get selectedExportColumns() {
+        return CSV_COLUMNS.filter((c) => this.state.exportColumns[c.key]).map((c) => c.key);
+    }
+
+    get exportIsActive() {
+        return ["queued", "running"].includes(this.state.exportJob?.state);
+    }
+
+    get exportSizeLabel() {
+        const bytes = Number(this.state.exportJob?.sizeBytes || 0);
+        if (!bytes) {
+            return "";
+        }
+        const mb = bytes / (1024 * 1024);
+        return mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.max(Math.round(bytes / 1024), 1)} KB`;
+    }
+
+    get exportEstimateLabel() {
+        // ~10s por pagina de 1000, medido contra el endpoint real.
+        const total = Number(this.state.pagination?.total || 0);
+        if (!total) {
+            return "";
+        }
+        const seconds = Math.ceil(total / 1000) * 10;
+        if (seconds < 90) {
+            return "menos de un minuto";
+        }
+        const minutes = Math.round(seconds / 60);
+        return minutes < 60
+            ? `~${minutes} minutos`
+            : `~${(minutes / 60).toFixed(1)} horas`;
+    }
+
+    openExportModal() {
+        this.state.showExportModal = true;
+    }
+
+    closeExportModal() {
+        this.state.showExportModal = false;
+    }
+
+    toggleExportColumn(key) {
+        this.state.exportColumns[key] = !this.state.exportColumns[key];
+    }
+
+    selectExportColumns(mode) {
+        for (const column of CSV_COLUMNS) {
+            this.state.exportColumns[column.key] =
+                mode === "all" ? true : mode === "basic" && DEFAULT_EXPORT_COLUMNS.includes(column.key);
+        }
+    }
+
+    async startExport() {
+        if (!this.selectedExportColumns.length) {
+            this.notification.add("Elegí al menos una columna.", { type: "warning" });
+            return;
+        }
+        this.state.startingExport = true;
+        try {
+            this.state.exportJob = await this.orm.call(
+                "lqa.mercadolibre.catalog.service",
+                "start_catalog_export",
+                [
+                    { ...this.state.filters },
+                    this.selectedExportColumns,
+                    Number(this.state.exportPartCount || 1),
+                ]
+            );
+            this.state.showExportModal = false;
+            this.scheduleExportPoll();
+            this.notification.add(
+                "Exportación iniciada. Podés seguir usando el panel.",
+                { type: "success" }
+            );
+        } catch (error) {
+            this.notification.add(
+                error?.data?.message || "No se pudo iniciar la exportación.",
+                { type: "danger" }
+            );
+        } finally {
+            this.state.startingExport = false;
+        }
+    }
+
+    scheduleExportPoll() {
+        if (this.exportTimer) {
+            clearTimeout(this.exportTimer);
+        }
+        if (!this.exportIsActive) {
+            return;
+        }
+        this.exportTimer = setTimeout(() => this.refreshExport(), 4000);
+    }
+
+    async refreshExport() {
+        const current = this.state.exportJob;
+        if (!current?.id) {
+            return;
+        }
+        try {
+            const updated = await this.orm.call(
+                "lqa.mercadolibre.catalog.service",
+                "get_catalog_export",
+                [current.id]
+            );
+            this.state.exportJob = updated;
+            if (updated.state === "done") {
+                this.notification.add("El Excel está listo para descargar.", {
+                    type: "success",
+                });
+            } else if (updated.state === "failed") {
+                this.notification.add(
+                    updated.error || "La exportación falló.",
+                    { type: "danger" }
+                );
+            }
+        } catch {
+            // El proximo ciclo vuelve a consultar.
+        }
+        this.scheduleExportPoll();
+    }
+
+    async cancelExport() {
+        const current = this.state.exportJob;
+        if (!current?.id || this.state.cancellingExport) {
+            return;
+        }
+        this.state.cancellingExport = true;
+        try {
+            this.state.exportJob = await this.orm.call(
+                "lqa.mercadolibre.catalog.service",
+                "cancel_catalog_export",
+                [current.id]
+            );
+            this.notification.add("Exportación cancelada.", { type: "info" });
+        } catch (error) {
+            this.notification.add(
+                error?.data?.message || "No se pudo cancelar.",
+                { type: "danger" }
+            );
+        } finally {
+            this.state.cancellingExport = false;
+        }
+    }
+
+    dismissExport() {
+        this.state.exportJob = null;
     }
 
     async loadProducts() {

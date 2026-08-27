@@ -154,6 +154,45 @@ class LqaAdminPanelController(http.Controller):
         return response
 
     @http.route(
+        "/lqa_admin_panel/mercadolibre/catalog/exports/<int:export_id>/zip",
+        type="http",
+        auth="user",
+        methods=["GET"],
+        csrf=False,
+        sitemap=False,
+    )
+    def mercadolibre_catalog_export_zip(self, export_id, **kwargs):
+        service = request.env["lqa.mercadolibre.catalog.service"]
+        service._check_access()
+        export = service._get_catalog_export_for_user(export_id)
+        path = export.export_path or ""
+        if export.state != "done" or not os.path.isfile(path):
+            return request.not_found()
+
+        filename = f"catalogo-mercadolibre-{export.id}.zip"
+
+        def stream_zip():
+            with open(path, "rb") as bundle:
+                while True:
+                    chunk = bundle.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    yield chunk
+
+        response = request.make_response(
+            stream_zip(),
+            headers=[
+                ("Content-Type", "application/zip"),
+                ("Content-Disposition", http.content_disposition(filename)),
+                ("Content-Length", str(os.path.getsize(path))),
+                ("X-Accel-Buffering", "no"),
+                ("Cache-Control", "no-store"),
+            ],
+        )
+        response.direct_passthrough = True
+        return response
+
+    @http.route(
         "/lqa_admin_panel/mercadolibre/pricing/imports/<int:import_id>/xlsx",
         type="http",
         auth="user",

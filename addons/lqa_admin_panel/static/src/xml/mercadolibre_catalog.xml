@@ -34,6 +34,15 @@
                             Limpiar
                         </button>
                         <button
+                            type="button"
+                            class="btn btn-secondary o_lqa_meli_export_open"
+                            t-on-click="openExportModal"
+                            t-att-disabled="state.loading or exportIsActive"
+                        >
+                            <i class="fa fa-file-excel-o"/>
+                            Exportar a Excel
+                        </button>
+                        <button
                             type="submit"
                             class="btn btn-primary"
                             t-att-disabled="state.loading"
@@ -214,6 +223,129 @@
                     </label>
                 </div>
             </form>
+
+            <section t-if="state.exportJob" t-att-class="'o_lqa_meli_export_card is-' + state.exportJob.state">
+                <div class="o_lqa_meli_export_card__icon">
+                    <i t-att-class="exportIsActive ? 'fa fa-circle-o-notch fa-spin' : (state.exportJob.state === 'done' ? 'fa fa-file-excel-o' : (state.exportJob.state === 'cancelled' ? 'fa fa-ban' : 'fa fa-exclamation-triangle'))"/>
+                </div>
+                <div class="o_lqa_meli_export_card__body">
+                    <strong>
+                        <t t-if="exportIsActive">Generando el Excel</t>
+                        <t t-elif="state.exportJob.state === 'done'">Excel listo</t>
+                        <t t-elif="state.exportJob.state === 'cancelled'">Exportacion cancelada</t>
+                        <t t-else="">La exportacion fallo</t>
+                    </strong>
+                    <span>
+                        <t t-esc="formatNumber(state.exportJob.processed)"/> de
+                        <t t-esc="formatNumber(state.exportJob.matched)"/> productos
+                        <t t-if="state.exportJob.partCount > 1">
+                            · <t t-esc="state.exportJob.partCount"/> partes
+                        </t>
+                        <t t-if="exportSizeLabel"> · <t t-esc="exportSizeLabel"/></t>
+                    </span>
+                    <small t-if="state.exportJob.error" class="o_lqa_meli_export_card__error" t-esc="state.exportJob.error"/>
+                </div>
+                <strong class="o_lqa_meli_export_card__pct" t-esc="state.exportJob.progress + '%'"/>
+                <div class="o_lqa_meli_export_card__actions">
+                    <a
+                        t-if="state.exportJob.ready"
+                        class="btn btn-primary"
+                        t-att-href="state.exportJob.downloadUrl"
+                    >
+                        <i class="fa fa-download"/>
+                        Descargar ZIP
+                    </a>
+                    <button
+                        t-if="state.exportJob.canCancel"
+                        class="btn o_lqa_meli_export_card__cancel"
+                        t-on-click="cancelExport"
+                        t-att-disabled="state.cancellingExport"
+                    >
+                        <i class="fa fa-stop"/>
+                        <t t-esc="state.cancellingExport ? 'Cancelando...' : 'Cancelar'"/>
+                    </button>
+                    <button
+                        t-if="!exportIsActive"
+                        class="btn o_lqa_meli_export_card__dismiss"
+                        title="Ocultar"
+                        t-on-click="dismissExport"
+                    >
+                        <i class="fa fa-times"/>
+                    </button>
+                </div>
+                <div class="o_lqa_meli_export_card__track">
+                    <span t-att-style="'width:' + state.exportJob.progress + '%'"/>
+                </div>
+            </section>
+
+            <div t-if="state.showExportModal" class="o_lqa_meli_export_modal" t-on-click="closeExportModal">
+                <div class="o_lqa_meli_export_modal__panel" t-on-click.stop="() => {}">
+                    <header>
+                        <div>
+                            <h2>Exportar a Excel</h2>
+                            <span>
+                                <t t-esc="formatNumber(state.pagination.total or 0)"/> productos con los filtros actuales
+                                <t t-if="exportEstimateLabel"> · <t t-esc="exportEstimateLabel"/></t>
+                            </span>
+                        </div>
+                        <button class="btn" t-on-click="closeExportModal"><i class="fa fa-times"/></button>
+                    </header>
+
+                    <div class="o_lqa_meli_export_modal__section">
+                        <div class="o_lqa_meli_export_modal__section_head">
+                            <strong>Columnas</strong>
+                            <div>
+                                <button class="btn" t-on-click="() => this.selectExportColumns('basic')">Basicas</button>
+                                <button class="btn" t-on-click="() => this.selectExportColumns('all')">Todas</button>
+                                <button class="btn" t-on-click="() => this.selectExportColumns('none')">Limpiar</button>
+                            </div>
+                        </div>
+                        <div class="o_lqa_meli_export_modal__columns">
+                            <label
+                                t-foreach="exportCsvColumns"
+                                t-as="column"
+                                t-key="column.key"
+                                t-att-class="state.exportColumns[column.key] ? 'is-on' : ''"
+                            >
+                                <input
+                                    type="checkbox"
+                                    t-att-checked="state.exportColumns[column.key]"
+                                    t-on-change="() => this.toggleExportColumn(column.key)"
+                                />
+                                <span t-esc="column.label"/>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="o_lqa_meli_export_modal__section">
+                        <strong>Partir en</strong>
+                        <select t-model="state.exportPartCount">
+                            <option value="1">Un solo archivo</option>
+                            <option value="2">2 partes iguales</option>
+                            <option value="3">3 partes iguales</option>
+                            <option value="4">4 partes iguales</option>
+                            <option value="5">5 partes iguales</option>
+                            <option value="10">10 partes iguales</option>
+                        </select>
+                        <small>Se descarga un ZIP con un .xlsx por parte.</small>
+                    </div>
+
+                    <footer>
+                        <span><t t-esc="selectedExportColumns.length"/> columnas seleccionadas</span>
+                        <div>
+                            <button class="btn btn-secondary" t-on-click="closeExportModal">Cancelar</button>
+                            <button
+                                class="btn btn-primary"
+                                t-on-click="startExport"
+                                t-att-disabled="state.startingExport or !selectedExportColumns.length"
+                            >
+                                <t t-esc="state.startingExport ? 'Iniciando...' : 'Generar Excel'"/>
+                            </button>
+                        </div>
+                    </footer>
+                </div>
+            </div>
+
 
             <details class="o_lqa_meli_selections">
                 <summary class="o_lqa_meli_selections__head">

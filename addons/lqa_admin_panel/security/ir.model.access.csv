@@ -53,3 +53,5 @@ access_lqa_accounting_tlqv_client_job_admin,lqa.accounting.tlqv.client.job admin
 access_lqa_accounting_tlqv_client_line_admin,lqa.accounting.tlqv.client.line admin,model_lqa_accounting_tlqv_client_line,lqa_admin_panel.group_lqa_admin,1,1,1,1
 access_lqa_accounting_invoice_creation_job_admin,lqa.accounting.invoice.creation.job admin,model_lqa_accounting_invoice_creation_job,lqa_admin_panel.group_lqa_admin,1,1,1,1
 access_lqa_accounting_invoice_batch_admin,lqa.accounting.invoice.batch admin,model_lqa_accounting_invoice_batch,lqa_admin_panel.group_lqa_admin,1,1,1,1
+access_lqa_meli_catalog_export_user,lqa.mercadolibre.catalog.export user,model_lqa_mercadolibre_catalog_export,lqa_admin_panel.group_lqa_commercial_user,1,0,0,0
+access_lqa_meli_catalog_export_admin,lqa.mercadolibre.catalog.export admin,model_lqa_mercadolibre_catalog_export,lqa_admin_panel.group_lqa_admin,1,1,1,1

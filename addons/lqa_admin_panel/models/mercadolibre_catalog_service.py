@@ -1,6 +1,9 @@
 import base64
 import csv
 import logging
+import os
+import shutil
+import tempfile
 from concurrent.futures import ThreadPoolExecutor, wait
 from datetime import datetime, timedelta
 import io
@@ -18,6 +21,8 @@ import requests
 from odoo import _, api, fields, models, SUPERUSER_ID
 from odoo.exceptions import AccessError, UserError
 from odoo.modules.registry import Registry
+
+import xlsxwriter
 
 _logger = logging.getLogger(__name__)
 
@@ -117,6 +122,13 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
     MLA_FILE_API_TIMEOUT = 25
     MLA_FILE_PAGE_RETRIES = 2
     MLA_FILE_SAVE_BATCH_SIZE = 500
+    # Pedir 1000 filas cuesta lo mismo que pedir 100 (~10s en los dos casos):
+    # el costo del endpoint es por consulta, no por fila.
+    EXPORT_PAGE_SIZE = 1000
+    EXPORT_CYCLE_SECONDS = 45
+    EXPORT_MAX_PARTS = 20
+    EXPORT_MAX_ROWS_PER_SHEET = 1048575
+    EXPORT_RETENTION_DAYS = 7
     MLA_FILE_BATCH_DEADLINE = 90
     JOB_HEARTBEAT_STALE_MINUTES = 5
 
@@ -1285,6 +1297,560 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
             return "saving"
         return "saving" if job.cursor_offset < job.matched_count else "enriching"
 
+    # ------------------------------------------------------------------
+    # Exportacion del catalogo filtrado a Excel
+    # ------------------------------------------------------------------
+
+    @api.model
+    def start_catalog_export(self, filters=None, columns=None, part_count=1):
+        self._check_access()
+        column_map = {column[0]: column for column in self.CSV_COLUMNS}
+        selected = [key for key in (columns or []) if key in column_map]
+        if not selected:
+            selected = list(self.DEFAULT_CSV_COLUMNS)
+        part_count = min(max(self._as_int(part_count, 1), 1), self.EXPORT_MAX_PARTS)
+
+        running = (
+            self.env["lqa.mercadolibre.catalog.export"]
+            .sudo()
+            .search_count(
+                [
+                    ("requested_by_id", "=", self.env.user.id),
+                    ("state", "in", ["queued", "running"]),
+                ]
+            )
+        )
+        if running:
+            raise UserError(
+                _("Ya tenes una exportacion en curso. Espera a que termine o cancelala.")
+            )
+
+        export = self.env["lqa.mercadolibre.catalog.export"].sudo().create(
+            {
+                "requested_by_id": self.env.user.id,
+                "filters_json": json.dumps(dict(filters or {}), ensure_ascii=False),
+                "columns_json": json.dumps(selected, ensure_ascii=False),
+                "part_count": part_count,
+            }
+        )
+        self._spawn_catalog_export_worker(export)
+        return self._catalog_export_to_dict(export)
+
+    @api.model
+    def get_catalog_export(self, export_id):
+        self._check_access()
+        export = self._get_catalog_export_for_user(export_id)
+        self._resume_stale_catalog_export(export)
+        return self._catalog_export_to_dict(export)
+
+    @api.model
+    def get_active_catalog_export(self):
+        self._check_access()
+        export = (
+            self.env["lqa.mercadolibre.catalog.export"]
+            .sudo()
+            .search(
+                [("requested_by_id", "=", self.env.user.id)],
+                order="id desc",
+                limit=1,
+            )
+        )
+        if not export:
+            return False
+        self._resume_stale_catalog_export(export)
+        return self._catalog_export_to_dict(export)
+
+    @api.model
+    def cancel_catalog_export(self, export_id):
+        self._check_access()
+        export = self._get_catalog_export_for_user(export_id)
+        if export.state not in {"queued", "running"}:
+            raise UserError(_("Esta exportacion ya termino."))
+        export.write(
+            {
+                "state": "cancelled",
+                "worker_token": False,
+                "finished_at": fields.Datetime.now(),
+                "error_message": False,
+            }
+        )
+        self._cleanup_catalog_export_files(export, keep_result=False)
+        return self._catalog_export_to_dict(export)
+
+    def _get_catalog_export_for_user(self, export_id):
+        export = (
+            self.env["lqa.mercadolibre.catalog.export"]
+            .sudo()
+            .browse(self._as_int(export_id, 0))
+            .exists()
+        )
+        if not export:
+            raise UserError(_("La exportacion no existe."))
+        if (
+            not self.env.user.has_group("lqa_admin_panel.group_lqa_admin")
+            and export.requested_by_id != self.env.user
+        ):
+            raise AccessError(_("No tenes acceso a esta exportacion."))
+        return export
+
+    def _catalog_export_to_dict(self, export):
+        total = export.matched_count or 0
+        processed = export.processed_count or 0
+        return {
+            "id": export.id,
+            "state": export.state,
+            "matched": total,
+            "processed": processed,
+            "progress": min(round(processed * 100 / total), 100) if total else 0,
+            "partCount": export.part_count,
+            "columns": self._json_loads(export.columns_json, []),
+            "sizeBytes": export.export_size,
+            "ready": bool(export.state == "done" and export.export_path),
+            "downloadUrl": (
+                f"/lqa_admin_panel/mercadolibre/catalog/exports/{export.id}/zip"
+                if export.state == "done" and export.export_path
+                else ""
+            ),
+            "error": export.error_message or "",
+            "canCancel": export.state in ("queued", "running"),
+        }
+
+    def _spawn_catalog_export_worker(self, export):
+        thread = threading.Thread(
+            target=self._run_catalog_export,
+            args=(self.env.cr.dbname, export.id),
+            name=f"lqa-meli-export-{export.id}",
+            daemon=True,
+        )
+        self.env.cr.postcommit.add(thread.start)
+
+    def _resume_stale_catalog_export(self, export):
+        if export.state not in {"queued", "running"}:
+            return
+        idle = 1 if export.state == "queued" else self.JOB_HEARTBEAT_STALE_MINUTES
+        stale_before = fields.Datetime.now() - timedelta(minutes=idle)
+        if export.last_progress_at and export.last_progress_at >= stale_before:
+            return
+        self._spawn_catalog_export_worker(export)
+
+    def _claim_catalog_export(self, export, token):
+        now = fields.Datetime.now()
+        stale_before = now - timedelta(minutes=self.JOB_HEARTBEAT_STALE_MINUTES)
+        self.env.cr.execute(
+            """
+            UPDATE lqa_mercadolibre_catalog_export
+               SET state = 'running',
+                   worker_token = %(token)s,
+                   started_at = COALESCE(started_at, %(now)s),
+                   last_progress_at = %(now)s
+             WHERE id = %(export_id)s
+               AND (
+                     state = 'queued'
+                     OR (
+                          state = 'running'
+                          AND (
+                                last_progress_at IS NULL
+                                OR last_progress_at < %(stale_before)s
+                              )
+                        )
+                   )
+         RETURNING id
+            """,
+            {
+                "token": token,
+                "now": now,
+                "export_id": export.id,
+                "stale_before": stale_before,
+            },
+        )
+        claimed = bool(self.env.cr.fetchone())
+        export.invalidate_recordset()
+        return claimed
+
+    def _catalog_export_still_mine(self, export, token):
+        self.env.cr.execute(
+            "SELECT state, worker_token"
+            "  FROM lqa_mercadolibre_catalog_export"
+            " WHERE id = %s",
+            (export.id,),
+        )
+        row = self.env.cr.fetchone()
+        if not row:
+            return False
+        state, owner = row
+        return state == "running" and owner == token
+
+    @staticmethod
+    def _run_catalog_export(dbname, export_id):
+        token = uuid.uuid4().hex
+        with Registry(dbname).cursor() as cr:
+            env = api.Environment(cr, SUPERUSER_ID, {})
+            export = env["lqa.mercadolibre.catalog.export"].browse(export_id).exists()
+            if not export:
+                return
+            service = env["lqa.mercadolibre.catalog.service"]
+            for _cycle in range(10):
+                if not service._claim_catalog_export(export, token):
+                    cr.rollback()
+                    return
+                cr.commit()
+                service._process_catalog_export_cycle(export, token)
+                export.invalidate_recordset()
+                if export.state != "queued":
+                    break
+
+    @api.model
+    def process_pending_catalog_exports(self):
+        """Continue one export per cron tick, taking ownership atomically."""
+        model = self.env["lqa.mercadolibre.catalog.export"].sudo()
+        self._purge_expired_catalog_exports()
+        stale_before = fields.Datetime.now() - timedelta(
+            minutes=self.JOB_HEARTBEAT_STALE_MINUTES
+        )
+        candidates = model.search(
+            [
+                "|",
+                ("state", "=", "queued"),
+                "&",
+                ("state", "=", "running"),
+                "|",
+                ("last_progress_at", "=", False),
+                ("last_progress_at", "<", stale_before),
+            ],
+            order="id",
+            limit=20,
+        )
+        candidates = candidates.sorted(
+            key=lambda export: export.last_progress_at or datetime.min
+        )
+        token = uuid.uuid4().hex
+        for candidate in candidates:
+            if not self._claim_catalog_export(candidate, token):
+                continue
+            self.env.cr.commit()
+            self._process_catalog_export_cycle(candidate, token)
+            break
+        return True
+
+    def _process_catalog_export_cycle(self, export, token=None):
+        try:
+            result = self._write_catalog_export_rows(export, token)
+            if result.pop("stopped", False):
+                self.env.cr.commit()
+                return
+            if result.pop("completed", False):
+                result.update(self._finish_catalog_export(export))
+                export.write(
+                    {
+                        "state": "done",
+                        "worker_token": False,
+                        "finished_at": fields.Datetime.now(),
+                        "error_message": False,
+                        "retry_count": 0,
+                        **result,
+                    }
+                )
+            else:
+                export.write(
+                    {"state": "queued", "worker_token": False, "retry_count": 0, **result}
+                )
+        except SelectionLimitError as error:
+            # El filtro no entra en las partes pedidas: reintentar no lo arregla.
+            self.env.cr.rollback()
+            export.invalidate_recordset()
+            export.write(
+                {
+                    "state": "failed",
+                    "worker_token": False,
+                    "finished_at": fields.Datetime.now(),
+                    "error_message": str(error),
+                }
+            )
+            self._cleanup_catalog_export_files(export, keep_result=False)
+        except Exception as error:
+            self.env.cr.rollback()
+            export.invalidate_recordset()
+            _logger.exception("Fallo un ciclo de la exportacion %s", export.id)
+            retry_count = export.retry_count + 1
+            values = {
+                "retry_count": retry_count,
+                "error_message": self._format_job_error(error),
+                "last_progress_at": fields.Datetime.now(),
+                "worker_token": False,
+            }
+            if isinstance(error, MemoryError) or retry_count >= 5:
+                values.update(
+                    {"state": "failed", "finished_at": fields.Datetime.now()}
+                )
+                self._cleanup_catalog_export_files(export, keep_result=False)
+            else:
+                values["state"] = "queued"
+            export.write(values)
+        self.env.cr.commit()
+
+    def _write_catalog_export_rows(self, export, token=None):
+        """Page through the catalog and append rows to one workbook per part.
+
+        Each part is a separate xlsxwriter workbook opened in constant_memory
+        mode, so rows go straight to disk instead of piling up in RAM. A cycle
+        closes its workbooks before returning, which is what makes the export
+        resumable: the next cycle reopens them in append mode via the staging
+        row files.
+        """
+        filters = self._json_loads(export.filters_json, {})
+        columns = [
+            column
+            for column in self.CSV_COLUMNS
+            if column[0] in set(self._json_loads(export.columns_json, []))
+        ]
+        if not columns:
+            raise UserError(_("Selecciona al menos una columna para exportar."))
+
+        staging_dir = export.staging_dir
+        if not staging_dir or not os.path.isdir(staging_dir):
+            staging_dir = tempfile.mkdtemp(prefix=f"lqa-meli-export-{export.id}-")
+            export.write({"staging_dir": staging_dir})
+            self.env.cr.commit()
+
+        cursor = export.cursor_offset or 0
+        matched = export.matched_count or 0
+        rows_per_part = export.rows_per_part or 0
+        cycle_started = time.monotonic()
+        endpoint = self._catalog_endpoint()
+
+        while True:
+            if token and not self._catalog_export_still_mine(export, token):
+                return {"stopped": True}
+
+            page_filters = dict(filters)
+            page_filters["offset"] = cursor
+            page_filters["limit"] = self.EXPORT_PAGE_SIZE
+            params = self._prepare_params(
+                page_filters, max_limit=self.EXPORT_PAGE_SIZE
+            )
+            response = self._request_selection_page_http(
+                endpoint,
+                params,
+                self.FILTER_SELECTION_API_TIMEOUT,
+                self.FILTER_SELECTION_PAGE_RETRIES,
+            )
+            products = response.get("products") or []
+            pagination = response.get("pagination") or {}
+
+            if not matched:
+                matched = self._as_int(pagination.get("total"), 0)
+                if matched > self.EXPORT_MAX_ROWS_PER_SHEET * export.part_count:
+                    raise SelectionLimitError(
+                        _(
+                            "El filtro devuelve %s productos y no entran en %s "
+                            "partes de Excel. Aumenta las partes o afina el filtro."
+                        )
+                        % (matched, export.part_count)
+                    )
+                # "N partes iguales": el total recien se conoce con la primera
+                # pagina, asi que el tamano de cada parte se fija aca.
+                rows_per_part = max(
+                    -(-matched // export.part_count) if matched else 1, 1
+                )
+                export.write(
+                    {"matched_count": matched, "rows_per_part": rows_per_part}
+                )
+                self.env.cr.commit()
+
+            if not products:
+                return {
+                    "completed": True,
+                    "processed_count": cursor,
+                    "cursor_offset": cursor,
+                    "matched_count": matched,
+                    "last_progress_at": fields.Datetime.now(),
+                }
+
+            self._append_export_rows(
+                staging_dir, columns, products, cursor, rows_per_part
+            )
+            cursor += len(products)
+            export.write(
+                {
+                    "processed_count": cursor,
+                    "cursor_offset": cursor,
+                    "last_progress_at": fields.Datetime.now(),
+                }
+            )
+            self.env.cr.commit()
+            self.env.invalidate_all()
+
+            if matched and cursor >= matched:
+                return {
+                    "completed": True,
+                    "processed_count": cursor,
+                    "cursor_offset": cursor,
+                    "matched_count": matched,
+                    "last_progress_at": fields.Datetime.now(),
+                }
+            if not pagination.get("has_next", True):
+                return {
+                    "completed": True,
+                    "processed_count": cursor,
+                    "cursor_offset": cursor,
+                    "matched_count": matched,
+                    "last_progress_at": fields.Datetime.now(),
+                }
+            if time.monotonic() - cycle_started >= self.EXPORT_CYCLE_SECONDS:
+                return {
+                    "completed": False,
+                    "processed_count": cursor,
+                    "cursor_offset": cursor,
+                    "matched_count": matched,
+                    "last_progress_at": fields.Datetime.now(),
+                }
+
+    def _append_export_rows(
+        self, staging_dir, columns, products, start_index, rows_per_part
+    ):
+        """Append rows as JSON lines, one staging file per part.
+
+        We stage as text rather than writing xlsx directly because a cycle can
+        stop halfway: xlsxwriter cannot reopen a finished workbook, but a text
+        file appends fine across cycles and worker restarts.
+        """
+        for offset, product in enumerate(products):
+            row_index = start_index + offset
+            part_index = min(
+                row_index // rows_per_part if rows_per_part else 0,
+                self.EXPORT_MAX_PARTS - 1,
+            )
+            normalized = self._normalize_product(product)
+            values = [
+                self._csv_value(normalized.get(column[2], ""))
+                for column in columns
+            ]
+            path = os.path.join(staging_dir, f"part-{part_index + 1}.jsonl")
+            with open(path, "a", encoding="utf-8") as handle:
+                handle.write(json.dumps(values, ensure_ascii=False) + "\n")
+
+    def _finish_catalog_export(self, export):
+        """Turn the staged rows into one xlsx per part, zipped together."""
+        staging_dir = export.staging_dir
+        columns = [
+            column
+            for column in self.CSV_COLUMNS
+            if column[0] in set(self._json_loads(export.columns_json, []))
+        ]
+        descriptor, zip_path = tempfile.mkstemp(
+            prefix=f"lqa-meli-export-{export.id}-", suffix=".zip"
+        )
+        os.close(descriptor)
+
+        stem = f"catalogo-mercadolibre-{fields.Date.today()}"
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as bundle:
+            for part_index in range(export.part_count):
+                rows_path = os.path.join(
+                    staging_dir, f"part-{part_index + 1}.jsonl"
+                )
+                if not os.path.isfile(rows_path):
+                    continue
+                sheet_path = self._build_export_part_xlsx(
+                    columns, rows_path, part_index + 1, export.part_count
+                )
+                try:
+                    name = (
+                        f"{stem}.xlsx"
+                        if export.part_count == 1
+                        else f"{stem}-parte-{part_index + 1}-de-{export.part_count}.xlsx"
+                    )
+                    bundle.write(sheet_path, arcname=name)
+                finally:
+                    if os.path.isfile(sheet_path):
+                        os.remove(sheet_path)
+
+        self._cleanup_catalog_export_staging(export)
+        return {
+            "export_path": zip_path,
+            "export_size": os.path.getsize(zip_path),
+            "staging_dir": False,
+        }
+
+    def _build_export_part_xlsx(self, columns, rows_path, part_number, part_total):
+        descriptor, path = tempfile.mkstemp(prefix="lqa-meli-part-", suffix=".xlsx")
+        os.close(descriptor)
+        workbook = xlsxwriter.Workbook(
+            path,
+            {
+                "constant_memory": True,
+                "strings_to_formulas": False,
+                "strings_to_urls": False,
+            },
+        )
+        try:
+            title = (
+                "Catalogo"
+                if part_total == 1
+                else f"Catalogo {part_number} de {part_total}"
+            )
+            sheet = workbook.add_worksheet(title[:31])
+            sheet.freeze_panes(1, 0)
+            header_format = workbook.add_format(
+                {
+                    "bold": True,
+                    "font_color": "#FFFFFF",
+                    "bg_color": "#2D3277",
+                    "border": 1,
+                    "border_color": "#D7DEE7",
+                    "align": "center",
+                    "valign": "vcenter",
+                }
+            )
+            for index, column in enumerate(columns):
+                sheet.write(0, index, column[1], header_format)
+                sheet.set_column(index, index, 20)
+            row_number = 1
+            with open(rows_path, "r", encoding="utf-8") as handle:
+                for line in handle:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    for index, value in enumerate(json.loads(line)):
+                        sheet.write(row_number, index, value)
+                    row_number += 1
+        finally:
+            workbook.close()
+        return path
+
+    def _purge_expired_catalog_exports(self):
+        """Drop finished export bundles after a week.
+
+        The zip lives in the system temp dir, not the filestore, so nothing
+        else would ever reclaim it. A full catalog export is ~100 MB.
+        """
+        expired = self.env["lqa.mercadolibre.catalog.export"].sudo().search(
+            [
+                ("state", "in", ["done", "failed", "cancelled"]),
+                ("export_path", "!=", False),
+                (
+                    "finished_at",
+                    "<",
+                    fields.Datetime.now() - timedelta(days=self.EXPORT_RETENTION_DAYS),
+                ),
+            ],
+            limit=20,
+        )
+        for export in expired:
+            self._cleanup_catalog_export_files(export, keep_result=False)
+
+    def _cleanup_catalog_export_staging(self, export):
+        if export.staging_dir and os.path.isdir(export.staging_dir):
+            shutil.rmtree(export.staging_dir, ignore_errors=True)
+
+    def _cleanup_catalog_export_files(self, export, keep_result=True):
+        self._cleanup_catalog_export_staging(export)
+        values = {"staging_dir": False}
+        if not keep_result:
+            if export.export_path and os.path.isfile(export.export_path):
+                os.remove(export.export_path)
+            values.update({"export_path": False, "export_size": 0})
+        export.write(values)
+
     def _extract_mla_codes(self, rows):
         clean_rows = [row for row in rows if any(self._clean(value) for value in row)]
         if not clean_rows:
@@ -1737,6 +2303,13 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
     @staticmethod
     def _clean(value):
         return str(value or "").strip()
+
+    @staticmethod
+    def _json_loads(raw, default):
+        try:
+            return json.loads(raw or "")
+        except (TypeError, ValueError):
+            return default
 
     @staticmethod
     def _first(source, *keys):

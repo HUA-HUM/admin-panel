@@ -1,6 +1,6 @@
 {
     "name": "LQA Admin Panel",
-    "version": "18.0.1.0.104",
+    "version": "18.0.1.0.105",
     "category": "Sales",
     "summary": "Panel interno para areas operativas de Lo Quiero Aca",
     "author": "Lo Quiero Aca",
@@ -11,6 +11,7 @@
         "security/ir.model.access.csv",
         "data/mercadolibre_pricing_cron.xml",
         "data/mercadolibre_selection_cron.xml",
+        "data/mercadolibre_catalog_export_cron.xml",
         "data/retailers_pricing_cron.xml",
         "data/google_merchant_actions_cron.xml",
         "data/retailers_teams_notifications_cron.xml",

@@ -137,6 +137,53 @@ class LqaMercadolibreCatalogQuery(models.Model):
     finished_at = fields.Datetime(readonly=True)
 
 
+class LqaMercadolibreCatalogExport(models.Model):
+    _name = "lqa.mercadolibre.catalog.export"
+    _description = "Exportacion a Excel del catalogo MercadoLibre"
+    _order = "create_date desc, id desc"
+
+    requested_by_id = fields.Many2one(
+        "res.users",
+        required=True,
+        readonly=True,
+        index=True,
+    )
+    state = fields.Selection(
+        [
+            ("queued", "En cola"),
+            ("running", "Exportando"),
+            ("done", "Listo"),
+            ("failed", "Fallido"),
+            ("cancelled", "Cancelado"),
+        ],
+        required=True,
+        default="queued",
+        index=True,
+        readonly=True,
+    )
+    worker_token = fields.Char(readonly=True, index=True)
+    filters_json = fields.Text(required=True, readonly=True)
+    columns_json = fields.Text(required=True, readonly=True)
+    part_count = fields.Integer(required=True, default=1, readonly=True)
+    matched_count = fields.Integer(readonly=True)
+    processed_count = fields.Integer(readonly=True)
+    cursor_offset = fields.Integer(readonly=True)
+    rows_per_part = fields.Integer(readonly=True)
+    staging_dir = fields.Char(readonly=True)
+    export_path = fields.Char(readonly=True)
+    export_size = fields.Integer(readonly=True)
+    retry_count = fields.Integer(readonly=True)
+    error_message = fields.Text(readonly=True)
+    started_at = fields.Datetime(readonly=True)
+    last_progress_at = fields.Datetime(readonly=True)
+    finished_at = fields.Datetime(readonly=True)
+
+    def _cron_process_pending_exports(self):
+        return self.env[
+            "lqa.mercadolibre.catalog.service"
+        ].process_pending_catalog_exports()
+
+
 class LqaMercadolibreSelectionItem(models.Model):
     _name = "lqa.mercadolibre.selection.item"
     _description = "Producto seleccionado MercadoLibre"
