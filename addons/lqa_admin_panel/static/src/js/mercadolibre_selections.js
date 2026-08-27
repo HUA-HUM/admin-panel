@@ -299,6 +299,11 @@ export class LqaMercadolibreSelections extends Component {
             );
             const finished = ["done", "failed"].includes(updated.state);
             this.state.importJob = updated;
+            this.state.folders = this.state.folders.map((folder) =>
+                String(folder.id) === String(updated.folderId)
+                    ? { ...folder, productCount: Number(updated.folderCount || 0) }
+                    : folder
+            );
             if (finished) {
                 await this.loadFolders();
                 if (updated.state === "done") {

@@ -99,8 +99,8 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
     CATALOG_QUERY_RETRIES = 2
     CATALOG_QUERY_CACHE_MINUTES = 5
     MLA_FILE_MAX_BYTES = 20 * 1024 * 1024
-    MLA_FILE_ENRICH_BATCH_SIZE = 100
-    MLA_FILE_FETCH_CONCURRENCY = 16
+    MLA_FILE_ENRICH_BATCH_SIZE = 20
+    MLA_FILE_FETCH_CONCURRENCY = 10
     MLA_FILE_INLINE_CYCLES = 5
     MLA_FILE_API_TIMEOUT = 25
     MLA_FILE_PAGE_RETRIES = 2
@@ -690,6 +690,30 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
 
         while cursor < len(mla_codes):
             codes = mla_codes[cursor : cursor + self.MLA_FILE_ENRICH_BATCH_SIZE]
+            placeholder_result = self._save_product_batch(
+                job.folder_id,
+                [
+                    {
+                        "item_id": code,
+                        "title": _("Pendiente de consultar en Catalog API"),
+                        "status": "lookup_pending",
+                    }
+                    for code in codes
+                ],
+                max_folder_size=self.MAX_FILTER_SELECTION_ROWS,
+                current_count=existing_count,
+                update_existing=False,
+            )
+            added += placeholder_result["added"]
+            existing_count += placeholder_result["added"]
+            job.write(
+                {
+                    "added_count": added,
+                    "last_progress_at": fields.Datetime.now(),
+                }
+            )
+            self.env.cr.commit()
+
             params_list = [
                 self._prepare_params(
                     {"search": code, "limit": 20, "offset": 0},
