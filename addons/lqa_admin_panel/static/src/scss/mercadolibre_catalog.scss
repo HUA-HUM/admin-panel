@@ -1046,8 +1046,11 @@
 
 .o_lqa_meli_export_modal__panel {
     display: flex;
-    width: min(760px, 100%);
-    max-height: min(86vh, 780px);
+    // Sin min() de CSS: libsass lo interpreta como su propia funcion e
+    // intenta operar px contra % / vh, lo que rompe la compilacion entera.
+    width: 100%;
+    max-width: 760px;
+    max-height: 86vh;
     flex-direction: column;
     border-radius: 14px;
     background: #fff;
