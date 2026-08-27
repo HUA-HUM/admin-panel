@@ -58,11 +58,18 @@ class LqaMercadolibreSelectionJob(models.Model):
             ("running", "Procesando"),
             ("done", "Completado"),
             ("failed", "Fallido"),
+            ("cancelled", "Cancelado"),
         ],
         required=True,
         default="queued",
         index=True,
         readonly=True,
+    )
+    worker_token = fields.Char(
+        readonly=True,
+        index=True,
+        help="Identifica al worker que tiene tomado el job. Evita que dos "
+        "procesos avancen la misma carpeta en paralelo.",
     )
     source_type = fields.Selection(
         [("filter", "Filtro"), ("mla_file", "Archivo de MLAs")],
@@ -79,6 +86,11 @@ class LqaMercadolibreSelectionJob(models.Model):
     matched_count = fields.Integer(readonly=True)
     processed_count = fields.Integer(readonly=True)
     cursor_offset = fields.Integer(readonly=True)
+    enrich_offset = fields.Integer(
+        readonly=True,
+        help="MLAs ya enriquecidos contra Catalog API. Avanza despues de "
+        "cursor_offset, que solo cuenta los MLAs guardados en la carpeta.",
+    )
     added_count = fields.Integer(readonly=True)
     updated_count = fields.Integer(readonly=True)
     not_found_count = fields.Integer(readonly=True)

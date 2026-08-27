@@ -70,6 +70,8 @@ export class LqaMercadolibreSelections extends Component {
             importContent: "",
             importingFile: false,
             importJob: null,
+            cancellingImport: false,
+            retryingImport: false,
         });
 
         onWillStart(async () => {
@@ -286,9 +288,27 @@ export class LqaMercadolibreSelections extends Component {
         }
     }
 
+    get importIsActive() {
+        return ["queued", "running"].includes(this.state.importJob?.state);
+    }
+
+    get importPhaseLabel() {
+        const job = this.state.importJob;
+        if (!job) {
+            return "";
+        }
+        return {
+            saving: "Guardando MLAs en la carpeta",
+            enriching: "Completando datos desde Catalog API",
+            done: "Importación completa",
+            failed: "La importación falló",
+            cancelled: "Importación cancelada",
+        }[job.phase] || "Procesando";
+    }
+
     async refreshImportJob() {
         const job = this.state.importJob;
-        if (!job?.id || !["queued", "running"].includes(job.state)) {
+        if (!job?.id || !this.importIsActive) {
             return;
         }
         try {
@@ -297,7 +317,7 @@ export class LqaMercadolibreSelections extends Component {
                 "get_selection_job",
                 [job.id]
             );
-            const finished = ["done", "failed"].includes(updated.state);
+            const finished = ["done", "failed", "cancelled"].includes(updated.state);
             this.state.importJob = updated;
             this.state.folders = this.state.folders.map((folder) =>
                 String(folder.id) === String(updated.folderId)
@@ -320,9 +340,77 @@ export class LqaMercadolibreSelections extends Component {
     }
 
     get importProgress() {
-        const total = Number(this.state.importJob?.matched || 0);
-        const processed = Number(this.state.importJob?.processed || 0);
-        return total ? Math.min(Math.round((processed / total) * 100), 100) : 0;
+        const job = this.state.importJob;
+        const total = Number(job?.matched || 0);
+        if (!total) {
+            return 0;
+        }
+        // La barra sigue la fase en curso: primero el guardado, despues el
+        // enriquecimiento. Asi deja de quedarse en 0% mientras la carpeta ya
+        // se esta llenando.
+        const done =
+            job?.phase === "saving"
+                ? Number(job?.saved || 0)
+                : Number(job?.processed || 0);
+        return Math.min(Math.round((done / total) * 100), 100);
+    }
+
+    get importSavedCount() {
+        return Number(this.state.importJob?.saved || 0);
+    }
+
+    async cancelImport() {
+        const job = this.state.importJob;
+        if (!job?.id || this.state.cancellingImport) {
+            return;
+        }
+        this.state.cancellingImport = true;
+        try {
+            this.state.importJob = await this.orm.call(
+                "lqa.mercadolibre.catalog.service",
+                "cancel_selection_job",
+                [job.id]
+            );
+            await this.loadFolders();
+            this.notification.add(
+                "Importación cancelada. Los MLAs ya guardados quedan en la carpeta.",
+                { type: "info" }
+            );
+        } catch (error) {
+            this.notification.add(
+                error?.data?.message || "No se pudo cancelar la importación.",
+                { type: "danger" }
+            );
+        } finally {
+            this.state.cancellingImport = false;
+        }
+    }
+
+    async retryImport() {
+        const job = this.state.importJob;
+        if (!job?.id || this.state.retryingImport) {
+            return;
+        }
+        this.state.retryingImport = true;
+        try {
+            this.state.importJob = await this.orm.call(
+                "lqa.mercadolibre.catalog.service",
+                "retry_selection_job",
+                [job.id]
+            );
+            this.notification.add("Retomando la importación.", { type: "success" });
+        } catch (error) {
+            this.notification.add(
+                error?.data?.message || "No se pudo retomar la importación.",
+                { type: "danger" }
+            );
+        } finally {
+            this.state.retryingImport = false;
+        }
+    }
+
+    dismissImportJob() {
+        this.state.importJob = null;
     }
 
     openDeleteFolder(folder) {

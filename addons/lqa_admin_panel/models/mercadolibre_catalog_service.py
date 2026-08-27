@@ -1,13 +1,15 @@
 import base64
 import csv
+import logging
 from concurrent.futures import ThreadPoolExecutor
-from datetime import timedelta
+from datetime import datetime, timedelta
 import io
 import json
 import posixpath
 import re
 import threading
 import time
+import uuid
 import zipfile
 from xml.etree import ElementTree
 
@@ -16,6 +18,8 @@ import requests
 from odoo import _, api, fields, models, SUPERUSER_ID
 from odoo.exceptions import AccessError, UserError
 from odoo.modules.registry import Registry
+
+_logger = logging.getLogger(__name__)
 
 
 class SelectionLimitError(UserError):
@@ -104,6 +108,8 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
     MLA_FILE_INLINE_CYCLES = 5
     MLA_FILE_API_TIMEOUT = 25
     MLA_FILE_PAGE_RETRIES = 2
+    MLA_FILE_SAVE_BATCH_SIZE = 500
+    JOB_HEARTBEAT_STALE_MINUTES = 5
 
     @api.model
     def get_products(self, filters=None):
@@ -360,13 +366,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
                 "initial_count_recorded": True,
             }
         )
-        thread = threading.Thread(
-            target=self._run_filtered_selection_job,
-            args=(self.env.cr.dbname, job.id),
-            name=f"lqa-meli-mla-import-{job.id}",
-            daemon=True,
-        )
-        self.env.cr.postcommit.add(thread.start)
+        self._spawn_selection_worker(job, "mla-import")
         return {
             "folder": self._folder_to_dict(folder),
             "job": self._selection_job_to_dict(job),
@@ -426,31 +426,13 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
                 "initial_count_recorded": True,
             }
         )
-        thread = threading.Thread(
-            target=self._run_filtered_selection_job,
-            args=(self.env.cr.dbname, job.id),
-            name=f"lqa-meli-selection-{job.id}",
-            daemon=True,
-        )
-        self.env.cr.postcommit.add(thread.start)
+        self._spawn_selection_worker(job, "selection")
         return self._selection_job_to_dict(job)
 
     @api.model
     def get_selection_job(self, job_id):
         self._check_access()
-        job = (
-            self.env["lqa.mercadolibre.selection.job"]
-            .sudo()
-            .browse(self._as_int(job_id, 0))
-            .exists()
-        )
-        if not job:
-            raise UserError(_("El proceso de guardado no existe."))
-        if (
-            not self.env.user.has_group("lqa_admin_panel.group_lqa_admin")
-            and job.requested_by_id != self.env.user
-        ):
-            raise AccessError(_("No tenes acceso a este proceso."))
+        job = self._get_selection_job_for_user(job_id)
         self._resume_stale_mla_file_job(job)
         return self._selection_job_to_dict(job)
 
@@ -503,46 +485,123 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
             self._resume_stale_mla_file_job(job)
         return self._selection_job_to_dict(job) if job else False
 
-    def _resume_stale_mla_file_job(self, job):
-        """Restart an abandoned import while its owner is watching the UI."""
-        if job.source_type != "mla_file":
-            return
+    def _claim_job(self, job, token):
+        """Take exclusive ownership of a job with one atomic UPDATE.
+
+        Postgres serialises concurrent UPDATEs on the same row, so exactly one
+        caller can move a job out of `queued` (or steal a `running` job whose
+        worker stopped sending heartbeats). Every other caller gets zero rows
+        back and must leave the job alone. This is what stops the cron, the
+        import thread and each UI poll from all processing the same folder.
+        """
         now = fields.Datetime.now()
-        queued_before = now - timedelta(minutes=1)
-        running_before = now - timedelta(minutes=10)
-        should_resume = (
-            job.state == "queued"
-            and (
-                not job.last_progress_at
-                or job.last_progress_at < queued_before
-            )
-        ) or (
-            job.state == "running"
-            and (
-                not job.last_progress_at
-                or job.last_progress_at < running_before
-            )
-        )
-        if not should_resume:
-            return
-        job.write(
+        stale_before = now - timedelta(minutes=self.JOB_HEARTBEAT_STALE_MINUTES)
+        self.env.cr.execute(
+            """
+            UPDATE lqa_mercadolibre_selection_job
+               SET state = 'running',
+                   worker_token = %(token)s,
+                   started_at = COALESCE(started_at, %(now)s),
+                   last_progress_at = %(now)s
+             WHERE id = %(job_id)s
+               AND (
+                     state = 'queued'
+                     OR (
+                          state = 'running'
+                          AND (
+                                last_progress_at IS NULL
+                                OR last_progress_at < %(stale_before)s
+                              )
+                        )
+                   )
+         RETURNING id
+            """,
             {
-                "state": "running",
-                "started_at": job.started_at or now,
-                "last_progress_at": now,
-            }
+                "token": token,
+                "now": now,
+                "job_id": job.id,
+                "stale_before": stale_before,
+            },
         )
+        claimed = bool(self.env.cr.fetchone())
+        job.invalidate_recordset()
+        return claimed
+
+    def _job_still_mine(self, job, token):
+        """Read state and owner straight from the row, bypassing the cache."""
+        self.env.cr.execute(
+            "SELECT state, worker_token"
+            "  FROM lqa_mercadolibre_selection_job"
+            " WHERE id = %s",
+            (job.id,),
+        )
+        row = self.env.cr.fetchone()
+        if not row:
+            return False
+        state, owner = row
+        return state == "running" and owner == token
+
+    @staticmethod
+    def _format_job_error(error):
+        """Never lose the exception type.
+
+        MemoryError -- and a few others -- stringify to the empty string, so
+        storing only str(error) leaves a failed job with a blank reason and
+        nothing to go on from the panel.
+        """
+        detail = str(error).strip()
+        name = type(error).__name__
+        return f"{name}: {detail}" if detail else name
+
+    def _release_job(self, job, values):
+        job.write({"worker_token": False, **values})
+
+    def _spawn_selection_worker(self, job, label):
         thread = threading.Thread(
             target=self._run_filtered_selection_job,
             args=(self.env.cr.dbname, job.id),
-            name=f"lqa-meli-mla-resume-{job.id}",
+            name=f"lqa-meli-{label}-{job.id}",
             daemon=True,
         )
         self.env.cr.postcommit.add(thread.start)
 
+    def _resume_stale_mla_file_job(self, job):
+        """Nudge an abandoned import back to life while its owner watches.
+
+        The spawned worker claims the job atomically before touching anything,
+        so it is harmless if the cron -- or another browser tab polling at the
+        same moment -- already got there first: the loser exits immediately.
+        """
+        if job.source_type != "mla_file":
+            return
+        if job.state not in {"queued", "running"}:
+            return
+        idle_minutes = 1 if job.state == "queued" else self.JOB_HEARTBEAT_STALE_MINUTES
+        stale_before = fields.Datetime.now() - timedelta(minutes=idle_minutes)
+        if job.last_progress_at and job.last_progress_at >= stale_before:
+            return
+        self._spawn_selection_worker(job, "mla-resume")
+
     @api.model
-    def retry_selection_job(self, job_id):
+    def cancel_selection_job(self, job_id):
         self._check_access()
+        job = self._get_selection_job_for_user(job_id)
+        if job.state not in {"queued", "running"}:
+            raise UserError(_("Este proceso ya termino."))
+        # Dropping the token is what stops the running worker: it re-reads the
+        # row before every batch and abandons the job when it is no longer its
+        # owner. Rows already saved stay in the folder.
+        job.write(
+            {
+                "state": "cancelled",
+                "worker_token": False,
+                "finished_at": fields.Datetime.now(),
+                "error_message": False,
+            }
+        )
+        return self._selection_job_to_dict(job)
+
+    def _get_selection_job_for_user(self, job_id):
         job = (
             self.env["lqa.mercadolibre.selection.job"]
             .sudo()
@@ -556,27 +615,32 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
             and job.requested_by_id != self.env.user
         ):
             raise AccessError(_("No tenes acceso a este proceso."))
-        if job.state != "failed":
-            raise UserError(_("Solo se pueden reintentar procesos fallidos."))
+        return job
+
+    @api.model
+    def retry_selection_job(self, job_id):
+        self._check_access()
+        job = self._get_selection_job_for_user(job_id)
+        if job.state not in {"failed", "cancelled"}:
+            raise UserError(
+                _("Solo se pueden reintentar procesos fallidos o cancelados.")
+            )
         job.write(
             {
                 "state": "queued",
                 "retry_count": 0,
                 "error_message": False,
                 "finished_at": False,
+                "worker_token": False,
+                "last_progress_at": False,
             }
         )
-        thread = threading.Thread(
-            target=self._run_filtered_selection_job,
-            args=(self.env.cr.dbname, job.id),
-            name=f"lqa-meli-selection-retry-{job.id}",
-            daemon=True,
-        )
-        self.env.cr.postcommit.add(thread.start)
+        self._spawn_selection_worker(job, "selection-retry")
         return self._selection_job_to_dict(job)
 
     @staticmethod
     def _run_filtered_selection_job(dbname, job_id):
+        token = uuid.uuid4().hex
         with Registry(dbname).cursor() as cr:
             env = api.Environment(cr, SUPERUSER_ID, {})
             job = env["lqa.mercadolibre.selection.job"].browse(job_id).exists()
@@ -589,87 +653,139 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
                 else 1
             )
             for _cycle in range(max_cycles):
-                service._process_selection_job_cycle(job)
+                if not service._claim_job(job, token):
+                    # Otro worker lo tomo primero, o el usuario lo cancelo.
+                    cr.rollback()
+                    return
                 cr.commit()
+                service._process_selection_job_cycle(job, token)
                 job.invalidate_recordset()
                 if job.state != "queued":
                     break
 
     @api.model
     def process_pending_selection_jobs(self):
-        """Continue one queued job per cron tick and recover abandoned workers."""
-        stale_before = fields.Datetime.now() - timedelta(minutes=5)
+        """Advance one job per cron tick, taking ownership atomically first."""
         job_model = self.env["lqa.mercadolibre.selection.job"].sudo()
-        stale_jobs = job_model.search(
+        stale_before = fields.Datetime.now() - timedelta(
+            minutes=self.JOB_HEARTBEAT_STALE_MINUTES
+        )
+        candidates = job_model.search(
             [
+                "|",
+                ("state", "=", "queued"),
+                "&",
                 ("state", "=", "running"),
                 "|",
                 ("last_progress_at", "=", False),
                 ("last_progress_at", "<", stale_before),
-            ]
+            ],
+            order="id",
+            limit=20,
         )
-        if stale_jobs:
-            stale_jobs.write({"state": "queued"})
-        job = job_model.search([("state", "=", "queued")], order="id", limit=1)
-        if job:
-            self._process_selection_job_cycle(job)
+        if not candidates:
+            return True
+        # Atendemos primero al que hace mas tiempo que no avanza (y a los que
+        # nunca arrancaron). Ordenar por id dejaba que una carpeta enorme o un
+        # job que falla en loop bloqueara para siempre a todo lo que entro
+        # despues.
+        candidates = candidates.sorted(
+            key=lambda job: job.last_progress_at or datetime.min
+        )
+        token = uuid.uuid4().hex
+        for candidate in candidates:
+            if not self._claim_job(candidate, token):
+                # Otro worker se lo llevo entre el search y el claim.
+                continue
+            self.env.cr.commit()
+            self._process_selection_job_cycle(candidate, token)
+            break
         return True
 
-    def _process_selection_job_cycle(self, job):
-        now = fields.Datetime.now()
-        job.write(
-            {
-                "state": "running",
-                "started_at": job.started_at or now,
-                "last_progress_at": now,
-            }
-        )
-        self.env.cr.commit()
+    def _process_selection_job_cycle(self, job, token=None):
+        """Run one bounded slice of a job. The caller must already own it."""
         try:
             if job.source_type == "mla_file":
-                result = self._save_mla_file_products_in_batches(job)
+                result = self._save_mla_file_products_in_batches(job, token)
             else:
                 filters = json.loads(job.filters_json or "{}")
                 result = self._save_filtered_products_in_batches(job, filters)
+            if result.pop("stopped", False):
+                # Cancelado, o robado por otro worker: no pisamos su estado.
+                self.env.cr.commit()
+                return
+            progressed = result.pop("progressed", True)
             if result.pop("completed", False):
-                job.write(
+                self._release_job(
+                    job,
                     {
                         "state": "done",
                         "finished_at": fields.Datetime.now(),
                         "error_message": False,
+                        "retry_count": 0,
                         **result,
-                    }
+                    },
                 )
             else:
-                job.write({"state": "queued", **result})
+                # Solo limpiamos el contador de reintentos si el ciclo avanzo;
+                # asi un job que falla siempre en el mismo lote termina en
+                # failed en vez de reintentar para siempre.
+                if progressed:
+                    result["retry_count"] = 0
+                self._release_job(job, {"state": "queued", **result})
         except SelectionLimitError as error:
-            job.write(
+            self.env.cr.rollback()
+            job.invalidate_recordset()
+            self._release_job(
+                job,
                 {
                     "state": "failed",
                     "finished_at": fields.Datetime.now(),
                     "error_message": str(error),
-                }
+                },
             )
         except Exception as error:
+            # Un error de base de datos deja el cursor abortado: sin rollback el
+            # write de abajo tambien falla y el job se queda pegado en running
+            # hasta que expire el heartbeat. Lo ya commiteado no se pierde.
+            self.env.cr.rollback()
+            job.invalidate_recordset()
+            _logger.exception(
+                "Fallo un ciclo del job de seleccion %s (carpeta %s)",
+                job.id,
+                job.folder_id.id,
+            )
             retry_count = job.retry_count + 1
             values = {
                 "retry_count": retry_count,
-                "error_message": str(error),
+                "error_message": self._format_job_error(error),
                 "last_progress_at": fields.Datetime.now(),
             }
-            if retry_count >= self.FILTER_SELECTION_MAX_CYCLE_RETRIES:
+            # Reintentar diez veces algo que se quedo sin memoria solo consigue
+            # que el worker muera diez veces seguidas. Cortamos de una.
+            fatal = isinstance(error, MemoryError)
+            if fatal or retry_count >= self.FILTER_SELECTION_MAX_CYCLE_RETRIES:
                 values.update(
                     {"state": "failed", "finished_at": fields.Datetime.now()}
                 )
             else:
                 values["state"] = "queued"
-            job.write(values)
+            self._release_job(job, values)
         self.env.cr.commit()
 
-    def _save_mla_file_products_in_batches(self, job):
+    def _save_mla_file_products_in_batches(self, job, token=None):
+        """Save the MLAs first, enrich them against Catalog API afterwards.
+
+        Phase 1 only touches the database, so the folder fills up in seconds and
+        a worker that dies mid-import never replays rows it already wrote.
+        Phase 2 is the slow part (one HTTP lookup per MLA) and advances its own
+        cursor, so a failure there can no longer rewind -- or endlessly replay
+        -- what phase 1 already saved.
+        """
         mla_codes = json.loads(job.mla_codes_json or "[]")
-        cursor = job.cursor_offset or job.processed_count or 0
-        endpoint = self._catalog_endpoint()
+        total = len(mla_codes)
+        save_cursor = min(max(job.cursor_offset or 0, 0), total)
+        enrich_cursor = min(max(job.enrich_offset or 0, 0), total)
         cycle_started = time.monotonic()
         added = job.added_count
         updated = job.updated_count
@@ -677,23 +793,38 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
         existing_count = self.env[
             "lqa.mercadolibre.selection.item"
         ].search_count([("folder_id", "=", job.folder_id.id)])
-        if cursor >= len(mla_codes):
+
+        def snapshot(**extra):
             return {
-                "completed": True,
-                "matched_count": len(mla_codes),
-                "processed_count": cursor,
-                "cursor_offset": cursor,
+                "matched_count": total,
+                "processed_count": enrich_cursor,
+                "cursor_offset": save_cursor,
+                "enrich_offset": enrich_cursor,
                 "added_count": added,
                 "updated_count": updated,
                 "not_found_count": not_found_total,
+                "last_progress_at": fields.Datetime.now(),
+                **extra,
             }
 
-        while cursor < len(mla_codes):
-            codes = mla_codes[cursor : cursor + self.MLA_FILE_ENRICH_BATCH_SIZE]
-            placeholder_result = self._save_product_batch(
+        def out_of_time():
+            return (
+                time.monotonic() - cycle_started
+                >= self.FILTER_SELECTION_CYCLE_SECONDS
+            )
+
+        # --- Fase 1: guardar los MLAs tal cual vinieron del archivo ---
+        while save_cursor < total:
+            if token and not self._job_still_mine(job, token):
+                return snapshot(stopped=True)
+            codes = mla_codes[
+                save_cursor : save_cursor + self.MLA_FILE_SAVE_BATCH_SIZE
+            ]
+            batch = self._save_product_batch(
                 job.folder_id,
                 [
                     {
+                        "product_key": code,
                         "item_id": code,
                         "title": _("Pendiente de consultar en Catalog API"),
                         "status": "lookup_pending",
@@ -704,16 +835,26 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
                 current_count=existing_count,
                 update_existing=False,
             )
-            added += placeholder_result["added"]
-            existing_count += placeholder_result["added"]
-            job.write(
-                {
-                    "added_count": added,
-                    "last_progress_at": fields.Datetime.now(),
-                }
-            )
+            added += batch["added"]
+            existing_count += batch["added"]
+            save_cursor += len(codes)
+            job.write(snapshot())
             self.env.cr.commit()
+            # Sin esto la cache del ORM acumula cada fila tocada durante todo el
+            # ciclo y el worker se pasa de limit_memory_soft: Odoo lo mata sin
+            # traceback y el thread del import muere con el, a mitad del lote.
+            self.env.invalidate_all()
+            if out_of_time():
+                return snapshot(completed=False, progressed=True)
 
+        # --- Fase 2: completar titulo, precio y stock contra Catalog API ---
+        endpoint = self._catalog_endpoint()
+        while enrich_cursor < total:
+            if token and not self._job_still_mine(job, token):
+                return snapshot(stopped=True)
+            codes = mla_codes[
+                enrich_cursor : enrich_cursor + self.MLA_FILE_ENRICH_BATCH_SIZE
+            ]
             params_list = [
                 self._prepare_params(
                     {"search": code, "limit": 20, "offset": 0},
@@ -748,10 +889,18 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
                     None,
                 )
                 if exact_product:
-                    products.append(self._normalize_product(exact_product))
-                elif response.get("_lookup_error"):
                     products.append(
                         {
+                            **self._normalize_product(exact_product),
+                            "product_key": code,
+                        }
+                    )
+                elif response.get("_lookup_error"):
+                    # Dejamos la fila guardada y seguimos: un error de la API no
+                    # puede frenar el resto del archivo.
+                    products.append(
+                        {
+                            "product_key": code,
                             "item_id": code,
                             "title": _(
                                 "No se pudo consultar esta MLA en Catalog API"
@@ -763,6 +912,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
                     not_found += 1
                     products.append(
                         {
+                            "product_key": code,
                             "item_id": code,
                             "title": _("MLA no encontrado en Catalog API"),
                             "status": "not_found",
@@ -780,22 +930,14 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
             updated += batch_result["updated"]
             not_found_total += not_found
             existing_count += batch_result["added"]
-            cursor += len(codes)
-            progress = {
-                "matched_count": len(mla_codes),
-                "processed_count": cursor,
-                "cursor_offset": cursor,
-                "added_count": added,
-                "updated_count": updated,
-                "not_found_count": not_found_total,
-                "last_progress_at": fields.Datetime.now(),
-            }
-            job.write(progress)
+            enrich_cursor += len(codes)
+            job.write(snapshot())
             self.env.cr.commit()
-            if time.monotonic() - cycle_started >= self.FILTER_SELECTION_CYCLE_SECONDS:
-                return {"completed": False, **progress}
+            self.env.invalidate_all()
+            if out_of_time():
+                return snapshot(completed=False, progressed=True)
 
-        return {"completed": True, **progress}
+        return snapshot(completed=True, progressed=True)
 
     def _request_mla_file_page(self, endpoint, params):
         try:
@@ -914,6 +1056,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
                     }
                 )
                 self.env.cr.commit()
+                self.env.invalidate_all()
 
                 if matched and processed >= matched:
                     return {
@@ -1069,6 +1212,8 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
             "state": job.state,
             "matched": job.matched_count,
             "processed": job.processed_count,
+            "saved": job.cursor_offset,
+            "phase": self._selection_job_phase(job),
             "added": job.added_count,
             "updated": job.updated_count,
             "notFound": job.not_found_count,
@@ -1077,7 +1222,17 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
             "retries": job.retry_count,
             "error": job.error_message or "",
             "maxProducts": self.MAX_FILTER_SELECTION_ROWS,
+            "canCancel": job.state in ("queued", "running"),
+            "canRetry": job.state in ("failed", "cancelled"),
         }
+
+    def _selection_job_phase(self, job):
+        """Which of the two import passes the job is currently in."""
+        if job.state in ("done", "failed", "cancelled"):
+            return job.state
+        if job.source_type != "mla_file":
+            return "saving"
+        return "saving" if job.cursor_offset < job.matched_count else "enriching"
 
     def _extract_mla_codes(self, rows):
         clean_rows = [row for row in rows if any(self._clean(value) for value in row)]
@@ -1477,6 +1632,14 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
         }
 
     def _product_key(self, product):
+        # Una clave explicita gana sobre la derivada. La importacion de MLAs la
+        # necesita: el placeholder solo conoce el MLA, mientras que la fila ya
+        # enriquecida trae ademas sku y permalink. Derivando la clave en cada
+        # paso las dos filas nunca coincidirian y el enriquecimiento terminaria
+        # duplicando la carpeta en vez de completarla.
+        explicit = self._clean(product.get("product_key"))
+        if explicit:
+            return explicit
         parts = [
             self._clean(self._first(product, "item_id", "itemId")),
             self._clean(self._first(product, "sku")),

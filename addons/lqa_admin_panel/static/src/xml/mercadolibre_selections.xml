@@ -26,25 +26,79 @@
 
             <section t-if="state.importJob" t-att-class="'o_lqa_meli_import_progress is-' + state.importJob.state">
                 <div class="o_lqa_meli_import_progress__icon">
-                    <i t-att-class="['queued', 'running'].includes(state.importJob.state) ? 'fa fa-circle-o-notch fa-spin' : (state.importJob.state === 'done' ? 'fa fa-check' : 'fa fa-exclamation-triangle')"/>
+                    <i t-att-class="importIsActive ? 'fa fa-circle-o-notch fa-spin' : (state.importJob.state === 'done' ? 'fa fa-check' : (state.importJob.state === 'cancelled' ? 'fa fa-ban' : 'fa fa-exclamation-triangle'))"/>
                 </div>
+
                 <div class="o_lqa_meli_import_progress__content">
-                    <div>
+                    <div class="o_lqa_meli_import_progress__title">
                         <strong t-esc="state.importJob.folderName"/>
-                        <span>
-                            <t t-esc="formatNumber(state.importJob.processed)"/> de
-                            <t t-esc="formatNumber(state.importJob.matched)"/> MLAs procesados
+                        <small t-if="state.importJob.filename" t-esc="state.importJob.filename"/>
+                    </div>
+                    <div class="o_lqa_meli_import_progress__phase">
+                        <span t-esc="importPhaseLabel"/>
+                        <span t-if="importIsActive" class="o_lqa_meli_import_progress__counter">
+                            <t t-esc="formatNumber(state.importJob.phase === 'saving' ? importSavedCount : state.importJob.processed)"/>
+                            de
+                            <t t-esc="formatNumber(state.importJob.matched)"/>
+                            MLAs
                         </span>
                     </div>
-                    <strong><t t-esc="importProgress"/>%</strong>
                 </div>
+
+                <strong class="o_lqa_meli_import_progress__pct" t-esc="importProgress + '%'"/>
+
+                <div class="o_lqa_meli_import_progress__actions">
+                    <button
+                        t-if="state.importJob.canCancel"
+                        class="btn o_lqa_meli_import_progress__cancel"
+                        t-on-click="cancelImport"
+                        t-att-disabled="state.cancellingImport"
+                    >
+                        <i class="fa fa-stop"/>
+                        <t t-esc="state.cancellingImport ? 'Cancelando...' : 'Cancelar'"/>
+                    </button>
+                    <button
+                        t-if="state.importJob.canRetry"
+                        class="btn o_lqa_meli_import_progress__retry"
+                        t-on-click="retryImport"
+                        t-att-disabled="state.retryingImport"
+                    >
+                        <i class="fa fa-refresh"/>
+                        <t t-esc="state.retryingImport ? 'Retomando...' : 'Retomar'"/>
+                    </button>
+                    <button
+                        t-if="!importIsActive"
+                        class="btn o_lqa_meli_import_progress__dismiss"
+                        title="Ocultar"
+                        t-on-click="dismissImportJob"
+                    >
+                        <i class="fa fa-times"/>
+                    </button>
+                </div>
+
+                <div class="o_lqa_meli_import_progress__track">
+                    <span t-att-style="'width:' + importProgress + '%'"/>
+                </div>
+
                 <div class="o_lqa_meli_import_progress__stats">
-                    <span><strong t-esc="formatNumber(state.importJob.added)"/> agregados</span>
-                    <span><strong t-esc="formatNumber(state.importJob.notFound)"/> no encontrados</span>
-                    <span><strong t-esc="formatNumber(state.importJob.invalid)"/> inválidos</span>
+                    <span title="MLAs del archivo ya guardados en la carpeta">
+                        <strong t-esc="formatNumber(importSavedCount)"/> guardados
+                    </span>
+                    <span title="Filas creadas en la carpeta">
+                        <strong t-esc="formatNumber(state.importJob.added)"/> agregados
+                    </span>
+                    <span title="MLAs completados con datos de Catalog API">
+                        <strong t-esc="formatNumber(state.importJob.updated)"/> enriquecidos
+                    </span>
+                    <span t-if="state.importJob.notFound" class="is-warning" title="Guardados igual, pero Catalog API no los encontro">
+                        <strong t-esc="formatNumber(state.importJob.notFound)"/> no encontrados
+                    </span>
+                    <span t-if="state.importJob.invalid" class="is-warning" title="Filas del archivo que no tenian un MLA valido">
+                        <strong t-esc="formatNumber(state.importJob.invalid)"/> inválidos
+                    </span>
                 </div>
-                <div class="o_lqa_meli_import_progress__track"><span t-att-style="'width:' + importProgress + '%'"/></div>
-                <small t-if="state.importJob.error" t-esc="state.importJob.error"/>
+
+                <small t-if="state.importJob.error" class="o_lqa_meli_import_progress__error" t-esc="state.importJob.error"/>
             </section>
 
             <section class="o_lqa_meli_selection_layout">

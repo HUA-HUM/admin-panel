@@ -36,9 +36,9 @@
 .o_lqa_meli_import_progress {
     position: relative;
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
     align-items: center;
-    gap: 12px;
+    gap: 10px 12px;
     overflow: hidden;
     margin-bottom: 14px;
     padding: 13px 15px 18px;
@@ -49,17 +49,32 @@
     &.is-done {
         border-color: #b8dfcf;
         background: linear-gradient(135deg, #effaf5, #fff);
+
+        .o_lqa_meli_import_progress__icon {
+            background: #1f8a5f;
+        }
     }
 
     &.is-failed {
         border-color: #efbdc1;
         background: linear-gradient(135deg, #fff2f3, #fff);
+
+        .o_lqa_meli_import_progress__icon {
+            background: #b8323b;
+        }
     }
 
-    > small {
-        grid-column: 2 / -1;
-        color: #a22b2b;
-        overflow-wrap: anywhere;
+    &.is-cancelled {
+        border-color: #d9dee6;
+        background: linear-gradient(135deg, #f6f7f9, #fff);
+
+        .o_lqa_meli_import_progress__icon {
+            background: #7b8794;
+        }
+
+        .o_lqa_meli_import_progress__track span {
+            background: #9aa5b1;
+        }
     }
 }
 
@@ -74,38 +89,106 @@
 }
 
 .o_lqa_meli_import_progress__content {
-    display: flex;
     min-width: 0;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
+}
 
-    strong,
-    span {
-        display: block;
-    }
+.o_lqa_meli_import_progress__title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px;
 
-    > div strong {
+    strong {
         color: #26364b;
         overflow-wrap: anywhere;
     }
 
-    span {
-        margin-top: 2px;
-        color: #66788f;
-        font-size: 12px;
+    small {
+        color: #8595a8;
+        font-size: 11px;
     }
+}
 
-    > strong {
-        color: #2d3277;
-        font-size: 18px;
+.o_lqa_meli_import_progress__phase {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px;
+    margin-top: 2px;
+    color: #66788f;
+    font-size: 12px;
+}
+
+.o_lqa_meli_import_progress__counter {
+    color: #8595a8;
+
+    &::before {
+        margin-right: 8px;
+        content: "\00b7";
+    }
+}
+
+.o_lqa_meli_import_progress__pct {
+    color: #2d3277;
+    font-size: 18px;
+    font-variant-numeric: tabular-nums;
+}
+
+.o_lqa_meli_import_progress__actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 11px;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        font-size: 12px;
+        line-height: 1;
+
+        &:disabled {
+            opacity: 0.6;
+        }
+    }
+}
+
+.o_lqa_meli_import_progress__cancel {
+    border-color: #efbdc1 !important;
+    background: #fff;
+    color: #b8323b;
+
+    &:hover:not(:disabled) {
+        background: #fff2f3;
+        color: #8f2129;
+    }
+}
+
+.o_lqa_meli_import_progress__retry {
+    border-color: #bfd2ef !important;
+    background: #fff;
+    color: #2d3277;
+
+    &:hover:not(:disabled) {
+        background: #f4f8ff;
+    }
+}
+
+.o_lqa_meli_import_progress__dismiss {
+    padding: 6px 9px !important;
+    color: #8595a8;
+
+    &:hover {
+        color: #26364b;
     }
 }
 
 .o_lqa_meli_import_progress__stats {
     display: flex;
     flex-wrap: wrap;
-    justify-content: flex-end;
+    grid-column: 2 / -1;
     gap: 6px;
 
     span {
@@ -116,6 +199,19 @@
         color: #5d6f84;
         font-size: 11px;
     }
+
+    .is-warning {
+        border-color: #f0dcae;
+        background: #fdf7e7;
+        color: #8a6d1f;
+    }
+}
+
+.o_lqa_meli_import_progress__error {
+    grid-column: 2 / -1;
+    color: #a22b2b;
+    font-size: 12px;
+    overflow-wrap: anywhere;
 }
 
 .o_lqa_meli_import_progress__track {
@@ -785,12 +881,17 @@
     }
 
     .o_lqa_meli_import_progress {
-        grid-template-columns: auto minmax(0, 1fr);
+        grid-template-columns: auto minmax(0, 1fr) auto;
     }
 
-    .o_lqa_meli_import_progress__stats {
+    .o_lqa_meli_import_progress__actions {
         grid-column: 1 / -1;
-        justify-content: flex-start;
+        justify-content: flex-end;
+    }
+
+    .o_lqa_meli_import_progress__stats,
+    .o_lqa_meli_import_progress__error {
+        grid-column: 1 / -1;
     }
 
     .o_lqa_meli_import_modal__actions,
