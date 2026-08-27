@@ -1,10 +1,15 @@
+import base64
 import csv
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 import io
 import json
+import posixpath
+import re
 import threading
 import time
+import zipfile
+from xml.etree import ElementTree
 
 import requests
 
@@ -93,6 +98,9 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
     CATALOG_QUERY_TIMEOUT = 180
     CATALOG_QUERY_RETRIES = 2
     CATALOG_QUERY_CACHE_MINUTES = 5
+    MLA_FILE_MAX_BYTES = 20 * 1024 * 1024
+    MLA_FILE_ENRICH_BATCH_SIZE = 40
+    MLA_FILE_FETCH_CONCURRENCY = 8
 
     @api.model
     def get_products(self, filters=None):
@@ -296,6 +304,72 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
         return self._folder_to_dict(folder)
 
     @api.model
+    def import_mla_file_to_folder(self, name, filename, content_base64):
+        self._check_access()
+        name = self._clean(name)
+        filename = self._clean(filename)
+        if not name:
+            raise UserError(_("Indica un nombre para la carpeta."))
+        if not filename or not content_base64:
+            raise UserError(_("Selecciona un archivo CSV o XLSX."))
+        extension = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+        if extension not in {"csv", "xlsx"}:
+            raise UserError(_("El archivo debe ser CSV o XLSX."))
+        try:
+            content = base64.b64decode(content_base64, validate=True)
+        except (ValueError, TypeError) as error:
+            raise UserError(_("No se pudo leer el archivo enviado.")) from error
+        if not content:
+            raise UserError(_("El archivo esta vacio."))
+        if len(content) > self.MLA_FILE_MAX_BYTES:
+            raise UserError(_("El archivo puede pesar como maximo 20 MB."))
+
+        rows = (
+            self._read_mla_csv_rows(content)
+            if extension == "csv"
+            else self._read_mla_xlsx_rows(content)
+        )
+        mla_codes, invalid_count = self._extract_mla_codes(rows)
+        if not mla_codes:
+            raise UserError(_("No encontre MLAs validos en la primera columna."))
+        if len(mla_codes) > self.MAX_FILTER_SELECTION_ROWS:
+            raise UserError(
+                _("El archivo supera el maximo de %s MLAs por carpeta.")
+                % self.MAX_FILTER_SELECTION_ROWS
+            )
+
+        folder = self.env["lqa.mercadolibre.selection.folder"].create(
+            {
+                "name": name,
+                "description": _("Importada desde %s") % filename,
+            }
+        )
+        job = self.env["lqa.mercadolibre.selection.job"].sudo().create(
+            {
+                "folder_id": folder.id,
+                "requested_by_id": self.env.user.id,
+                "source_type": "mla_file",
+                "input_filename": filename,
+                "mla_codes_json": json.dumps(mla_codes, ensure_ascii=False),
+                "filters_json": "{}",
+                "matched_count": len(mla_codes),
+                "invalid_count": invalid_count,
+                "initial_count_recorded": True,
+            }
+        )
+        thread = threading.Thread(
+            target=self._run_filtered_selection_job,
+            args=(self.env.cr.dbname, job.id),
+            name=f"lqa-meli-mla-import-{job.id}",
+            daemon=True,
+        )
+        self.env.cr.postcommit.add(thread.start)
+        return {
+            "folder": self._folder_to_dict(folder),
+            "job": self._selection_job_to_dict(job),
+        }
+
+    @api.model
     def save_products_to_folder(self, folder_id, products):
         self._check_access()
         folder = self._get_folder(folder_id)
@@ -407,6 +481,23 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
         return self._selection_job_to_dict(job) if job else False
 
     @api.model
+    def get_latest_mla_file_job(self):
+        self._check_access()
+        job = (
+            self.env["lqa.mercadolibre.selection.job"]
+            .sudo()
+            .search(
+                [
+                    ("requested_by_id", "=", self.env.user.id),
+                    ("source_type", "=", "mla_file"),
+                ],
+                order="id desc",
+                limit=1,
+            )
+        )
+        return self._selection_job_to_dict(job) if job else False
+
+    @api.model
     def retry_selection_job(self, job_id):
         self._check_access()
         job = (
@@ -483,8 +574,11 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
         )
         self.env.cr.commit()
         try:
-            filters = json.loads(job.filters_json or "{}")
-            result = self._save_filtered_products_in_batches(job, filters)
+            if job.source_type == "mla_file":
+                result = self._save_mla_file_products_in_batches(job)
+            else:
+                filters = json.loads(job.filters_json or "{}")
+                result = self._save_filtered_products_in_batches(job, filters)
             if result.pop("completed", False):
                 job.write(
                     {
@@ -519,6 +613,106 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
                 values["state"] = "queued"
             job.write(values)
         self.env.cr.commit()
+
+    def _save_mla_file_products_in_batches(self, job):
+        mla_codes = json.loads(job.mla_codes_json or "[]")
+        cursor = job.cursor_offset or job.processed_count or 0
+        endpoint = self._catalog_endpoint()
+        cycle_started = time.monotonic()
+        added = job.added_count
+        updated = job.updated_count
+        not_found_total = job.not_found_count
+        existing_count = self.env[
+            "lqa.mercadolibre.selection.item"
+        ].search_count([("folder_id", "=", job.folder_id.id)])
+        if cursor >= len(mla_codes):
+            return {
+                "completed": True,
+                "matched_count": len(mla_codes),
+                "processed_count": cursor,
+                "cursor_offset": cursor,
+                "added_count": added,
+                "updated_count": updated,
+                "not_found_count": not_found_total,
+            }
+
+        while cursor < len(mla_codes):
+            codes = mla_codes[cursor : cursor + self.MLA_FILE_ENRICH_BATCH_SIZE]
+            params_list = [
+                self._prepare_params(
+                    {"search": code, "limit": 20, "offset": 0},
+                    max_limit=20,
+                )
+                for code in codes
+            ]
+            with ThreadPoolExecutor(
+                max_workers=min(self.MLA_FILE_FETCH_CONCURRENCY, len(codes))
+            ) as executor:
+                responses = list(
+                    executor.map(
+                        lambda params: self._request_selection_page_http(
+                            endpoint,
+                            params,
+                            self.FILTER_SELECTION_API_TIMEOUT,
+                            self.FILTER_SELECTION_PAGE_RETRIES,
+                        ),
+                        params_list,
+                    )
+                )
+
+            products = []
+            not_found = 0
+            for code, response in zip(codes, responses):
+                exact_product = next(
+                    (
+                        product
+                        for product in (response.get("products") or [])
+                        if self._normalize_mla(
+                            self._first(product, "item_id", "itemId")
+                        )
+                        == code
+                    ),
+                    None,
+                )
+                if exact_product:
+                    products.append(self._normalize_product(exact_product))
+                else:
+                    not_found += 1
+                    products.append(
+                        {
+                            "item_id": code,
+                            "title": _("MLA no encontrado en Catalog API"),
+                            "status": "not_found",
+                        }
+                    )
+
+            batch_result = self._save_product_batch(
+                job.folder_id,
+                products,
+                max_folder_size=self.MAX_FILTER_SELECTION_ROWS,
+                current_count=existing_count,
+                update_existing=True,
+            )
+            added += batch_result["added"]
+            updated += batch_result["updated"]
+            not_found_total += not_found
+            existing_count += batch_result["added"]
+            cursor += len(codes)
+            progress = {
+                "matched_count": len(mla_codes),
+                "processed_count": cursor,
+                "cursor_offset": cursor,
+                "added_count": added,
+                "updated_count": updated,
+                "not_found_count": not_found_total,
+                "last_progress_at": fields.Datetime.now(),
+            }
+            job.write(progress)
+            self.env.cr.commit()
+            if time.monotonic() - cycle_started >= self.FILTER_SELECTION_CYCLE_SECONDS:
+                return {"completed": False, **progress}
+
+        return {"completed": True, **progress}
 
     def _save_filtered_products_in_batches(self, job, filters):
         endpoint = self._catalog_endpoint()
@@ -774,6 +968,8 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
             ].sudo().search_count([("folder_id", "=", job.folder_id.id)])
         return {
             "id": job.id,
+            "sourceType": job.source_type,
+            "filename": job.input_filename or "",
             "folderId": job.folder_id.id,
             "folderName": job.folder_id.name,
             "state": job.state,
@@ -781,11 +977,155 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
             "processed": job.processed_count,
             "added": job.added_count,
             "updated": job.updated_count,
+            "notFound": job.not_found_count,
+            "invalid": job.invalid_count,
             "folderCount": folder_count,
             "retries": job.retry_count,
             "error": job.error_message or "",
             "maxProducts": self.MAX_FILTER_SELECTION_ROWS,
         }
+
+    def _extract_mla_codes(self, rows):
+        clean_rows = [row for row in rows if any(self._clean(value) for value in row)]
+        if not clean_rows:
+            return [], 0
+        header = [self._clean(value).lower() for value in clean_rows[0]]
+        mla_index = next(
+            (
+                index
+                for index, value in enumerate(header)
+                if re.sub(r"[^a-z0-9]", "", value) in {
+                    "mla",
+                    "itemid",
+                    "publicacion",
+                    "publicationid",
+                }
+            ),
+            -1,
+        )
+        data_rows = clean_rows[1:] if mla_index >= 0 else clean_rows
+        mla_index = mla_index if mla_index >= 0 else 0
+        codes = []
+        seen = set()
+        invalid = 0
+        for row in data_rows:
+            raw_value = row[mla_index] if mla_index < len(row) else ""
+            code = self._normalize_mla(raw_value)
+            if not code:
+                if self._clean(raw_value):
+                    invalid += 1
+                continue
+            if code in seen:
+                continue
+            seen.add(code)
+            codes.append(code)
+        return codes, invalid
+
+    @staticmethod
+    def _normalize_mla(value):
+        clean_value = re.sub(r"[\s-]+", "", str(value or "").strip()).upper()
+        match = re.fullmatch(r"(?:MLA)?(\d{6,})", clean_value)
+        return f"MLA{match.group(1)}" if match else ""
+
+    def _read_mla_csv_rows(self, content):
+        try:
+            text = content.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            text = content.decode("latin-1")
+        try:
+            dialect = csv.Sniffer().sniff(text[:4096], delimiters=",;\t")
+        except csv.Error:
+            dialect = csv.excel_tab if "\t" in text[:4096] else csv.excel
+        return list(csv.reader(io.StringIO(text), dialect))
+
+    def _read_mla_xlsx_rows(self, content):
+        try:
+            workbook = zipfile.ZipFile(io.BytesIO(content))
+        except zipfile.BadZipFile as error:
+            raise UserError(_("El archivo XLSX no es valido.")) from error
+        with workbook:
+            shared_strings = self._mla_xlsx_shared_strings(workbook)
+            sheet_path = self._mla_xlsx_first_sheet_path(workbook)
+            if not sheet_path:
+                raise UserError(_("El XLSX no contiene hojas."))
+            try:
+                sheet_root = ElementTree.fromstring(workbook.read(sheet_path))
+            except (KeyError, ElementTree.ParseError) as error:
+                raise UserError(_("No se pudo leer la primera hoja del XLSX.")) from error
+        namespace = {"x": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+        rows = []
+        for row in sheet_root.findall(".//x:sheetData/x:row", namespace):
+            values = {}
+            max_column = -1
+            for cell in row.findall("x:c", namespace):
+                column = self._mla_xlsx_column_index(cell.get("r", ""))
+                if column < 0:
+                    continue
+                values[column] = self._mla_xlsx_cell_value(
+                    cell, shared_strings, namespace
+                )
+                max_column = max(max_column, column)
+            if max_column >= 0:
+                rows.append([values.get(index, "") for index in range(max_column + 1)])
+        return rows
+
+    def _mla_xlsx_shared_strings(self, workbook):
+        path = "xl/sharedStrings.xml"
+        if path not in workbook.namelist():
+            return []
+        try:
+            root = ElementTree.fromstring(workbook.read(path))
+        except ElementTree.ParseError:
+            return []
+        namespace = {"x": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+        return [
+            "".join(node.text or "" for node in item.findall(".//x:t", namespace))
+            for item in root.findall("x:si", namespace)
+        ]
+
+    def _mla_xlsx_first_sheet_path(self, workbook):
+        namespace = {
+            "x": "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
+            "r": "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+            "p": "http://schemas.openxmlformats.org/package/2006/relationships",
+        }
+        try:
+            root = ElementTree.fromstring(workbook.read("xl/workbook.xml"))
+            relationships = ElementTree.fromstring(
+                workbook.read("xl/_rels/workbook.xml.rels")
+            )
+        except (KeyError, ElementTree.ParseError):
+            return ""
+        sheet = root.find("x:sheets/x:sheet", namespace)
+        if sheet is None:
+            return ""
+        relationship_id = sheet.get(f"{{{namespace['r']}}}id")
+        for relationship in relationships.findall("p:Relationship", namespace):
+            if relationship.get("Id") == relationship_id:
+                target = (relationship.get("Target") or "").lstrip("/")
+                return target if target.startswith("xl/") else posixpath.normpath(f"xl/{target}")
+        return ""
+
+    def _mla_xlsx_cell_value(self, cell, shared_strings, namespace):
+        cell_type = cell.get("t", "")
+        if cell_type == "inlineStr":
+            return "".join(node.text or "" for node in cell.findall(".//x:t", namespace))
+        value_node = cell.find("x:v", namespace)
+        value = value_node.text if value_node is not None else ""
+        if cell_type == "s":
+            index = self._as_int(value, -1)
+            return shared_strings[index] if 0 <= index < len(shared_strings) else ""
+        return value
+
+    @staticmethod
+    def _mla_xlsx_column_index(reference):
+        letters = re.match(r"[A-Za-z]+", str(reference or ""))
+        if not letters:
+            return -1
+        result = 0
+        for letter in letters.group(0).upper():
+            result = result * 26 + ord(letter) - ord("A") + 1
+        return result - 1
 
     def _catalog_endpoint(self):
         endpoint = (

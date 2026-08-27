@@ -8,16 +8,44 @@
                     <h1>Selecciones</h1>
                     <span>Carpetas guardadas con publicaciones seleccionadas del catalogo.</span>
                 </div>
-                <button
-                    type="button"
-                    class="btn btn-secondary"
-                    t-att-disabled="state.loadingFolders"
-                    t-on-click="loadFolders"
-                >
-                    <i class="fa fa-refresh"/>
-                    Actualizar
-                </button>
+                <div class="o_lqa_meli_selections_page__actions">
+                    <button type="button" class="btn btn-primary" t-on-click="openImportModal">
+                        <i class="fa fa-upload"/> Importar MLAs
+                    </button>
+                    <button
+                        type="button"
+                        class="btn btn-secondary"
+                        t-att-disabled="state.loadingFolders"
+                        t-on-click="loadFolders"
+                    >
+                        <i class="fa fa-refresh"/>
+                        Actualizar
+                    </button>
+                </div>
             </header>
+
+            <section t-if="state.importJob" t-att-class="'o_lqa_meli_import_progress is-' + state.importJob.state">
+                <div class="o_lqa_meli_import_progress__icon">
+                    <i t-att-class="['queued', 'running'].includes(state.importJob.state) ? 'fa fa-circle-o-notch fa-spin' : (state.importJob.state === 'done' ? 'fa fa-check' : 'fa fa-exclamation-triangle')"/>
+                </div>
+                <div class="o_lqa_meli_import_progress__content">
+                    <div>
+                        <strong t-esc="state.importJob.folderName"/>
+                        <span>
+                            <t t-esc="formatNumber(state.importJob.processed)"/> de
+                            <t t-esc="formatNumber(state.importJob.matched)"/> MLAs procesados
+                        </span>
+                    </div>
+                    <strong><t t-esc="importProgress"/>%</strong>
+                </div>
+                <div class="o_lqa_meli_import_progress__stats">
+                    <span><strong t-esc="formatNumber(state.importJob.added)"/> agregados</span>
+                    <span><strong t-esc="formatNumber(state.importJob.notFound)"/> no encontrados</span>
+                    <span><strong t-esc="formatNumber(state.importJob.invalid)"/> inválidos</span>
+                </div>
+                <div class="o_lqa_meli_import_progress__track"><span t-att-style="'width:' + importProgress + '%'"/></div>
+                <small t-if="state.importJob.error" t-esc="state.importJob.error"/>
+            </section>
 
             <section class="o_lqa_meli_selection_layout">
                 <aside class="o_lqa_meli_selection_folders">
@@ -241,6 +269,42 @@
                         </button>
                         <button type="button" class="btn btn-danger" t-on-click="confirmDeleteFolder">
                             Eliminar
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="o_lqa_modal_backdrop" t-if="state.showImportModal">
+                <div class="o_lqa_meli_import_modal">
+                    <div class="o_lqa_meli_import_modal__head">
+                        <div>
+                            <p>Nueva carpeta</p>
+                            <h2>Importar MLAs desde archivo</h2>
+                            <span>Usá un CSV o Excel con una columna llamada MLA.</span>
+                        </div>
+                        <button type="button" t-att-disabled="state.importingFile" t-on-click="closeImportModal"><i class="fa fa-times"/></button>
+                    </div>
+                    <label class="o_lqa_meli_import_field">
+                        <span>Nombre de la carpeta</span>
+                        <input type="text" class="form-control" placeholder="Ej: Campaña septiembre" maxlength="120" t-model="state.importFolderName"/>
+                    </label>
+                    <label t-att-class="state.importFilename ? 'o_lqa_meli_import_dropzone has-file' : 'o_lqa_meli_import_dropzone'">
+                        <input type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" t-on-change="onImportFileSelected"/>
+                        <i t-att-class="state.importFilename ? 'fa fa-file-excel-o' : 'fa fa-cloud-upload'"/>
+                        <strong t-esc="state.importFilename || 'Elegir CSV o Excel'"/>
+                        <span t-if="!state.importFilename">Primera hoja · columna MLA · máximo 20 MB</span>
+                        <span t-else="">Archivo listo para importar</span>
+                    </label>
+                    <div class="o_lqa_meli_import_example">
+                        <strong>Formato esperado</strong>
+                        <code>MLA<br/>MLA2081696680<br/>MLA1568774505</code>
+                    </div>
+                    <div class="o_lqa_meli_import_modal__actions">
+                        <button type="button" class="btn btn-secondary" t-att-disabled="state.importingFile" t-on-click="closeImportModal">Cancelar</button>
+                        <button type="button" class="btn btn-primary" t-att-disabled="state.importingFile || !state.importFolderName || !state.importContent" t-on-click="submitMlaImport">
+                            <i t-att-class="state.importingFile ? 'fa fa-circle-o-notch fa-spin' : 'fa fa-folder-open'"/>
+                            <t t-if="state.importingFile">Creando carpeta...</t>
+                            <t t-else="">Crear carpeta e importar</t>
                         </button>
                     </div>
                 </div>

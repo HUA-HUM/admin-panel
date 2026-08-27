@@ -64,6 +64,15 @@ class LqaMercadolibreSelectionJob(models.Model):
         index=True,
         readonly=True,
     )
+    source_type = fields.Selection(
+        [("filter", "Filtro"), ("mla_file", "Archivo de MLAs")],
+        default="filter",
+        required=True,
+        readonly=True,
+        index=True,
+    )
+    input_filename = fields.Char(readonly=True)
+    mla_codes_json = fields.Text(readonly=True)
     filters_json = fields.Text(required=True, readonly=True)
     initial_folder_count = fields.Integer(readonly=True)
     initial_count_recorded = fields.Boolean(default=False, readonly=True)
@@ -72,6 +81,8 @@ class LqaMercadolibreSelectionJob(models.Model):
     cursor_offset = fields.Integer(readonly=True)
     added_count = fields.Integer(readonly=True)
     updated_count = fields.Integer(readonly=True)
+    not_found_count = fields.Integer(readonly=True)
+    invalid_count = fields.Integer(readonly=True)
     retry_count = fields.Integer(readonly=True)
     error_message = fields.Text(readonly=True)
     started_at = fields.Datetime(readonly=True)

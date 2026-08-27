@@ -1,6 +1,6 @@
 /** @odoo-module **/
 
-import { Component, onWillStart, useState } from "@odoo/owl";
+import { Component, onMounted, onWillStart, onWillUnmount, useState } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 
@@ -53,6 +53,7 @@ export class LqaMercadolibreSelections extends Component {
     setup() {
         this.notification = useService("notification");
         this.orm = useService("orm");
+        this.importTimer = null;
         this.state = useState({
             folders: [],
             products: [],
@@ -63,10 +64,24 @@ export class LqaMercadolibreSelections extends Component {
             exportingFolderId: "",
             deletingFolder: null,
             selectedColumns: defaultSelectedColumns(),
+            showImportModal: false,
+            importFolderName: "",
+            importFilename: "",
+            importContent: "",
+            importingFile: false,
+            importJob: null,
         });
 
         onWillStart(async () => {
-            await this.loadFolders();
+            await Promise.all([this.loadFolders(), this.loadInitialImportJob()]);
+        });
+        onMounted(() => {
+            this.importTimer = window.setInterval(() => this.refreshImportJob(), 5000);
+        });
+        onWillUnmount(() => {
+            if (this.importTimer) {
+                window.clearInterval(this.importTimer);
+            }
         });
     }
 
@@ -88,6 +103,19 @@ export class LqaMercadolibreSelections extends Component {
 
     get selectedColumnCount() {
         return this.selectedColumnKeys.length;
+    }
+
+    async loadInitialImportJob() {
+        try {
+            const job = await this.orm.call(
+                "lqa.mercadolibre.catalog.service",
+                "get_latest_mla_file_job",
+                []
+            );
+            this.state.importJob = job || null;
+        } catch {
+            this.state.importJob = null;
+        }
     }
 
     async loadFolders() {
@@ -169,6 +197,127 @@ export class LqaMercadolibreSelections extends Component {
 
     clearColumns() {
         this.state.selectedColumns = {};
+    }
+
+    openImportModal() {
+        this.state.showImportModal = true;
+    }
+
+    closeImportModal() {
+        if (this.state.importingFile) {
+            return;
+        }
+        this.state.showImportModal = false;
+    }
+
+    async onImportFileSelected(event) {
+        const file = event.target.files?.[0];
+        event.target.value = "";
+        if (!file) {
+            return;
+        }
+        const extension = file.name.split(".").pop()?.toLowerCase();
+        if (!["csv", "xlsx"].includes(extension)) {
+            this.notification.add("El archivo debe ser CSV o XLSX.", { type: "warning" });
+            return;
+        }
+        if (file.size > 20 * 1024 * 1024) {
+            this.notification.add("El archivo puede pesar como máximo 20 MB.", { type: "warning" });
+            return;
+        }
+        this.state.importFilename = file.name;
+        this.state.importContent = await this.fileToBase64(file);
+        if (!this.state.importFolderName) {
+            this.state.importFolderName = file.name.replace(/\.(csv|xlsx)$/i, "");
+        }
+    }
+
+    fileToBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result || "").split(",")[1] || "");
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    }
+
+    clearImportFile() {
+        this.state.importFilename = "";
+        this.state.importContent = "";
+    }
+
+    async submitMlaImport() {
+        if (!String(this.state.importFolderName || "").trim()) {
+            this.notification.add("Ingresá un nombre para la carpeta.", { type: "warning" });
+            return;
+        }
+        if (!this.state.importContent) {
+            this.notification.add("Seleccioná un archivo CSV o XLSX.", { type: "warning" });
+            return;
+        }
+        this.state.importingFile = true;
+        try {
+            const result = await this.orm.call(
+                "lqa.mercadolibre.catalog.service",
+                "import_mla_file_to_folder",
+                [
+                    this.state.importFolderName,
+                    this.state.importFilename,
+                    this.state.importContent,
+                ]
+            );
+            this.state.importJob = result.job;
+            this.state.selectedFolderId = String(result.folder.id);
+            this.state.showImportModal = false;
+            this.state.importFolderName = "";
+            this.clearImportFile();
+            await this.loadFolders();
+            this.notification.add(
+                `Carpeta creada. Se están procesando ${this.formatNumber(result.job.matched)} MLAs.`,
+                { type: "success" }
+            );
+        } catch (error) {
+            this.notification.add(
+                error?.data?.message || "No se pudo importar el archivo.",
+                { type: "danger" }
+            );
+        } finally {
+            this.state.importingFile = false;
+        }
+    }
+
+    async refreshImportJob() {
+        const job = this.state.importJob;
+        if (!job?.id || !["queued", "running"].includes(job.state)) {
+            return;
+        }
+        try {
+            const updated = await this.orm.call(
+                "lqa.mercadolibre.catalog.service",
+                "get_selection_job",
+                [job.id]
+            );
+            const finished = ["done", "failed"].includes(updated.state);
+            this.state.importJob = updated;
+            if (finished) {
+                await this.loadFolders();
+                if (updated.state === "done") {
+                    this.notification.add("La carpeta terminó de importar los MLAs.", {
+                        type: "success",
+                    });
+                }
+            } else if (String(updated.folderId) === String(this.state.selectedFolderId)) {
+                await this.loadSelectedFolderProducts();
+            }
+        } catch {
+            // El siguiente ciclo volverá a consultar el estado.
+        }
+    }
+
+    get importProgress() {
+        const total = Number(this.state.importJob?.matched || 0);
+        const processed = Number(this.state.importJob?.processed || 0);
+        return total ? Math.min(Math.round((processed / total) * 100), 100) : 0;
     }
 
     openDeleteFolder(folder) {
@@ -299,6 +448,7 @@ export class LqaMercadolibreSelections extends Component {
                 active: "Activa",
                 paused: "Pausada",
                 closed: "Cerrada",
+                not_found: "No encontrada",
             }[status] || status || "Sin estado"
         );
     }
