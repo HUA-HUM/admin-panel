@@ -103,7 +103,11 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
     CATALOG_QUERY_RETRIES = 2
     CATALOG_QUERY_CACHE_MINUTES = 5
     MLA_FILE_MAX_BYTES = 20 * 1024 * 1024
-    MLA_FILE_ENRICH_BATCH_SIZE = 20
+    # Un lote solo commitea al terminar, asi que su duracion es lo maximo que
+    # podemos perder si el worker se recicla. Con 20 el lote tardaba ~55s y el
+    # worker moria antes de escribir una sola vez: el job quedaba en cero para
+    # siempre. Con 5 commitea cada ~8s y un reinicio cuesta un lote, no todo.
+    MLA_FILE_ENRICH_BATCH_SIZE = 5
     # Catalog API esta topeada en ~0.65 req/s para este origen: con 1 request
     # concurrente cada uno tarda 1.5s y con 10 tarda 11.3s, o sea el mismo
     # throughput con siete veces peor latencia. Mas concurrencia solo acerca
