@@ -99,8 +99,11 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
     CATALOG_QUERY_RETRIES = 2
     CATALOG_QUERY_CACHE_MINUTES = 5
     MLA_FILE_MAX_BYTES = 20 * 1024 * 1024
-    MLA_FILE_ENRICH_BATCH_SIZE = 40
-    MLA_FILE_FETCH_CONCURRENCY = 8
+    MLA_FILE_ENRICH_BATCH_SIZE = 100
+    MLA_FILE_FETCH_CONCURRENCY = 16
+    MLA_FILE_INLINE_CYCLES = 5
+    MLA_FILE_API_TIMEOUT = 25
+    MLA_FILE_PAGE_RETRIES = 2
 
     @api.model
     def get_products(self, filters=None):
@@ -448,6 +451,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
             and job.requested_by_id != self.env.user
         ):
             raise AccessError(_("No tenes acceso a este proceso."))
+        self._resume_stale_mla_file_job(job)
         return self._selection_job_to_dict(job)
 
     @api.model
@@ -495,7 +499,46 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
                 limit=1,
             )
         )
+        if job:
+            self._resume_stale_mla_file_job(job)
         return self._selection_job_to_dict(job) if job else False
+
+    def _resume_stale_mla_file_job(self, job):
+        """Restart an abandoned import while its owner is watching the UI."""
+        if job.source_type != "mla_file":
+            return
+        now = fields.Datetime.now()
+        queued_before = now - timedelta(minutes=1)
+        running_before = now - timedelta(minutes=10)
+        should_resume = (
+            job.state == "queued"
+            and (
+                not job.last_progress_at
+                or job.last_progress_at < queued_before
+            )
+        ) or (
+            job.state == "running"
+            and (
+                not job.last_progress_at
+                or job.last_progress_at < running_before
+            )
+        )
+        if not should_resume:
+            return
+        job.write(
+            {
+                "state": "running",
+                "started_at": job.started_at or now,
+                "last_progress_at": now,
+            }
+        )
+        thread = threading.Thread(
+            target=self._run_filtered_selection_job,
+            args=(self.env.cr.dbname, job.id),
+            name=f"lqa-meli-mla-resume-{job.id}",
+            daemon=True,
+        )
+        self.env.cr.postcommit.add(thread.start)
 
     @api.model
     def retry_selection_job(self, job_id):
@@ -540,8 +583,17 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
             if not job:
                 return
             service = env["lqa.mercadolibre.catalog.service"]
-            service._process_selection_job_cycle(job)
-            cr.commit()
+            max_cycles = (
+                service.MLA_FILE_INLINE_CYCLES
+                if job.source_type == "mla_file"
+                else 1
+            )
+            for _cycle in range(max_cycles):
+                service._process_selection_job_cycle(job)
+                cr.commit()
+                job.invalidate_recordset()
+                if job.state != "queued":
+                    break
 
     @api.model
     def process_pending_selection_jobs(self):
@@ -650,11 +702,8 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
             ) as executor:
                 responses = list(
                     executor.map(
-                        lambda params: self._request_selection_page_http(
-                            endpoint,
-                            params,
-                            self.FILTER_SELECTION_API_TIMEOUT,
-                            self.FILTER_SELECTION_PAGE_RETRIES,
+                        lambda params: self._request_mla_file_page(
+                            endpoint, params
                         ),
                         params_list,
                     )
@@ -676,6 +725,16 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
                 )
                 if exact_product:
                     products.append(self._normalize_product(exact_product))
+                elif response.get("_lookup_error"):
+                    products.append(
+                        {
+                            "item_id": code,
+                            "title": _(
+                                "No se pudo consultar esta MLA en Catalog API"
+                            ),
+                            "status": "lookup_error",
+                        }
+                    )
                 else:
                     not_found += 1
                     products.append(
@@ -713,6 +772,17 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
                 return {"completed": False, **progress}
 
         return {"completed": True, **progress}
+
+    def _request_mla_file_page(self, endpoint, params):
+        try:
+            return self._request_selection_page_http(
+                endpoint,
+                params,
+                self.MLA_FILE_API_TIMEOUT,
+                self.MLA_FILE_PAGE_RETRIES,
+            )
+        except Exception as error:
+            return {"products": [], "_lookup_error": str(error)}
 
     def _save_filtered_products_in_batches(self, job, filters):
         endpoint = self._catalog_endpoint()
