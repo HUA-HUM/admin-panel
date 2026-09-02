@@ -126,8 +126,8 @@
 
                     <div t-if="state.loadingDetail" class="o_lqa_order_drawer__loading">
                         <span/>
-                        <strong>Consultando facturación...</strong>
-                        <small>Obteniendo cliente, pago, logística e invoices.</small>
+                        <strong>Consultando la orden...</strong>
+                        <small>Obteniendo productos, cliente, pago y logística.</small>
                     </div>
                     <div t-elif="state.detailError" class="o_lqa_order_drawer__error">
                         <i class="fa fa-exclamation-triangle"/>
@@ -135,44 +135,111 @@
                         <span t-esc="state.detailError"/>
                     </div>
                     <div t-elif="state.detail" class="o_lqa_order_drawer__body">
-                        <section class="o_lqa_order_detail_hero">
-                            <span t-att-class="'o_lqa_orders_badge ' + statusClass(state.detail.status)" t-esc="statusLabel(state.detail.status)"/>
-                            <strong t-esc="formatCurrency(state.detail.total)"/>
-                            <small>Creada <t t-esc="formatDateTime(state.detail.createdAt)"/> · Secuencia <t t-esc="state.detail.sequence || '-'"/></small>
+                        <section class="o_lqa_order_hero">
+                            <div class="o_lqa_order_hero__top">
+                                <span t-att-class="'o_lqa_orders_badge ' + statusClass(state.detail.status)" t-esc="statusLabel(state.detail.status, state.detail.statusDescription)"/>
+                                <span class="o_lqa_order_hero__seq">Secuencia <t t-esc="state.detail.sequence || '-'"/></span>
+                            </div>
+                            <strong class="o_lqa_order_hero__total" t-esc="formatCurrency(state.detail.total)"/>
+                            <div class="o_lqa_order_hero__meta">
+                                <span><i class="fa fa-calendar-o"/> Creada <t t-esc="formatDateTime(state.detail.createdAt)"/></span>
+                                <span t-if="state.detail.updatedAt"><i class="fa fa-refresh"/> Actualizada <t t-esc="formatDateTime(state.detail.updatedAt)"/></span>
+                            </div>
                         </section>
 
-                        <section class="o_lqa_order_detail_section">
-                            <div class="o_lqa_order_detail_section__title"><i class="fa fa-user"/><h3>Cliente</h3></div>
+                        <section t-if="state.detail.items.length" class="o_lqa_order_block">
+                            <div class="o_lqa_order_block__title">
+                                <i class="fa fa-cube"/><h3>Productos</h3>
+                                <span class="o_lqa_order_block__count" t-esc="state.detail.items.length"/>
+                            </div>
+                            <article t-foreach="state.detail.items" t-as="item" t-key="item.id || item_index" class="o_lqa_order_item">
+                                <img t-if="item.imageUrl" t-att-src="itemImage(item.imageUrl)" t-att-alt="item.name" loading="lazy"/>
+                                <div class="o_lqa_order_item__body">
+                                    <div class="o_lqa_order_item__head">
+                                        <div class="o_lqa_order_item__name">
+                                            <strong t-esc="item.name"/>
+                                            <small t-if="item.brand" t-esc="item.brand"/>
+                                        </div>
+                                        <div class="o_lqa_order_item__money">
+                                            <strong t-esc="formatCurrency(item.total)"/>
+                                            <small><t t-esc="formatNumber(item.quantity)"/> x <t t-esc="formatCurrency(item.unitPrice)"/></small>
+                                        </div>
+                                    </div>
+                                    <dl t-if="item.attributes.length" class="o_lqa_order_attrs">
+                                        <div t-foreach="item.attributes" t-as="field" t-key="field.label">
+                                            <dt t-esc="field.label"/>
+                                            <dd t-esc="formatField(field)"/>
+                                        </div>
+                                    </dl>
+                                </div>
+                            </article>
+                        </section>
+
+                        <section t-if="state.detail.totals.length" class="o_lqa_order_block">
+                            <div class="o_lqa_order_block__title"><i class="fa fa-calculator"/><h3>Totales</h3></div>
+                            <ul class="o_lqa_order_totals">
+                                <li t-foreach="state.detail.totals" t-as="total" t-key="total.label">
+                                    <span t-esc="total.label"/>
+                                    <strong t-esc="formatCurrency(total.value)"/>
+                                </li>
+                                <li class="is-grand">
+                                    <span>Total de la orden</span>
+                                    <strong t-esc="formatCurrency(state.detail.total)"/>
+                                </li>
+                            </ul>
+                        </section>
+
+                        <section t-if="state.detail.payments.length" class="o_lqa_order_block">
+                            <div class="o_lqa_order_block__title"><i class="fa fa-credit-card"/><h3>Pago</h3></div>
+                            <article t-foreach="state.detail.payments" t-as="payment" t-key="payment_index" class="o_lqa_order_card">
+                                <div class="o_lqa_order_card__head">
+                                    <div>
+                                        <strong t-esc="payment.method"/>
+                                        <small t-if="payment.installments"><t t-esc="formatNumber(payment.installments)"/> cuotas</small>
+                                    </div>
+                                    <span t-esc="formatCurrency(payment.value)"/>
+                                </div>
+                                <dl t-if="payment.attributes.length" class="o_lqa_order_attrs">
+                                    <div t-foreach="payment.attributes" t-as="field" t-key="field.label">
+                                        <dt t-esc="field.label"/>
+                                        <dd t-esc="formatField(field)"/>
+                                    </div>
+                                </dl>
+                            </article>
+                        </section>
+
+                        <section t-if="state.detail.logistics.length" class="o_lqa_order_block">
+                            <div class="o_lqa_order_block__title"><i class="fa fa-truck"/><h3>Envío</h3></div>
+                            <article t-foreach="state.detail.logistics" t-as="logistic" t-key="logistic_index" class="o_lqa_order_card">
+                                <div class="o_lqa_order_card__head">
+                                    <div>
+                                        <strong t-esc="logistic.service"/>
+                                        <small t-if="logistic.company" t-esc="logistic.company"/>
+                                    </div>
+                                    <span t-esc="formatCurrency(logistic.price)"/>
+                                </div>
+                                <dl t-if="logistic.attributes.length" class="o_lqa_order_attrs">
+                                    <div t-foreach="logistic.attributes" t-as="field" t-key="field.label">
+                                        <dt t-esc="field.label"/>
+                                        <dd t-esc="formatField(field)"/>
+                                    </div>
+                                </dl>
+                            </article>
+                        </section>
+
+                        <section t-foreach="state.detail.sections" t-as="block" t-key="block.key" class="o_lqa_order_block">
+                            <div class="o_lqa_order_block__title">
+                                <i t-attf-class="fa {{block.icon}}"/><h3 t-esc="block.title"/>
+                            </div>
                             <dl class="o_lqa_order_detail_grid">
-                                <div><dt>Nombre</dt><dd t-esc="state.detail.client.name || '-'"/></div>
-                                <div><dt>Documento</dt><dd><t t-esc="state.detail.client.documentType || ''"/> <t t-esc="state.detail.client.document || '-'"/></dd></div>
-                                <div><dt>Teléfono</dt><dd t-esc="state.detail.client.phone || '-'"/></div>
-                                <div><dt>Email</dt><dd t-esc="state.detail.client.email || '-'"/></div>
+                                <div t-foreach="block.fields" t-as="field" t-key="field.label">
+                                    <dt t-esc="field.label"/>
+                                    <dd>
+                                        <a t-if="fieldHref(field)" t-att-href="fieldHref(field)" t-esc="formatField(field)"/>
+                                        <t t-else="" t-esc="formatField(field)"/>
+                                    </dd>
+                                </div>
                             </dl>
-                        </section>
-
-                        <section class="o_lqa_order_detail_section">
-                            <div class="o_lqa_order_detail_section__title"><i class="fa fa-map-marker"/><h3>Entrega</h3></div>
-                            <p class="o_lqa_order_address" t-esc="addressLine(state.detail.address)"/>
-                            <article t-foreach="state.detail.logistics" t-as="logistic" t-key="logistic_index" class="o_lqa_order_logistic">
-                                <div><strong t-esc="logistic.service || 'Envío'"/><span t-esc="logistic.company || '-'"/></div>
-                                <small>Item <t t-esc="logistic.itemId || '-'"/> · Estimada <t t-esc="formatDateTime(logistic.estimatedAt)"/></small>
-                            </article>
-                            <p t-if="!state.detail.logistics.length" class="o_lqa_order_muted">Sin información logística.</p>
-                        </section>
-
-                        <section class="o_lqa_order_detail_section">
-                            <div class="o_lqa_order_detail_section__title"><i class="fa fa-credit-card"/><h3>Pago</h3></div>
-                            <article t-foreach="state.detail.payments" t-as="payment" t-key="payment_index" class="o_lqa_order_payment">
-                                <div><strong t-esc="payment.method || payment.group || 'Pago'"/><span t-esc="formatCurrency(payment.value)"/></div>
-                                <small><t t-esc="formatNumber(payment.installments)"/> cuotas · <t t-esc="payment.acquirer || '-'"/> · Auth <t t-esc="payment.authorization || '-'"/></small>
-                            </article>
-                            <p t-if="!state.detail.payments.length" class="o_lqa_order_muted">Sin información de pago.</p>
-                        </section>
-
-                        <section class="o_lqa_order_detail_counts">
-                            <article><small>Invoices</small><strong t-esc="formatNumber(state.detail.invoices.length)"/></article>
-                            <article><small>Paquetes</small><strong t-esc="formatNumber(state.detail.packages.length)"/></article>
                         </section>
 
                         <section class="o_lqa_order_detail_raw">

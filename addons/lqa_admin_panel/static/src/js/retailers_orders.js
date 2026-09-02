@@ -96,7 +96,7 @@ export class LqaRetailersOrders extends Component {
         try {
             this.state.detail = await this.orm.call(
                 "lqa.retailers.service",
-                "get_fravega_order_invoicing",
+                "get_fravega_order_detail",
                 [order.id]
             );
         } catch (error) {
@@ -128,16 +128,37 @@ export class LqaRetailersOrders extends Component {
         }
     }
 
-    addressLine(address) {
-        if (!address) {
+    formatField(field) {
+        if (!field) {
             return "-";
         }
-        return [
-            [address.street, address.number].filter(Boolean).join(" "),
-            address.complement,
-            [address.city, address.state].filter(Boolean).join(", "),
-            address.postalCode ? `CP ${address.postalCode}` : "",
-        ].filter(Boolean).join(" · ") || "-";
+        switch (field.type) {
+            case "money":
+                return this.formatCurrency(field.value);
+            case "datetime":
+                return this.formatDateTime(field.value);
+            case "number":
+                return this.formatNumber(field.value);
+            case "bool":
+                return field.value ? "Sí" : "No";
+            default:
+                return String(field.value ?? "");
+        }
+    }
+
+    fieldHref(field) {
+        if (field?.type === "email" && field.value) {
+            return `mailto:${field.value}`;
+        }
+        if (field?.type === "phone" && field.value) {
+            return `tel:${String(field.value).replace(/[^+\d]/g, "")}`;
+        }
+        return "";
+    }
+
+    itemImage(url) {
+        // VTEX sirve el thumbnail de 55px; pedimos la variante mas grande.
+        return url ? String(url).replace(/(\/ids\/\d+)-\d+-\d+\//, "$1-160-160/") : "";
     }
 
     statusLabel(value, description = "") {

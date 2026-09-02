@@ -441,8 +441,12 @@ class LqaRetailersService(models.AbstractModel):
         }
 
     @api.model
-    def get_fravega_order_invoicing(self, order_id):
-        """Detalle completo de facturacion/logistica para una orden VTEX."""
+    def get_fravega_order_detail(self, order_id):
+        """Detalle completo de una orden VTEX.
+
+        Consulta la orden entera y no /invoicing: ese endpoint solo devuelve
+        facturacion, pago, cliente y envio, sin items, totales ni cancelacion.
+        """
         self._check_access()
         order_id = self._clean(order_id)
         if not order_id or not re.fullmatch(r"[A-Za-z0-9._-]+", order_id):
@@ -451,7 +455,7 @@ class LqaRetailersService(models.AbstractModel):
             "GET",
             self._join_url(
                 self._fravega_vtex_orders_url(),
-                f"/{quote(order_id, safe='')}/invoicing",
+                f"/{quote(order_id, safe='')}",
             ),
             timeout=self._orders_timeout(),
         )
@@ -488,94 +492,321 @@ class LqaRetailersService(models.AbstractModel):
             "workflowError": bool(order.get("workflowInErrorState")),
         }
 
-    def _normalize_fravega_order_detail(self, response):
-        payload = response if isinstance(response, dict) else {}
-        client = payload.get("clientProfileData")
-        client = client if isinstance(client, dict) else {}
-        shipping = payload.get("shippingData")
-        shipping = shipping if isinstance(shipping, dict) else {}
-        address = shipping.get("address")
-        address = address if isinstance(address, dict) else {}
-        logistics = shipping.get("logisticsInfo")
-        logistics = logistics if isinstance(logistics, list) else []
-        payment_data = payload.get("paymentData")
-        payment_data = payment_data if isinstance(payment_data, dict) else {}
-        transactions = payment_data.get("transactions")
-        transactions = transactions if isinstance(transactions, list) else []
+    @staticmethod
+    def _vtex_dict(value):
+        return value if isinstance(value, dict) else {}
+
+    @staticmethod
+    def _vtex_list(value):
+        return value if isinstance(value, list) else []
+
+    def _detail_field(self, label, value, kind="text"):
+        """Campo del detalle. Devuelve None si viene vacio, para no mostrarlo."""
+        if value is None or value == "" or value == [] or value == {}:
+            return None
+        return {"label": label, "value": value, "type": kind}
+
+    def _detail_section(self, key, title, icon, fields):
+        kept = [field for field in fields if field]
+        if not kept:
+            return None
+        return {"key": key, "title": title, "icon": icon, "fields": kept}
+
+    @staticmethod
+    def _detail_flag(value):
+        """Los flags solo aportan cuando son verdaderos; si no, se ocultan."""
+        return "Si" if value else ""
+
+    @staticmethod
+    def _vtex_number_text(value):
+        if value is None:
+            return ""
+        return f"{value:g}"
+
+    def _vtex_dimensions(self, dimension):
+        dimension = self._vtex_dict(dimension)
+        if not dimension:
+            return ""
+        parts = []
+        sides = [
+            self._as_float(dimension.get(side), None)
+            for side in ("length", "width", "height")
+        ]
+        if all(side is not None for side in sides):
+            parts.append(
+                " x ".join(self._vtex_number_text(side) for side in sides) + " cm"
+            )
+        weight = self._as_float(dimension.get("weight"), None)
+        if weight is not None:
+            parts.append(f"{self._vtex_number_text(weight)} kg")
+        return " · ".join(parts)
+
+    def _normalize_fravega_order_items(self, payload):
+        items = []
+        for raw_item in self._vtex_list(payload.get("items")):
+            if not isinstance(raw_item, dict):
+                continue
+            extra = self._vtex_dict(raw_item.get("additionalInfo"))
+            categories = [
+                self._clean(category.get("name"))
+                for category in self._vtex_list(extra.get("categories"))
+                if isinstance(category, dict) and self._clean(category.get("name"))
+            ]
+            quantity = self._as_int(raw_item.get("quantity"), 0)
+            unit_price = self._vtex_money(raw_item.get("sellingPrice"))
+            detail_url = self._clean(raw_item.get("detailUrl"))
+            items.append(
+                {
+                    "id": self._clean(raw_item.get("id")),
+                    "name": self._clean(raw_item.get("name")),
+                    "imageUrl": self._clean(raw_item.get("imageUrl")),
+                    "brand": self._clean(extra.get("brandName")),
+                    "quantity": quantity,
+                    "unitPrice": unit_price,
+                    "total": None if unit_price is None else unit_price * quantity,
+                    "attributes": [
+                        field
+                        for field in (
+                            self._detail_field("SKU vendedor", self._clean(raw_item.get("sellerSku"))),
+                            self._detail_field("Ref ID", self._clean(raw_item.get("refId"))),
+                            self._detail_field("Product ID", self._clean(raw_item.get("productId"))),
+                            self._detail_field("EAN", self._clean(raw_item.get("ean"))),
+                            self._detail_field("Categorias", " / ".join(categories)),
+                            self._detail_field("Precio de lista", self._vtex_money(raw_item.get("listPrice")), "money"),
+                            self._detail_field("Precio", self._vtex_money(raw_item.get("price")), "money"),
+                            self._detail_field("Costo", self._vtex_money(raw_item.get("costPrice")), "money"),
+                            self._detail_field("Comision", self._vtex_money(raw_item.get("commission")), "money"),
+                            self._detail_field("Impuesto", self._vtex_money(raw_item.get("tax")), "money"),
+                            self._detail_field("Unidad", self._clean(raw_item.get("measurementUnit"))),
+                            self._detail_field("Dimensiones", self._vtex_dimensions(extra.get("dimension"))),
+                            self._detail_field("Lock ID", self._clean(raw_item.get("lockId"))),
+                            self._detail_field("Es regalo", self._detail_flag(raw_item.get("isGift"))),
+                            self._detail_field("Ficha", detail_url, "path"),
+                        )
+                        if field
+                    ],
+                }
+            )
+        return items
+
+    def _normalize_fravega_order_payments(self, payload):
         payments = []
-        for transaction in transactions:
+        payment_data = self._vtex_dict(payload.get("paymentData"))
+        for transaction in self._vtex_list(payment_data.get("transactions")):
             if not isinstance(transaction, dict):
                 continue
-            for payment in transaction.get("payments") or []:
+            for payment in self._vtex_list(transaction.get("payments")):
                 if not isinstance(payment, dict):
                     continue
-                connector = payment.get("connectorResponses")
-                connector = connector if isinstance(connector, dict) else {}
+                connector = self._vtex_dict(payment.get("connectorResponses"))
+                card_digits = self._clean(payment.get("lastDigits"))
                 payments.append(
                     {
-                        "method": self._clean(payment.get("paymentSystemName")),
-                        "group": self._clean(payment.get("group")),
-                        "installments": self._as_int(payment.get("installments"), 0),
+                        "method": self._clean(payment.get("paymentSystemName")) or "Pago",
                         "value": self._vtex_money(payment.get("value")),
-                        "referenceValue": self._vtex_money(payment.get("referenceValue")),
-                        "acquirer": self._clean(connector.get("acquirer")),
-                        "authorization": self._clean(connector.get("authId")),
-                        "transactionId": self._clean(transaction.get("transactionId")),
+                        "installments": self._as_int(payment.get("installments"), 0),
+                        "attributes": [
+                            field
+                            for field in (
+                                self._detail_field("Transaccion", self._clean(transaction.get("transactionId"))),
+                                self._detail_field("Comercio", self._clean(transaction.get("merchantName"))),
+                                self._detail_field("Valor de referencia", self._vtex_money(payment.get("referenceValue")), "money"),
+                                self._detail_field("Grupo", self._clean(payment.get("group"))),
+                                self._detail_field("Sistema de pago", self._clean(payment.get("paymentSystem"))),
+                                self._detail_field("Titular", self._clean(payment.get("cardHolder"))),
+                                self._detail_field("Tarjeta", f"**** {card_digits}" if card_digits else ""),
+                                self._detail_field("Vencimiento", " / ".join(
+                                    part for part in (
+                                        self._clean(payment.get("expireMonth")),
+                                        self._clean(payment.get("expireYear")),
+                                    ) if part
+                                )),
+                                self._detail_field("Adquirente", self._clean(connector.get("acquirer"))),
+                                self._detail_field("Autorizacion", self._clean(connector.get("authId"))),
+                                self._detail_field("TID", self._clean(payment.get("tid"))),
+                                self._detail_field("Vence el", self._clean(payment.get("dueDate")), "datetime"),
+                                self._detail_field("Activa", self._detail_flag(transaction.get("isActive"))),
+                            )
+                            if field
+                        ],
                     }
                 )
-        invoices = payload.get("invoices")
-        invoices = invoices if isinstance(invoices, list) else []
-        packages = payload.get("packageAttachment")
-        packages = packages if isinstance(packages, dict) else {}
-        package_items = packages.get("packages")
-        package_items = package_items if isinstance(package_items, list) else []
+        return payments
+
+    def _normalize_fravega_order_logistics(self, shipping):
+        logistics = []
+        for info in self._vtex_list(shipping.get("logisticsInfo")):
+            if not isinstance(info, dict):
+                continue
+            delivery_ids = self._vtex_list(info.get("deliveryIds"))
+            first_delivery = self._vtex_dict(delivery_ids[0] if delivery_ids else None)
+            logistics.append(
+                {
+                    "service": self._clean(info.get("selectedSla")) or "Envio",
+                    "company": self._clean(info.get("deliveryCompany")),
+                    "price": self._vtex_money(info.get("sellingPrice")),
+                    "attributes": [
+                        field
+                        for field in (
+                            self._detail_field("Item", self._clean(info.get("itemId"))),
+                            self._detail_field("Canal", self._clean(info.get("selectedDeliveryChannel"))),
+                            self._detail_field("Plazo", self._clean(info.get("shippingEstimate"))),
+                            self._detail_field("Fecha estimada", self._clean(info.get("shippingEstimateDate")), "datetime"),
+                            self._detail_field("Transito", self._clean(info.get("transitTime"))),
+                            self._detail_field("Reserva (TTL)", self._clean(info.get("lockTTL"))),
+                            self._detail_field("Precio de lista", self._vtex_money(info.get("listPrice")), "money"),
+                            self._detail_field("Transportista", self._clean(first_delivery.get("courierName"))),
+                            self._detail_field("Courier ID", self._clean(first_delivery.get("courierId"))),
+                            self._detail_field("Deposito", self._clean(first_delivery.get("warehouseId"))),
+                            self._detail_field("Dock", self._clean(first_delivery.get("dockId"))),
+                            self._detail_field("Poligono", self._clean(info.get("polygonName"))),
+                            self._detail_field("Punto de retiro", self._clean(info.get("pickupPointId"))),
+                        )
+                        if field
+                    ],
+                }
+            )
+        return logistics
+
+    def _normalize_fravega_order_detail(self, response):
+        payload = self._vtex_dict(response)
+        client = self._vtex_dict(payload.get("clientProfileData"))
+        shipping = self._vtex_dict(payload.get("shippingData"))
+        address = self._vtex_dict(shipping.get("address"))
+        store = self._vtex_dict(payload.get("storePreferencesData"))
+        cancellation = self._vtex_dict(payload.get("cancellationData"))
+        invoice_data = self._vtex_dict(payload.get("invoiceData"))
+        marketplace = self._vtex_dict(payload.get("marketplace"))
+        seller_names = [
+            self._clean(seller.get("name"))
+            for seller in self._vtex_list(payload.get("sellers"))
+            if isinstance(seller, dict) and self._clean(seller.get("name"))
+        ]
+        payment_methods = [
+            self._clean(method)
+            for method in self._vtex_list(
+                self._vtex_dict(invoice_data.get("userPaymentInfo")).get("paymentMethods")
+            )
+            if self._clean(method)
+        ]
+        packages = self._vtex_list(
+            self._vtex_dict(payload.get("packageAttachment")).get("packages")
+        )
+        invoices = self._vtex_list(payload.get("invoices"))
+        coordinates = self._vtex_list(address.get("geoCoordinates"))
+        totals = [
+            {
+                "label": self._clean(total.get("name")) or self._clean(total.get("id")),
+                "value": self._vtex_money(total.get("value")),
+            }
+            for total in self._vtex_list(payload.get("totals"))
+            if isinstance(total, dict)
+        ]
+
+        sections = [
+            self._detail_section("orden", "Orden", "fa-file-text-o", [
+                self._detail_field("Secuencia", self._clean(payload.get("sequence"))),
+                self._detail_field("ID marketplace", self._clean(payload.get("marketplaceOrderId"))),
+                self._detail_field("ID vendedor", self._clean(payload.get("sellerOrderId"))),
+                self._detail_field("Estado", self._clean(payload.get("statusDescription"))),
+                self._detail_field("Origen", self._clean(payload.get("origin"))),
+                self._detail_field("Afiliado", self._clean(payload.get("affiliateId"))),
+                self._detail_field("Canal de venta", self._clean(payload.get("salesChannel"))),
+                self._detail_field("Vendedor", " · ".join(seller_names)),
+                self._detail_field("Marketplace", self._clean(marketplace.get("name"))),
+                self._detail_field("Grupo de orden", self._clean(payload.get("orderGroup"))),
+                self._detail_field("Email de seguimiento", self._clean(payload.get("followUpEmail")), "email"),
+                self._detail_field("Orden completa", bool(payload.get("isCompleted")), "bool"),
+                self._detail_field("Permite cancelacion", bool(payload.get("allowCancellation")), "bool"),
+                self._detail_field("Permite edicion", bool(payload.get("allowEdition")), "bool"),
+                self._detail_field("Error de workflow", self._detail_flag(payload.get("workflowIsInError"))),
+                self._detail_field("Ultimo mensaje", self._clean(payload.get("lastMessage"))),
+            ]),
+            self._detail_section("fechas", "Fechas", "fa-clock-o", [
+                self._detail_field("Creacion", self._clean(payload.get("creationDate")), "datetime"),
+                self._detail_field("Ultimo cambio", self._clean(payload.get("lastChange")), "datetime"),
+                self._detail_field("Autorizacion", self._clean(payload.get("authorizedDate")), "datetime"),
+                self._detail_field("Facturacion", self._clean(payload.get("invoicedDate")), "datetime"),
+            ]),
+            self._detail_section("cliente", "Cliente", "fa-user", [
+                self._detail_field("Nombre", " ".join(
+                    part for part in (
+                        self._clean(client.get("firstName")),
+                        self._clean(client.get("lastName")),
+                    ) if part
+                )),
+                self._detail_field("Documento", " ".join(
+                    part for part in (
+                        self._clean(client.get("documentType")),
+                        self._clean(client.get("document")),
+                    ) if part
+                )),
+                self._detail_field("Telefono", self._clean(client.get("phone")), "phone"),
+                self._detail_field("Email", self._clean(client.get("email")), "email"),
+                self._detail_field("Es corporativo", self._detail_flag(client.get("isCorporate"))),
+                self._detail_field("Razon social", self._clean(client.get("corporateName"))),
+                self._detail_field("Nombre comercial", self._clean(client.get("tradeName"))),
+                self._detail_field("CUIT", self._clean(client.get("corporateDocument"))),
+                self._detail_field("Telefono corporativo", self._clean(client.get("corporatePhone"))),
+                self._detail_field("Codigo de cliente", self._clean(client.get("customerCode"))),
+            ]),
+            self._detail_section("entrega", "Direccion de entrega", "fa-map-marker", [
+                self._detail_field("Receptor", self._clean(address.get("receiverName"))),
+                self._detail_field("Calle", " ".join(
+                    part for part in (
+                        self._clean(address.get("street")),
+                        self._clean(address.get("number")),
+                    ) if part
+                )),
+                self._detail_field("Complemento", self._clean(address.get("complement"))),
+                self._detail_field("Barrio", self._clean(address.get("neighborhood"))),
+                self._detail_field("Ciudad", self._clean(address.get("city"))),
+                self._detail_field("Provincia", self._clean(address.get("state"))),
+                self._detail_field("Codigo postal", self._clean(address.get("postalCode"))),
+                self._detail_field("Pais", self._clean(address.get("country"))),
+                self._detail_field("Tipo", self._clean(address.get("addressType"))),
+                self._detail_field("Referencia", self._clean(address.get("reference"))),
+                self._detail_field("Coordenadas", ", ".join(
+                    f"{self._as_float(value, 0.0):.6f}"
+                    for value in coordinates
+                ) if len(coordinates) == 2 else ""),
+            ]),
+            self._detail_section("cancelacion", "Cancelacion", "fa-ban", [
+                self._detail_field("Fecha", self._clean(cancellation.get("CancellationDate")), "datetime"),
+                self._detail_field("Motivo", self._clean(cancellation.get("Reason"))),
+                self._detail_field("Solicitada por", self._clean(cancellation.get("RequestedBy"))),
+                self._detail_field("Origen", self._clean(cancellation.get("CancellationSource"))),
+                self._detail_field("Pedida por el usuario", self._detail_flag(cancellation.get("RequestedByUser"))),
+                self._detail_field("Request ID", self._clean(cancellation.get("CancellationRequestId"))),
+            ]),
+            self._detail_section("facturacion", "Facturacion", "fa-file-o", [
+                self._detail_field("Metodos de pago", " · ".join(payment_methods)),
+                self._detail_field("Invoices", len(invoices), "number"),
+                self._detail_field("Paquetes", len(packages), "number"),
+            ]),
+            self._detail_section("tecnico", "Tecnico", "fa-cogs", [
+                self._detail_field("Host", self._clean(payload.get("hostname"))),
+                self._detail_field("Entorno", self._clean(payload.get("creationEnvironment"))),
+                self._detail_field("Moneda", self._clean(store.get("currencyCode"))),
+                self._detail_field("Pais", self._clean(store.get("countryCode"))),
+                self._detail_field("Zona horaria", self._clean(store.get("timeZone"))),
+                self._detail_field("Error de redondeo", self._vtex_money(payload.get("roundingError")), "money"),
+            ]),
+        ]
+
         return {
             "id": self._clean(payload.get("orderId")),
             "sequence": self._clean(payload.get("sequence")),
             "status": self._clean(payload.get("status")),
+            "statusDescription": self._clean(payload.get("statusDescription")),
             "createdAt": self._clean(payload.get("creationDate")),
+            "updatedAt": self._clean(payload.get("lastChange")),
             "total": self._vtex_money(payload.get("value")),
-            "client": {
-                "name": " ".join(
-                    part
-                    for part in (
-                        self._clean(client.get("firstName")),
-                        self._clean(client.get("lastName")),
-                    )
-                    if part
-                ),
-                "email": self._clean(client.get("email")),
-                "documentType": self._clean(client.get("documentType")),
-                "document": self._clean(client.get("document")),
-                "phone": self._clean(client.get("phone")),
-                "isCorporate": bool(client.get("isCorporate")),
-            },
-            "address": {
-                "receiver": self._clean(address.get("receiverName")),
-                "street": self._clean(address.get("street")),
-                "number": self._clean(address.get("number")),
-                "complement": self._clean(address.get("complement")),
-                "neighborhood": self._clean(address.get("neighborhood")),
-                "postalCode": self._clean(address.get("postalCode")),
-                "city": self._clean(address.get("city")),
-                "state": self._clean(address.get("state")),
-                "country": self._clean(address.get("country")),
-            },
-            "logistics": [
-                {
-                    "itemId": self._clean(item.get("itemId")),
-                    "service": self._clean(item.get("selectedSla")),
-                    "channel": self._clean(item.get("selectedDeliveryChannel")),
-                    "company": self._clean(item.get("deliveryCompany")),
-                    "estimate": self._clean(item.get("shippingEstimate")),
-                    "estimatedAt": self._clean(item.get("shippingEstimateDate")),
-                }
-                for item in logistics
-                if isinstance(item, dict)
-            ],
-            "payments": payments,
-            "invoices": invoices,
-            "packages": package_items,
+            "totals": totals,
+            "items": self._normalize_fravega_order_items(payload),
+            "payments": self._normalize_fravega_order_payments(payload),
+            "logistics": self._normalize_fravega_order_logistics(shipping),
+            "sections": [section for section in sections if section],
             "rawJson": json.dumps(payload, ensure_ascii=False, indent=2, default=str),
         }
 

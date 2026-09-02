@@ -245,8 +245,8 @@
 
 .o_lqa_order_drawer {
     display: flex;
-    width: 720px;
-    max-width: 92vw;
+    width: 840px;
+    max-width: 94vw;
     height: 100%;
     flex-direction: column;
     background: #f5f7fa;
@@ -297,69 +297,191 @@
     padding: 16px;
 }
 
-.o_lqa_order_detail_hero,
-.o_lqa_order_detail_section,
-.o_lqa_order_detail_counts article,
+.o_lqa_order_hero,
+.o_lqa_order_block,
 .o_lqa_order_detail_raw {
     border: 1px solid #dce3eb;
-    border-radius: 12px;
+    border-radius: 14px;
     background: #fff;
 }
 
-.o_lqa_order_detail_hero {
-    padding: 16px;
-    background: linear-gradient(135deg, #fff, #f8fafc);
-
-    > strong { display: block; margin-top: 12px; font-size: 27px; font-weight: 850; }
-    > small { display: block; margin-top: 6px; color: #748196; }
+.o_lqa_order_hero {
+    padding: 18px;
+    background: linear-gradient(135deg, #fff 0%, #f4f7fb 100%);
 }
 
-.o_lqa_order_detail_section { padding: 15px; }
+.o_lqa_order_hero__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
 
-.o_lqa_order_detail_section__title {
+.o_lqa_order_hero__seq { color: #78869a; font-size: 11px; font-weight: 750; }
+
+.o_lqa_order_hero__total {
+    display: block;
+    margin-top: 14px;
+    font-size: 30px;
+    font-weight: 850;
+    letter-spacing: -.02em;
+    line-height: 1.1;
+}
+
+.o_lqa_order_hero__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    margin-top: 10px;
+    color: #748196;
+    font-size: 12px;
+
+    i { margin-right: 5px; color: #97a3b4; }
+}
+
+.o_lqa_order_block { padding: 16px; }
+
+.o_lqa_order_block__title {
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-bottom: 12px;
+    margin-bottom: 13px;
     color: #e54853;
 
     h3 { margin: 0; color: #253244; font-size: 15px; font-weight: 850; }
 }
 
+.o_lqa_order_block__count {
+    display: inline-grid;
+    min-width: 22px;
+    height: 20px;
+    padding: 0 6px;
+    place-items: center;
+    border-radius: 999px;
+    background: #f1f4f8;
+    color: #5b6b80;
+    font-size: 11px;
+    font-weight: 850;
+}
+
+.o_lqa_order_item {
+    display: flex;
+    gap: 13px;
+    padding: 13px 0;
+    border-top: 1px solid #eef2f6;
+
+    &:first-of-type { padding-top: 0; border-top: 0; }
+
+    > img {
+        flex: 0 0 68px;
+        width: 68px;
+        height: 68px;
+        border: 1px solid #e6ebf1;
+        border-radius: 11px;
+        background: #fff;
+        object-fit: contain;
+    }
+}
+
+.o_lqa_order_item__body { min-width: 0; flex: 1 1 auto; }
+
+.o_lqa_order_item__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.o_lqa_order_item__name {
+    min-width: 0;
+
+    strong { display: block; color: #22303f; font-size: 13px; font-weight: 800; line-height: 1.35; }
+    small { display: block; margin-top: 3px; color: #7a8798; font-size: 11px; font-weight: 700; }
+}
+
+.o_lqa_order_item__money {
+    flex: 0 0 auto;
+    text-align: right;
+
+    strong { display: block; font-size: 14px; font-weight: 850; white-space: nowrap; }
+    small { display: block; margin-top: 3px; color: #7a8798; font-size: 11px; white-space: nowrap; }
+}
+
+.o_lqa_order_attrs {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+    gap: 7px;
+    margin: 11px 0 0;
+
+    div { min-width: 0; padding: 7px 9px; border-radius: 8px; background: #f7f9fb; }
+    dt { color: #8695a8; font-size: 9px; font-weight: 900; letter-spacing: .04em; text-transform: uppercase; }
+    dd { margin: 3px 0 0; color: #2b3a4d; font-size: 11.5px; font-weight: 750; overflow-wrap: anywhere; }
+}
+
+.o_lqa_order_card {
+    padding: 12px 0;
+    border-top: 1px solid #eef2f6;
+
+    &:first-of-type { padding-top: 0; border-top: 0; }
+}
+
+.o_lqa_order_card__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+
+    strong { display: block; color: #22303f; font-size: 13px; font-weight: 800; }
+    small { display: block; margin-top: 3px; color: #7a8798; font-size: 11px; }
+    > span { flex: 0 0 auto; font-size: 14px; font-weight: 850; white-space: nowrap; }
+}
+
+.o_lqa_order_totals {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+    li {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        padding: 9px 0;
+        border-top: 1px solid #eef2f6;
+        color: #53657a;
+        font-size: 12.5px;
+
+        &:first-child { padding-top: 0; border-top: 0; }
+        strong { color: #29384b; font-weight: 800; }
+    }
+
+    li.is-grand {
+        margin-top: 3px;
+        border-top: 2px solid #e4e9ef;
+        color: #22303f;
+        font-weight: 850;
+
+        strong { font-size: 16px; }
+    }
+}
+
 .o_lqa_order_detail_grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
     gap: 9px;
     margin: 0;
 
     div { min-width: 0; padding: 10px; border-radius: 9px; background: #f7f9fb; }
     dt { color: #78869a; font-size: 9px; font-weight: 900; letter-spacing: .04em; text-transform: uppercase; }
     dd { margin: 4px 0 0; color: #29384b; font-size: 12px; font-weight: 750; overflow-wrap: anywhere; }
+    dd a { color: #2563c9; text-decoration: none; }
+    dd a:hover { text-decoration: underline; }
 }
 
-.o_lqa_order_address { margin: 0 0 10px; color: #344459; line-height: 1.55; }
-
-.o_lqa_order_logistic,
-.o_lqa_order_payment {
-    padding: 10px 0;
-    border-top: 1px solid #e8edf2;
-
-    div { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    span { color: #53657a; text-align: right; }
-    small { display: block; margin-top: 4px; color: #7a8798; }
-}
-
-.o_lqa_order_muted { margin: 0; color: #7a8798; }
-
-.o_lqa_order_detail_counts {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-
-    article { padding: 14px; }
-    small, strong { display: block; }
-    small { color: #78869a; font-size: 10px; font-weight: 850; text-transform: uppercase; }
-    strong { margin-top: 5px; font-size: 22px; }
+.o_lqa_order_detail_raw {
+    border: 1px solid #dce3eb;
+    border-radius: 12px;
+    background: #fff;
 }
 
 .o_lqa_order_detail_raw {
