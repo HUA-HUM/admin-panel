@@ -46,6 +46,7 @@
                             <field name="lqa_mercadolibre_pricing_timeout_seconds"/>
                         </setting>
                         <setting string="Central de Promociones">
+                            <field name="lqa_mercadolibre_promotions_api_key" password="True"/>
                             <field name="lqa_mercadolibre_promotions_stats_url"/>
                             <field name="lqa_mercadolibre_promotions_url"/>
                             <field name="lqa_mercadolibre_promotions_catalogs_url"/>

@@ -64,6 +64,10 @@ class ResConfigSettings(models.TransientModel):
         default=300,
         config_parameter="lqa_admin_panel.mercadolibre_pricing_timeout_seconds",
     )
+    lqa_mercadolibre_promotions_api_key = fields.Char(
+        string="API key promociones (CPE)",
+        config_parameter="lqa_admin_panel.mercadolibre_promotions_api_key",
+    )
     lqa_mercadolibre_promotions_stats_url = fields.Char(
         string="URL stats promociones",
         default="http://cpe.loquieroaca.com/promotions/stats",

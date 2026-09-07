@@ -1,6 +1,7 @@
 import base64
 import io
 import json
+import os
 from math import ceil
 import threading
 
@@ -129,6 +130,23 @@ class LqaMercadolibrePromotionsService(models.AbstractModel):
         "failedDeactivation",
     ]
 
+    def _promotions_headers(self):
+        """Auth de la Central de Promociones (CPE).
+
+        La clave no vive en el repo: se configura desde Ajustes o por la
+        variable de entorno del compose, igual que el resto de las APIs.
+        """
+        key = (
+            self.env["ir.config_parameter"]
+            .sudo()
+            .get_param("lqa_admin_panel.mercadolibre_promotions_api_key", "")
+            or os.environ.get("LQA_MERCADOLIBRE_PROMOTIONS_API_KEY", "")
+        ).strip()
+        headers = {"Accept": "application/json"}
+        if key:
+            headers["x-api-key"] = key
+        return headers
+
     @api.model
     def get_stats(self):
         self._check_access()
@@ -138,6 +156,7 @@ class LqaMercadolibrePromotionsService(models.AbstractModel):
                 "lqa_admin_panel.mercadolibre_promotions_stats_url",
                 self.DEFAULT_STATS_ENDPOINT,
             ),
+            headers=self._promotions_headers(),
             timeout=self._timeout(),
         )
         return self._normalize_stats(response or {})
@@ -179,6 +198,7 @@ class LqaMercadolibrePromotionsService(models.AbstractModel):
                 self.DEFAULT_PROMOTIONS_ENDPOINT,
             ),
             params=params,
+            headers=self._promotions_headers(),
             timeout=self._timeout(),
         )
         items = response.get("items") or response.get("promotions") or []
@@ -202,6 +222,7 @@ class LqaMercadolibrePromotionsService(models.AbstractModel):
                 self.DEFAULT_CATALOGS_ENDPOINT,
             ),
             params=params,
+            headers=self._promotions_headers(),
             timeout=self._timeout(),
         )
         items = response.get("items") or response.get("catalogs") or []
@@ -227,6 +248,7 @@ class LqaMercadolibrePromotionsService(models.AbstractModel):
                 self.DEFAULT_ORDERS_ENDPOINT,
             ),
             params=params,
+            headers=self._promotions_headers(),
             timeout=self._timeout(),
         )
         items = response.get("items") or response.get("orders") or []
@@ -259,6 +281,7 @@ class LqaMercadolibrePromotionsService(models.AbstractModel):
                 self.DEFAULT_ANALYTICS_ENDPOINT,
             ),
             params=params,
+            headers=self._promotions_headers(),
             timeout=self._timeout(),
         )
         items = response.get("items") if isinstance(response, dict) else response
@@ -337,7 +360,14 @@ class LqaMercadolibrePromotionsService(models.AbstractModel):
         )
         thread = threading.Thread(
             target=self._execute_action_thread,
-            args=(self.env.cr.dbname, log.id, endpoint, payload, self._action_timeout()),
+            args=(
+                self.env.cr.dbname,
+                log.id,
+                endpoint,
+                payload,
+                self._action_timeout(),
+                self._promotions_headers(),
+            ),
             daemon=True,
         )
         thread.start()
@@ -405,7 +435,7 @@ class LqaMercadolibrePromotionsService(models.AbstractModel):
         }
 
     @staticmethod
-    def _execute_action_thread(dbname, log_id, endpoint, payload, timeout):
+    def _execute_action_thread(dbname, log_id, endpoint, payload, timeout, headers=None):
         with Registry(dbname).cursor() as cr:
             env = api.Environment(cr, SUPERUSER_ID, {})
             log = env["lqa.mercadolibre.promotion.action.log"].browse(log_id)
@@ -417,7 +447,7 @@ class LqaMercadolibrePromotionsService(models.AbstractModel):
                 response = requests.post(
                     endpoint,
                     json=payload,
-                    headers={"Accept": "application/json"},
+                    headers=headers or {"Accept": "application/json"},
                     timeout=timeout,
                 )
                 response.raise_for_status()
