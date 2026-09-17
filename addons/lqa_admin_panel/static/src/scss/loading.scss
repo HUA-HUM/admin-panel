@@ -1,10 +1,9 @@
 $lqa-sidebar-width: 248px;
-$lqa-navbar-height: 48px;
 
 .o_loading_indicator {
     position: fixed;
     z-index: 1055;
-    inset: $lqa-navbar-height 0 0 $lqa-sidebar-width;
+    inset: 0 0 0 $lqa-sidebar-width;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -49,7 +48,7 @@ $lqa-navbar-height: 48px;
 }
 
 .o_blockUI:not(.o_blockUI_invisible) {
-    top: $lqa-navbar-height !important;
+    top: 0 !important;
     right: 0 !important;
     bottom: 0 !important;
     left: $lqa-sidebar-width !important;
@@ -80,15 +79,7 @@ $lqa-navbar-height: 48px;
     }
 }
 
-body.o_lqa_root_dashboard {
-    .o_loading_indicator {
-        inset: $lqa-navbar-height 0 0 0;
-    }
 
-    .o_blockUI:not(.o_blockUI_invisible) {
-        left: 0 !important;
-    }
-}
 
 @keyframes o_lqa_spinner_rotation {
     to {

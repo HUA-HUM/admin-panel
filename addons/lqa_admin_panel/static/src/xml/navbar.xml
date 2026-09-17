@@ -5,7 +5,8 @@
         t-inherit="web.NavBar"
         t-inherit-mode="extension"
     >
-        <xpath expr="//t[@t-call='web.NavBar.AppsMenu']" position="replace">
+        <xpath expr="//t[@t-call='web.NavBar.AppsMenu']" position="replace"/>
+        <xpath expr="//header" position="after">
             <button
                 type="button"
                 class="o_lqa_mobile_menu"
@@ -15,19 +16,6 @@
             >
                 <i class="fa fa-bars"/>
             </button>
-            <a
-                href="/odoo"
-                class="o_lqa_navbar_logo"
-                aria-label="Tienda Lo Quiero Aca"
-                title="Tienda Lo Quiero Aca"
-            >
-                <img
-                    src="/lqa_admin_panel/static/src/img/tienda-logo-navbar.png?v=2"
-                    alt="Tienda Lo Quiero Aca"
-                />
-            </a>
-        </xpath>
-        <xpath expr="//header" position="after">
             <aside
                 t-att-class="{
                     'o_lqa_sidebar': true,
@@ -36,12 +24,20 @@
                 aria-label="Navegacion del panel"
             >
                 <div class="o_lqa_sidebar__brand">
-                    <img
-                        src="/lqa_admin_panel/static/src/img/tienda-logo-navbar.png?v=2"
-                        alt="Tienda Lo Quiero Aca"
-                    />
+                    <a
+                        href="/odoo"
+                        class="o_lqa_sidebar__brand-logo"
+                        aria-label="Tienda Lo Quiero Aca"
+                        title="Ir al inicio"
+                    >
+                        <img
+                            src="/lqa_admin_panel/static/src/img/tienda-logo-navbar.png?v=2"
+                            alt="Tienda Lo Quiero Aca"
+                        />
+                    </a>
                     <button
                         type="button"
+                        class="o_lqa_sidebar__brand-close"
                         aria-label="Cerrar menu"
                         title="Cerrar menu"
                         t-on-click="lqaCloseMobileSidebar"
@@ -414,8 +410,25 @@
                 </nav>
 
                 <div class="o_lqa_sidebar__footer">
-                    <span>Panel Interno</span>
-                    <small>Lo Quiero Aca</small>
+                    <div class="o_lqa_sidebar__user">
+                        <span class="o_lqa_sidebar__user-avatar" t-esc="lqaUserInitial"/>
+                        <div class="o_lqa_sidebar__user-id">
+                            <strong t-esc="lqaUserName"/>
+                            <small t-esc="lqaCompanyName"/>
+                        </div>
+                        <a
+                            class="o_lqa_sidebar__logout"
+                            href="/web/session/logout"
+                            title="Cerrar sesion"
+                            aria-label="Cerrar sesion"
+                        >
+                            <i class="fa fa-sign-out"/>
+                        </a>
+                    </div>
+                    <div class="o_lqa_sidebar__brandline">
+                        <span>Panel Interno</span>
+                        <small>Lo Quiero Aca</small>
+                    </div>
                 </div>
             </aside>
             <button

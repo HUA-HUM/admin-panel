@@ -1,5 +1,4 @@
 $lqa-sidebar-width: 248px;
-$lqa-navbar-height: 48px;
 
 $lqa-sidebar-red: #ff4f5a;
 $lqa-sidebar-red-soft: rgba(255, 79, 90, 0.16);
@@ -10,60 +9,26 @@ $lqa-sidebar-hover: rgba(255, 255, 255, 0.06);
 $lqa-sidebar-hover-strong: rgba(255, 255, 255, 0.1);
 $lqa-sidebar-line: rgba(255, 255, 255, 0.08);
 
+// El navbar de Odoo se saca de todo el panel. La marca pasa al encabezado del
+// sidebar y el usuario con su logout al pie, que antes vivian aca arriba.
 .o_main_navbar {
-    min-height: $lqa-navbar-height;
-    border-bottom: 1px solid #e4e9f1;
-    background: #fff !important;
-    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
-    color: #1f2937;
-
-    .o_menu_systray {
-        color: #1f2937;
-    }
-
-    .o_menu_systray button,
-    .o_menu_systray .dropdown-toggle,
-    .o_menu_systray a,
-    .o_menu_systray i {
-        color: #1f2937 !important;
-    }
-
-    .o_menu_brand,
-    .o_navbar_breadcrumbs,
-    .o_menu_sections {
-        display: none !important;
-    }
-}
-
-.o_main_navbar .o_lqa_navbar_logo {
-    display: flex;
-    align-items: center;
-    align-self: stretch;
-    flex: 0 0 auto;
-    padding: 5px 18px;
-    background: #fff;
-    border-right: 1px solid #eef2f7;
-    transition: background-color 0.15s ease;
-
-    img {
-        display: block;
-        width: auto;
-        height: 30px;
-        max-width: 108px;
-        object-fit: contain;
-    }
-
-    &:hover {
-        background: #fafbfd;
-    }
+    display: none !important;
 }
 
 .o_lqa_mobile_menu {
+    position: fixed;
+    z-index: 1040;
+    top: 10px;
+    left: 10px;
     display: none;
-    width: 42px;
-    border: 0;
-    border-right: 1px solid #e4e9f1;
-    background: transparent;
+    width: 40px;
+    height: 40px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #e4e9f1;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.16);
     color: #55647a;
     font-size: 16px;
     transition:
@@ -79,7 +44,7 @@ $lqa-sidebar-line: rgba(255, 255, 255, 0.08);
 .o_lqa_sidebar {
     position: fixed;
     z-index: 1010;
-    top: $lqa-navbar-height;
+    top: 0;
     bottom: 0;
     left: 0;
     display: flex;
@@ -93,6 +58,38 @@ $lqa-sidebar-line: rgba(255, 255, 255, 0.08);
 }
 
 .o_lqa_sidebar__brand {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex: 0 0 auto;
+    min-height: 56px;
+    padding: 10px 14px 10px 18px;
+    border-bottom: 1px solid $lqa-sidebar-line;
+    background: rgba(0, 0, 0, 0.14);
+}
+
+.o_lqa_sidebar__brand-logo {
+    display: flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 8px;
+    transition: background-color 0.15s ease;
+
+    img {
+        display: block;
+        width: auto;
+        height: 28px;
+        max-width: 116px;
+        object-fit: contain;
+    }
+
+    &:hover {
+        background: $lqa-sidebar-hover;
+    }
+}
+
+// El aspa solo tiene sentido con el sidebar en panel deslizante.
+.o_lqa_sidebar__brand-close {
     display: none;
 }
 
@@ -455,9 +452,78 @@ $lqa-sidebar-line: rgba(255, 255, 255, 0.08);
 .o_lqa_sidebar__footer {
     position: relative;
     flex: 0 0 auto;
-    padding: 15px 20px;
+    padding: 12px 14px 14px;
     border-top: 1px solid $lqa-sidebar-line;
     background: rgba(0, 0, 0, 0.16);
+}
+
+.o_lqa_sidebar__user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 8px 8px 6px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.o_lqa_sidebar__user-avatar {
+    display: grid;
+    width: 32px;
+    height: 32px;
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: 9px;
+    background: $lqa-sidebar-red;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.o_lqa_sidebar__user-id {
+    min-width: 0;
+    flex: 1 1 auto;
+
+    strong {
+        display: block;
+        overflow: hidden;
+        color: $lqa-sidebar-text-strong;
+        font-size: 12px;
+        font-weight: 600;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    small {
+        display: block;
+        overflow: hidden;
+        color: $lqa-sidebar-icon;
+        font-size: 11px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
+.o_lqa_sidebar__logout {
+    display: grid;
+    width: 30px;
+    height: 30px;
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: 8px;
+    color: $lqa-sidebar-icon;
+    font-size: 14px;
+    transition:
+        background-color 0.15s ease,
+        color 0.15s ease;
+
+    &:hover {
+        background: $lqa-sidebar-red-soft;
+        color: $lqa-sidebar-red;
+    }
+}
+
+.o_lqa_sidebar__brandline {
+    padding: 10px 6px 0;
 
     span,
     small {
@@ -494,15 +560,8 @@ $lqa-sidebar-line: rgba(255, 255, 255, 0.08);
     margin-left: $lqa-sidebar-width;
 }
 
-body.o_lqa_root_dashboard {
-    .o_lqa_mobile_menu,
-    .o_lqa_sidebar {
-        display: none !important;
-    }
-}
-
 body.o_web_client.o_lqa_root_dashboard > .o_action_manager {
-    margin-left: 0;
+    margin-left: $lqa-sidebar-width;
 }
 
 .o_lqa_sidebar_backdrop {
@@ -511,20 +570,10 @@ body.o_web_client.o_lqa_root_dashboard > .o_action_manager {
 
 @media (max-width: 991px) {
     .o_lqa_mobile_menu {
-        display: block;
-    }
-
-    .o_main_navbar .o_lqa_navbar_logo {
-        padding-inline: 10px;
-
-        img {
-            height: 26px;
-            max-width: 82px;
-        }
+        display: flex;
     }
 
     .o_lqa_sidebar {
-        top: 0;
         z-index: 1060;
         width: 84vw;
         max-width: 286px;
@@ -537,18 +586,18 @@ body.o_web_client.o_lqa_root_dashboard > .o_action_manager {
     }
 
     .o_lqa_sidebar__brand {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
         min-height: 62px;
         padding: 9px 12px 9px 18px;
-        border-bottom: 1px solid $lqa-sidebar-line;
         background: #fff;
 
         img {
             width: 96px;
             height: 38px;
             object-fit: contain;
+        }
+
+        .o_lqa_sidebar__brand-close {
+            display: inline-flex;
         }
 
         button {

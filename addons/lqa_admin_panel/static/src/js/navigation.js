@@ -4,6 +4,7 @@ import { onWillStart, useState } from "@odoo/owl";
 import { patch } from "@web/core/utils/patch";
 import { useBus, useService } from "@web/core/utils/hooks";
 import { NavBar } from "@web/webclient/navbar/navbar";
+import { user } from "@web/core/user";
 
 patch(NavBar.prototype, {
     setup() {
@@ -30,13 +31,30 @@ patch(NavBar.prototype, {
         });
     },
 
+    // El navbar de Odoo esta oculto en todo el panel, asi que el pie del
+    // sidebar pasa a ser el unico lugar con identidad de usuario y logout.
+    get lqaUserName() {
+        return user.name || user.login || "Usuario";
+    }
+
+    get lqaUserInitial() {
+        return (this.lqaUserName || "?").trim().charAt(0).toUpperCase();
+    }
+
+    get lqaCompanyName() {
+        return user.activeCompany?.name || "";
+    }
+
     get lqaShouldShowSidebar() {
         return this.lqaSidebarSections.length > 0;
     },
 
     get lqaSidebarSections() {
         if (this.lqaNavigation.isRootDashboard) {
-            return [];
+            // Sin el navbar de Odoo el sidebar es la unica navegacion
+            // persistente, asi que en el dashboard raiz mostramos las areas
+            // en vez de dejar el rail vacio.
+            return this.lqaPanelRootSections();
         }
         const contextualArea = this.lqaActiveAreaFromContext();
         if (contextualArea?.childrenTree?.length) {
