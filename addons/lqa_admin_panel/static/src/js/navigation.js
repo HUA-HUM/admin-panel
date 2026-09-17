@@ -35,15 +35,15 @@ patch(NavBar.prototype, {
     // sidebar pasa a ser el unico lugar con identidad de usuario y logout.
     get lqaUserName() {
         return user.name || user.login || "Usuario";
-    }
+    },
 
     get lqaUserInitial() {
         return (this.lqaUserName || "?").trim().charAt(0).toUpperCase();
-    }
+    },
 
     get lqaCompanyName() {
         return user.activeCompany?.name || "";
-    }
+    },
 
     get lqaShouldShowSidebar() {
         return this.lqaSidebarSections.length > 0;
