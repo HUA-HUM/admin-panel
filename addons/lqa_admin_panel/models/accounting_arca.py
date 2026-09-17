@@ -899,7 +899,7 @@ class LqaAccountingService(models.AbstractModel):
                 "xubioTransactionId": cancelled.get("xubioTransactionId") or "",
                 "numeroDocumento": self._clean(cancelled.get("numeroDocumento")),
                 "letra": self._clean(cancelled.get("letra")),
-                "importeTotal": self._as_float(cancelled.get("importeTotal"), 0.0),
+                "importeTotal": self._as_float(cancelled.get("importeTotal")) or 0.0,
             },
             "notaCredito": payload.get("notaCredito") or {},
             "createdNumeroDocumento": self._clean(
