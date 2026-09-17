@@ -49,8 +49,20 @@ patch(NavBar.prototype, {
         return this.lqaSidebarSections.length > 0;
     },
 
+    // El contexto de area llega por bus desde el componente dashboard, que no
+    // lo limpia al desmontarse. Al navegar a una client action que no es el
+    // dashboard -- toda Administracion, por ejemplo -- los valores quedan
+    // pegados del ultimo dashboard visitado: el sidebar se creia en el
+    // dashboard raiz y devolvia lista vacia, o mostraba el menu de otra area.
+    // Solo los damos por validos mientras la accion en pantalla siga siendo el
+    // dashboard; si no, resolvemos el area desde la accion actual.
+    get lqaContextIsFresh() {
+        const tag = String(this.lqaCurrentAction()?.tag || "").toLowerCase();
+        return tag === "lqa_admin_panel.dashboard";
+    },
+
     get lqaSidebarSections() {
-        if (this.lqaNavigation.isRootDashboard) {
+        if (this.lqaNavigation.isRootDashboard && this.lqaContextIsFresh) {
             // Sin el navbar de Odoo el sidebar es la unica navegacion
             // persistente, asi que en el dashboard raiz mostramos las areas
             // en vez de dejar el rail vacio.
@@ -78,6 +90,9 @@ patch(NavBar.prototype, {
     },
 
     lqaActiveAreaFromContext() {
+        if (!this.lqaContextIsFresh) {
+            return null;
+        }
         const menuId = Number(this.lqaNavigation.activeAreaMenuId || 0);
         if (menuId && this.menuService?.getMenu) {
             try {
