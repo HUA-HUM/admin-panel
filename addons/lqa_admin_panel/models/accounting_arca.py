@@ -176,6 +176,49 @@ class LqaAccountingInvoiceBatch(models.Model):
     last_checked_at = fields.Datetime(readonly=True)
 
 
+class LqaAccountingNotaCreditoBatch(models.Model):
+    _name = "lqa.accounting.nota.credito.batch"
+    _description = "Lote de notas de credito TLQV encolado en Invoice API"
+    _order = "create_date desc, id desc"
+
+    batch_id = fields.Char(required=True, readonly=True, index=True)
+    user_id = fields.Many2one(
+        "res.users",
+        required=True,
+        readonly=True,
+        index=True,
+        default=lambda self: self.env.user,
+    )
+    state = fields.Selection(
+        selection=[
+            ("queued", "En cola"),
+            ("running", "Procesando"),
+            ("done", "Terminado"),
+            ("expired", "Purgado"),
+        ],
+        default="queued",
+        required=True,
+        readonly=True,
+        index=True,
+    )
+    # Guardar si el lote fue una prueba es lo que permite distinguir despues una
+    # corrida real de una previsualizacion: la cola las borra con el tiempo.
+    dry_run = fields.Boolean(readonly=True)
+    issue_date = fields.Date(readonly=True)
+    total_requested = fields.Integer(readonly=True)
+    total_unique = fields.Integer(readonly=True)
+    total_duplicated = fields.Integer(readonly=True)
+    total_queued = fields.Integer(readonly=True)
+    created_count = fields.Integer(readonly=True)
+    skipped_count = fields.Integer(readonly=True)
+    blocked_count = fields.Integer(readonly=True)
+    failed_count = fields.Integer(readonly=True)
+    pending_count = fields.Integer(readonly=True)
+    bull_dashboard_url = fields.Char(readonly=True)
+    results_snapshot = fields.Text(readonly=True)
+    last_checked_at = fields.Datetime(readonly=True)
+
+
 class LqaAccountingService(models.AbstractModel):
     _name = "lqa.accounting.service"
     _description = "Servicio contable ARCA"
@@ -741,6 +784,467 @@ class LqaAccountingService(models.AbstractModel):
             "batch": self._invoice_batch_to_dict(batch) if batch else False,
             "executedAt": fields.Datetime.to_string(fields.Datetime.now()),
         }
+
+    # ------------------------------------------------------------------
+    # Notas de credito
+    #
+    # Una nota de credito sale con CAE de AFIP y no se deshace. Por eso el
+    # backend usa dryRun=True por defecto y aca se respeta lo mismo: emitir
+    # exige pedirlo de forma explicita, nunca por omision.
+    # ------------------------------------------------------------------
+
+    # Tope por lote: cada TLQV es un comprobante fiscal irreversible, asi que
+    # conviene que una equivocacion en la seleccion tenga un techo.
+    NOTA_CREDITO_MAX_CODES = 200
+
+    NOTA_CREDITO_BLOCKERS = {
+        "ALREADY_CANCELLED": "La factura ya tenia nota de credito.",
+        "COMPROBANTES_LOOKUP_FAILED": "No se pudo leer Madre.",
+        "NO_LIVE_INVOICE": "El TLQV no tiene ninguna factura.",
+        "INVOICE_HAS_NO_ITEMS": "La factura no tiene conceptos en Madre; suele faltar el backfill.",
+        "INVOICE_DATA_INCOMPLETE": "Falta cliente, punto de venta o precio de algun concepto.",
+        "NOTA_CREDITO_CREATION_FAILED": "Xubio rechazo la emision.",
+    }
+    NOTA_CREDITO_RETRYABLE = {
+        "COMPROBANTES_LOOKUP_FAILED",
+        "INVOICE_HAS_NO_ITEMS",
+    }
+
+    def _nota_credito_issue_date(self, options):
+        issue_date = self._clean(options.get("issueDate"))
+        if not issue_date:
+            return ""
+        try:
+            parsed = fields.Date.from_string(issue_date)
+        except (TypeError, ValueError):
+            parsed = None
+        if not parsed:
+            raise UserError(
+                _("La fecha del comprobante debe tener formato YYYY-MM-DD.")
+            )
+        return fields.Date.to_string(parsed)
+
+    def _nota_credito_codes(self, raw_codes):
+        if not isinstance(raw_codes, list) or not raw_codes:
+            raise UserError(_("Selecciona al menos un codigo TLQV."))
+        codes, invalid = [], []
+        for raw in raw_codes:
+            normalized = self._normalize_tlqv(raw)
+            if normalized:
+                codes.append(normalized)
+            else:
+                invalid.append(self._clean(raw) or _("(vacio)"))
+        if invalid:
+            raise UserError(
+                _("Hay codigos TLQV invalidos: %s") % ", ".join(invalid[:10])
+            )
+        if len(codes) > self.NOTA_CREDITO_MAX_CODES:
+            raise UserError(
+                _("Podes anular como maximo %s comprobantes por lote.")
+                % self.NOTA_CREDITO_MAX_CODES
+            )
+        return codes
+
+    def _nota_credito_request(self, path, body):
+        response = self._request_json(
+            "POST",
+            self._join_url(self._invoice_base_url(), path),
+            payload=body,
+            headers=self._invoice_headers(),
+            timeout=self._nota_credito_timeout(),
+        )
+        payload = response["payload"] if isinstance(response["payload"], dict) else {}
+        if not response["ok"]:
+            message = self._clean(
+                payload.get("message")
+                or payload.get("error")
+                or response.get("text")
+                or response.get("status_code")
+            )
+            raise UserError(
+                _("Invoice API rechazo la nota de credito: %s")
+                % (message or _("sin detalle"))
+            )
+        return payload
+
+    def _nota_credito_timeout(self):
+        # Emitir contra AFIP tarda mas que una lectura; el default del servicio
+        # se queda corto en lotes grandes.
+        return max(self._timeout(), 120)
+
+    def _nota_credito_to_dict(self, payload):
+        payload = payload if isinstance(payload, dict) else {}
+        cancelled = (
+            payload.get("cancelledInvoice")
+            if isinstance(payload.get("cancelledInvoice"), dict)
+            else {}
+        )
+        created = (
+            payload.get("createdNotaCredito")
+            if isinstance(payload.get("createdNotaCredito"), dict)
+            else {}
+        )
+        created_invoice = (
+            created.get("invoice") if isinstance(created.get("invoice"), dict) else {}
+        )
+        blockers = [
+            self._nota_credito_blocker_to_dict(blocker)
+            for blocker in self._response_items(payload.get("blockers"))
+        ]
+        return {
+            "status": self._clean(payload.get("status")).lower() or "skipped",
+            "tlqvCode": self._clean(payload.get("tlqvCode")),
+            "dryRun": bool(payload.get("dryRun")),
+            "cancelledInvoice": {
+                "xubioTransactionId": cancelled.get("xubioTransactionId") or "",
+                "numeroDocumento": self._clean(cancelled.get("numeroDocumento")),
+                "letra": self._clean(cancelled.get("letra")),
+                "importeTotal": self._as_float(cancelled.get("importeTotal"), 0.0),
+            },
+            "notaCredito": payload.get("notaCredito") or {},
+            "createdNumeroDocumento": self._clean(
+                created_invoice.get("numeroDocumento")
+            ),
+            "blockers": blockers,
+            "payload": payload,
+        }
+
+    def _nota_credito_blocker_to_dict(self, blocker):
+        if not isinstance(blocker, dict):
+            code = self._clean(blocker).upper()
+            return {
+                "code": code,
+                "message": self.NOTA_CREDITO_BLOCKERS.get(code, ""),
+                "retryable": code in self.NOTA_CREDITO_RETRYABLE,
+            }
+        code = self._clean(blocker.get("code")).upper()
+        return {
+            "code": code,
+            "message": self._clean(blocker.get("message"))
+            or self.NOTA_CREDITO_BLOCKERS.get(code, ""),
+            "retryable": code in self.NOTA_CREDITO_RETRYABLE,
+        }
+
+    @api.model
+    def preview_nota_credito(self, options=None):
+        """Previsualiza una anulacion. Nunca emite: fuerza dryRun."""
+        self._check_access()
+        options = options if isinstance(options, dict) else {}
+        tlqv_code = self._normalize_tlqv(options.get("tlqvCode"))
+        if not tlqv_code:
+            raise UserError(_("Ingresa un codigo TLQV valido."))
+        body = {"tlqvCode": tlqv_code, "dryRun": True}
+        issue_date = self._nota_credito_issue_date(options)
+        if issue_date:
+            body["issueDate"] = issue_date
+        payload = self._nota_credito_request(
+            "/internal/tlqv-invoice/facturas/nota-credito", body
+        )
+        return self._nota_credito_to_dict(payload)
+
+    @api.model
+    def create_nota_credito(self, options=None):
+        """Emite una nota de credito. Solo admins y solo con confirmacion."""
+        self._check_access()
+        if not self.env.user.has_group("lqa_admin_panel.group_lqa_admin"):
+            raise AccessError(
+                _("Solo administradores del panel pueden emitir notas de credito.")
+            )
+        options = options if isinstance(options, dict) else {}
+        tlqv_code = self._normalize_tlqv(options.get("tlqvCode"))
+        if not tlqv_code:
+            raise UserError(_("Ingresa un codigo TLQV valido."))
+        # La emision es irreversible: exigimos que el panel la pida de forma
+        # explicita en vez de heredarla de un default.
+        if options.get("confirm") is not True:
+            raise UserError(
+                _("Falta confirmar la emision de la nota de credito.")
+            )
+        body = {"tlqvCode": tlqv_code, "dryRun": False}
+        issue_date = self._nota_credito_issue_date(options)
+        if issue_date:
+            body["issueDate"] = issue_date
+        payload = self._nota_credito_request(
+            "/internal/tlqv-invoice/facturas/nota-credito", body
+        )
+        return self._nota_credito_to_dict(payload)
+
+    @api.model
+    def start_nota_credito_bulk(self, options=None):
+        """Encola un lote. dryRun=True salvo confirmacion explicita."""
+        self._check_access()
+        options = options if isinstance(options, dict) else {}
+        codes = self._nota_credito_codes(options.get("tlqvCodes"))
+        emit = options.get("dryRun") is False
+        if emit:
+            if not self.env.user.has_group("lqa_admin_panel.group_lqa_admin"):
+                raise AccessError(
+                    _("Solo administradores del panel pueden emitir notas de credito.")
+                )
+            if options.get("confirm") is not True:
+                raise UserError(
+                    _("Falta confirmar la emision de las notas de credito.")
+                )
+        body = {"tlqvCodes": codes, "dryRun": not emit}
+        issue_date = self._nota_credito_issue_date(options)
+        if issue_date:
+            body["issueDate"] = issue_date
+
+        payload = self._nota_credito_request(
+            "/internal/tlqv-invoice/facturas/bulk/nota-credito", body
+        )
+        bull_path = self._clean(payload.get("bullBoardPath")) or "/admin/queues"
+        bull_url = self._join_url(self._invoice_base_url(), bull_path)
+        batch = self._store_nota_credito_batch(payload, body, bull_url)
+        return {
+            "request": body,
+            "payload": payload,
+            "bullDashboardUrl": bull_url,
+            "batch": self._nota_credito_batch_to_dict(batch) if batch else False,
+            "executedAt": fields.Datetime.to_string(fields.Datetime.now()),
+        }
+
+    def _store_nota_credito_batch(self, payload, body, bull_dashboard_url):
+        batch_id = self._clean(payload.get("batchId"))
+        if not batch_id:
+            return False
+        model = self.env["lqa.accounting.nota.credito.batch"].sudo()
+        existing = model.search([("batch_id", "=", batch_id)], limit=1)
+        values = {
+            "batch_id": batch_id,
+            "dry_run": bool(body.get("dryRun")),
+            "issue_date": body.get("issueDate") or False,
+            "total_requested": self._as_int(payload.get("totalRequested"), 0),
+            "total_unique": self._as_int(payload.get("totalUnique"), 0),
+            "total_duplicated": self._as_int(payload.get("totalDuplicated"), 0),
+            "total_queued": self._as_int(payload.get("totalQueued"), 0),
+            "bull_dashboard_url": bull_dashboard_url,
+            "state": "queued",
+        }
+        if existing:
+            existing.write(values)
+            return existing
+        values["user_id"] = self.env.user.id
+        return model.create(values)
+
+    def _nota_credito_batch_to_dict(self, batch):
+        if not batch:
+            return False
+        return {
+            "id": batch.id,
+            "batchId": batch.batch_id,
+            "state": batch.state,
+            "dryRun": batch.dry_run,
+            "issueDate": fields.Date.to_string(batch.issue_date) if batch.issue_date else "",
+            "totalRequested": batch.total_requested,
+            "totalUnique": batch.total_unique,
+            "totalDuplicated": batch.total_duplicated,
+            "totalQueued": batch.total_queued,
+            "created": batch.created_count,
+            "skipped": batch.skipped_count,
+            "blocked": batch.blocked_count,
+            "failed": batch.failed_count,
+            "pending": batch.pending_count,
+            "bullDashboardUrl": batch.bull_dashboard_url or "",
+            "user": batch.user_id.name or "",
+            "requestedAt": fields.Datetime.to_string(batch.create_date)
+            if batch.create_date
+            else "",
+            "lastCheckedAt": fields.Datetime.to_string(batch.last_checked_at)
+            if batch.last_checked_at
+            else "",
+        }
+
+    @api.model
+    def get_nota_credito_batch_status(self, batch_id):
+        """Avance de una corrida. Refresca el snapshot local de paso."""
+        self._check_access()
+        batch_id = self._clean(batch_id)
+        if not batch_id:
+            raise UserError(_("Falta el Batch ID a consultar."))
+        response = self._request_json(
+            "GET",
+            self._join_url(
+                self._invoice_base_url(),
+                "/internal/tlqv-invoice/facturas/bulk/nota-credito/%s"
+                % quote(batch_id, safe=""),
+            ),
+            headers=self._invoice_headers(),
+            timeout=self._timeout(),
+        )
+        payload = response["payload"] if isinstance(response["payload"], dict) else {}
+        if not response["ok"]:
+            message = self._clean(
+                payload.get("message")
+                or payload.get("error")
+                or response.get("text")
+                or response.get("status_code")
+            )
+            raise UserError(
+                _("Invoice API no pudo devolver el estado del lote: %s")
+                % (message or _("sin detalle"))
+            )
+
+        results = (
+            payload.get("results") if isinstance(payload.get("results"), dict) else {}
+        )
+        found = bool(payload.get("found"))
+        jobs = [
+            self._nota_credito_job_to_dict(job)
+            for job in self._response_items(payload.get("jobs"))
+        ]
+        counters = {
+            key: self._as_int(results.get(key), 0)
+            for key in ("created", "skipped", "blocked", "failed", "pending")
+        }
+        local = (
+            self.env["lqa.accounting.nota.credito.batch"]
+            .sudo()
+            .search([("batch_id", "=", batch_id)], limit=1)
+        )
+        if local:
+            local.write(
+                {
+                    "state": "expired"
+                    if not found
+                    else ("running" if counters["pending"] else "done"),
+                    "created_count": counters["created"],
+                    "skipped_count": counters["skipped"],
+                    "blocked_count": counters["blocked"],
+                    "failed_count": counters["failed"],
+                    "pending_count": counters["pending"],
+                    "results_snapshot": json.dumps(results, ensure_ascii=False),
+                    "last_checked_at": fields.Datetime.now(),
+                }
+            )
+        return {
+            "batchId": batch_id,
+            "found": found,
+            "totalJobs": self._as_int(payload.get("totalJobs"), 0),
+            "results": counters,
+            "jobs": jobs,
+            "batch": self._nota_credito_batch_to_dict(local) if local else False,
+        }
+
+    def _nota_credito_job_to_dict(self, job):
+        job = job if isinstance(job, dict) else {}
+        blockers = [
+            self._nota_credito_blocker_to_dict(code)
+            for code in self._response_items(job.get("blockerCodes"))
+        ]
+        status = self._clean(job.get("status")).lower()
+        already = any(b["code"] == "ALREADY_CANCELLED" for b in blockers)
+        return {
+            "tlqvCode": self._clean(job.get("tlqvCode")),
+            # state es donde esta el job en la cola; status es que paso con la
+            # nota. Un job puede estar completed y no haber emitido nada.
+            "state": self._clean(job.get("state")).lower(),
+            "status": status or "pending",
+            "created": bool(job.get("created")),
+            "alreadyCancelled": already,
+            "skipReason": "already_cancelled" if already else ("dry_run" if status == "skipped" else ""),
+            "numeroDocumento": self._clean(job.get("notaCreditoNumeroDocumento")),
+            "blockers": blockers,
+        }
+
+    @api.model
+    def get_nota_credito_batches(self, limit=20):
+        """Ultimas corridas segun Invoice API, para la pantalla de inicio."""
+        self._check_access()
+        limit = min(max(self._as_int(limit, 20), 1), 100)
+        response = self._request_json(
+            "GET",
+            self._join_url(
+                self._invoice_base_url(),
+                "/internal/tlqv-invoice/facturas/bulk/nota-credito",
+            ),
+            params={"limit": limit},
+            headers=self._invoice_headers(),
+            timeout=self._timeout(),
+        )
+        payload = response["payload"] if isinstance(response["payload"], dict) else {}
+        if not response["ok"]:
+            message = self._clean(
+                payload.get("message")
+                or payload.get("error")
+                or response.get("text")
+                or response.get("status_code")
+            )
+            raise UserError(
+                _("Invoice API no pudo devolver las corridas: %s")
+                % (message or _("sin detalle"))
+            )
+        return {
+            "total": self._as_int(payload.get("total"), 0),
+            "batches": [
+                {
+                    "batchId": self._clean(item.get("batchId")),
+                    "requestedAt": self._clean(item.get("requestedAt")),
+                    "dryRun": bool(item.get("dryRun")),
+                    "total": self._as_int(item.get("total"), 0),
+                    "created": self._as_int(item.get("created"), 0),
+                    "skipped": self._as_int(item.get("skipped"), 0),
+                    "blocked": self._as_int(item.get("blocked"), 0),
+                    "failed": self._as_int(item.get("failed"), 0),
+                    "pending": self._as_int(item.get("pending"), 0),
+                }
+                for item in self._response_items(payload.get("batches"))
+            ],
+        }
+
+    @api.model
+    def get_nota_credito_issues(self, filters=None):
+        """Las que no se pudieron emitir. Los issues si son permanentes."""
+        self._check_access()
+        filters = filters if isinstance(filters, dict) else {}
+        params = {"limit": min(max(self._as_int(filters.get("limit"), 50), 1), 500)}
+        status = self._clean(filters.get("status")).lower() or "open"
+        if status not in self.INVOICE_ISSUE_STATUSES:
+            raise UserError(_("Estado de issue no valido: %s") % status)
+        params["status"] = status
+
+        response = self._request_json(
+            "GET",
+            self._join_url(self._invoice_base_url(), "/internal/tlqv-invoice/issues"),
+            params=params,
+            headers=self._invoice_headers(),
+            timeout=self._timeout(),
+        )
+        payload = response["payload"] if isinstance(response["payload"], dict) else {}
+        if not response["ok"]:
+            message = self._clean(
+                payload.get("message")
+                or payload.get("error")
+                or response.get("text")
+                or response.get("status_code")
+            )
+            raise UserError(
+                _("Invoice API no pudo devolver los issues: %s")
+                % (message or _("sin detalle"))
+            )
+        items = []
+        for raw in self._response_items(payload.get("items")):
+            if not self._is_nota_credito_issue(raw):
+                continue
+            items.append(self._invoice_issue_to_dict(raw))
+        return {"items": items, "status": status}
+
+    def _is_nota_credito_issue(self, raw):
+        """El endpoint mezcla issues de facturacion y de notas de credito."""
+        if not isinstance(raw, dict):
+            return False
+        metadata = raw.get("metadata") if isinstance(raw.get("metadata"), dict) else {}
+        if self._clean(metadata.get("kind")).lower() == "nota_credito":
+            return True
+        return self._clean(raw.get("message")).lower().startswith("nota de credito")
+
+    @api.model
+    def get_nota_credito_comprobantes(self, filters=None):
+        """Las emitidas de verdad, desde Madre. Es la fuente fiscal."""
+        self._check_access()
+        filters = dict(filters or {})
+        filters["documentKind"] = "CREDIT_NOTE"
+        return self.get_xubio_comprobantes(filters)
 
     # ------------------------------------------------------------------
     # Seguimiento de la cola de Invoice API

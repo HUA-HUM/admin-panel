@@ -1319,6 +1319,339 @@
                     </t>
                 </t>
 
+                <t t-if="isNotasCredito">
+                    <div class="o_lqa_accounting__nc_warning">
+                        <i class="fa fa-exclamation-triangle"/>
+                        <div>
+                            <strong>Una nota de credito no se deshace.</strong>
+                            <span>Sale con CAE de AFIP y solo se corrige con otro comprobante. Previsualiza siempre antes de emitir.</span>
+                        </div>
+                    </div>
+
+                    <nav class="o_lqa_accounting__section_nav" role="tablist">
+                        <button type="button" role="tab"
+                            t-att-class="state.notasCredito.activeTab === 'emit' ? 'is-active' : ''"
+                            t-on-click="() => this.setNotasCreditoTab('emit')">Emitir</button>
+                        <button type="button" role="tab"
+                            t-att-class="state.notasCredito.activeTab === 'runs' ? 'is-active' : ''"
+                            t-on-click="() => this.setNotasCreditoTab('runs')">Corridas</button>
+                        <button type="button" role="tab"
+                            t-att-class="state.notasCredito.activeTab === 'history' ? 'is-active' : ''"
+                            t-on-click="() => this.setNotasCreditoTab('history')">Historial emitido</button>
+                        <button type="button" role="tab"
+                            t-att-class="state.notasCredito.activeTab === 'issues' ? 'is-active' : ''"
+                            t-on-click="() => this.setNotasCreditoTab('issues')">Bloqueadas</button>
+                    </nav>
+
+                    <t t-if="state.notasCredito.activeTab === 'emit'">
+                        <section class="o_lqa_accounting__panel is-nc_emit">
+                            <div class="o_lqa_accounting__panel_head">
+                                <div>
+                                    <h2>Anular facturas</h2>
+                                    <p>El backend busca la factura vigente del TLQV; no hace falta indicarla.</p>
+                                </div>
+                                <div class="o_lqa_accounting__segmented" role="tablist">
+                                    <button type="button"
+                                        t-att-class="state.notasCredito.mode === 'single' ? 'is-active' : ''"
+                                        t-on-click="() => this.setNotasCreditoMode('single')">Individual</button>
+                                    <button type="button"
+                                        t-att-class="state.notasCredito.mode === 'bulk' ? 'is-active' : ''"
+                                        t-on-click="() => this.setNotasCreditoMode('bulk')">Masiva</button>
+                                </div>
+                            </div>
+
+                            <div class="o_lqa_accounting__nc_form">
+                                <label t-if="state.notasCredito.mode === 'single'">
+                                    <span>Codigo TLQV</span>
+                                    <input type="text" placeholder="TLQV-18997"
+                                        t-model="state.notasCredito.form.tlqvCode"/>
+                                </label>
+                                <label t-else="" class="is-wide">
+                                    <span>Codigos TLQV</span>
+                                    <textarea rows="5" placeholder="Uno por linea o separados por coma"
+                                        t-model="state.notasCredito.form.tlqvCodes"/>
+                                    <small><t t-esc="notasCreditoCodes.length"/> codigos detectados</small>
+                                </label>
+                                <label>
+                                    <span>Fecha del comprobante</span>
+                                    <input type="date" t-model="state.notasCredito.form.issueDate"/>
+                                    <small>Opcional. Por defecto, hoy.</small>
+                                </label>
+                            </div>
+
+                            <div class="o_lqa_accounting__nc_actions">
+                                <button type="button" class="o_lqa_accounting__ghost"
+                                    t-on-click="previewNotaCredito"
+                                    t-att-disabled="state.notasCredito.previewing">
+                                    <i t-att-class="state.notasCredito.previewing ? 'fa fa-spinner fa-spin' : 'fa fa-search'"/>
+                                    <t t-esc="state.notasCredito.previewing ? 'Previsualizando...' : 'Previsualizar'"/>
+                                </button>
+                                <button type="button" class="o_lqa_accounting__danger"
+                                    t-on-click="openNotaCreditoConfirm"
+                                    t-att-disabled="!notasCreditoCanEmit or state.notasCredito.emitting">
+                                    <i class="fa fa-ban"/>
+                                    Emitir nota de credito
+                                </button>
+                                <small t-if="!notasCreditoCanEmit">Previsualiza primero para habilitar la emision.</small>
+                            </div>
+                        </section>
+
+                        <section t-if="state.notasCredito.preview and state.notasCredito.preview.kind === 'single'"
+                            class="o_lqa_accounting__panel is-nc_preview">
+                            <div class="o_lqa_accounting__panel_head">
+                                <div>
+                                    <h2>Previsualizacion</h2>
+                                    <p>Esto es lo que se va a anular. Todavia no se emitio nada.</p>
+                                </div>
+                                <span t-att-class="'o_lqa_accounting__pill ' + notaCreditoStatusClass(state.notasCredito.preview.item.status)"
+                                    t-esc="notaCreditoStatusLabel(state.notasCredito.preview.item.status)"/>
+                            </div>
+                            <div class="o_lqa_accounting__invoice_result_grid">
+                                <div>
+                                    <small>Factura a anular</small>
+                                    <strong t-esc="state.notasCredito.preview.item.cancelledInvoice.numeroDocumento || '-'"/>
+                                </div>
+                                <div>
+                                    <small>Letra</small>
+                                    <strong t-esc="state.notasCredito.preview.item.cancelledInvoice.letra || '-'"/>
+                                </div>
+                                <div>
+                                    <small>Importe</small>
+                                    <strong t-esc="formatCurrency(state.notasCredito.preview.item.cancelledInvoice.importeTotal)"/>
+                                </div>
+                                <div>
+                                    <small>TLQV</small>
+                                    <strong t-esc="state.notasCredito.preview.item.tlqvCode"/>
+                                </div>
+                            </div>
+                            <ul t-if="state.notasCredito.preview.item.blockers.length"
+                                class="o_lqa_accounting__nc_blockers">
+                                <li t-foreach="state.notasCredito.preview.item.blockers" t-as="blocker" t-key="blocker.code">
+                                    <strong t-esc="blocker.code"/>
+                                    <span t-esc="blocker.message"/>
+                                    <em t-if="blocker.retryable">Se puede reintentar</em>
+                                </li>
+                            </ul>
+                        </section>
+
+                        <section t-if="state.notasCredito.result and state.notasCredito.result.kind === 'single'"
+                            class="o_lqa_accounting__panel is-nc_result">
+                            <div class="o_lqa_accounting__panel_head">
+                                <div>
+                                    <h2>Resultado</h2>
+                                    <p t-esc="state.notasCredito.result.item.tlqvCode"/>
+                                </div>
+                                <span t-att-class="'o_lqa_accounting__pill ' + notaCreditoStatusClass(state.notasCredito.result.item.status)"
+                                    t-esc="notaCreditoStatusLabel(state.notasCredito.result.item.status)"/>
+                            </div>
+                            <div class="o_lqa_accounting__invoice_result_grid">
+                                <div>
+                                    <small>Nota de credito</small>
+                                    <strong t-esc="state.notasCredito.result.item.createdNumeroDocumento || '-'"/>
+                                </div>
+                                <div>
+                                    <small>Factura anulada</small>
+                                    <strong t-esc="state.notasCredito.result.item.cancelledInvoice.numeroDocumento || '-'"/>
+                                </div>
+                                <div>
+                                    <small>Importe</small>
+                                    <strong t-esc="formatCurrency(state.notasCredito.result.item.cancelledInvoice.importeTotal)"/>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section t-if="state.notasCredito.batch.status" class="o_lqa_accounting__panel is-nc_batch">
+                            <div class="o_lqa_accounting__panel_head">
+                                <div>
+                                    <h2>Avance del lote</h2>
+                                    <p t-esc="state.notasCredito.batch.batchId"/>
+                                </div>
+                                <button type="button" class="o_lqa_accounting__ghost"
+                                    t-on-click="() => this.pollNotaCreditoBatch(state.notasCredito.batch.batchId)">
+                                    <i t-att-class="state.notasCredito.batch.loading ? 'fa fa-spinner fa-spin' : 'fa fa-refresh'"/>
+                                    Actualizar
+                                </button>
+                            </div>
+                            <div class="o_lqa_accounting__invoice_result_grid">
+                                <div><small>Emitidas</small><strong t-esc="formatNumber(state.notasCredito.batch.status.results.created)"/></div>
+                                <div><small>Sin emitir</small><strong t-esc="formatNumber(state.notasCredito.batch.status.results.skipped)"/></div>
+                                <div><small>Bloqueadas</small><strong t-esc="formatNumber(state.notasCredito.batch.status.results.blocked)"/></div>
+                                <div><small>Pendientes</small><strong t-esc="formatNumber(state.notasCredito.batch.status.results.pending)"/></div>
+                            </div>
+                            <div class="o_lqa_accounting__table_wrap">
+                                <table class="o_lqa_accounting__table">
+                                    <thead>
+                                        <tr><th>TLQV</th><th>Cola</th><th>Resultado</th><th>Comprobante</th><th>Motivo</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr t-foreach="state.notasCredito.batch.status.jobs" t-as="job" t-key="job.tlqvCode">
+                                            <td><strong t-esc="job.tlqvCode"/></td>
+                                            <td t-esc="humanize(job.state)"/>
+                                            <td>
+                                                <span t-att-class="'o_lqa_accounting__pill ' + notaCreditoStatusClass(job.status)"
+                                                    t-esc="notaCreditoStatusLabel(job.status)"/>
+                                            </td>
+                                            <td t-esc="job.numeroDocumento || '-'"/>
+                                            <td>
+                                                <t t-if="job.alreadyCancelled">Ya tenia nota de credito</t>
+                                                <t t-elif="job.blockers.length"><t t-esc="job.blockers[0].message || job.blockers[0].code"/></t>
+                                                <t t-elif="job.skipReason === 'dry_run'">Previsualizacion</t>
+                                                <t t-else="">-</t>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+                    </t>
+
+                    <t t-if="state.notasCredito.activeTab === 'runs'">
+                        <section class="o_lqa_accounting__panel">
+                            <div class="o_lqa_accounting__panel_head">
+                                <div>
+                                    <h2>Ultimas corridas</h2>
+                                    <p>La cola borra los jobs terminados con el tiempo; para lo viejo usa Historial.</p>
+                                </div>
+                                <button type="button" class="o_lqa_accounting__ghost" t-on-click="loadNotasCreditoBatches">
+                                    <i t-att-class="state.notasCredito.batches.loading ? 'fa fa-spinner fa-spin' : 'fa fa-refresh'"/>
+                                    Actualizar
+                                </button>
+                            </div>
+                            <div t-if="!state.notasCredito.batches.items.length" class="o_lqa_accounting__empty is-compact">
+                                <i class="fa fa-inbox"/>
+                                <strong>Sin corridas registradas</strong>
+                            </div>
+                            <div t-else="" class="o_lqa_accounting__table_wrap">
+                                <table class="o_lqa_accounting__table">
+                                    <thead>
+                                        <tr><th>Fecha</th><th>Batch</th><th>Modo</th><th>Total</th><th>Emitidas</th><th>Sin emitir</th><th>Bloqueadas</th><th>Pendientes</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr t-foreach="state.notasCredito.batches.items" t-as="batch" t-key="batch.batchId"
+                                            t-on-click="() => this.pollNotaCreditoBatch(batch.batchId)">
+                                            <td t-esc="formatDate(batch.requestedAt)"/>
+                                            <td><small t-esc="batch.batchId"/></td>
+                                            <td>
+                                                <span t-att-class="batch.dryRun ? 'o_lqa_accounting__pill is-muted' : 'o_lqa_accounting__pill is-red'"
+                                                    t-esc="batch.dryRun ? 'Prueba' : 'Real'"/>
+                                            </td>
+                                            <td t-esc="formatNumber(batch.total)"/>
+                                            <td t-esc="formatNumber(batch.created)"/>
+                                            <td t-esc="formatNumber(batch.skipped)"/>
+                                            <td t-esc="formatNumber(batch.blocked)"/>
+                                            <td t-esc="formatNumber(batch.pending)"/>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+                    </t>
+
+                    <t t-if="state.notasCredito.activeTab === 'history'">
+                        <section class="o_lqa_accounting__panel">
+                            <div class="o_lqa_accounting__panel_head">
+                                <div>
+                                    <h2>Notas de credito emitidas</h2>
+                                    <p>Fuente fiscal permanente desde Madre. Una nota recien emitida tarda en aparecer.</p>
+                                </div>
+                                <button type="button" class="o_lqa_accounting__ghost" t-on-click="() => this.searchNotasCreditoHistory(0)">
+                                    <i t-att-class="state.notasCredito.history.loading ? 'fa fa-spinner fa-spin' : 'fa fa-refresh'"/>
+                                    Actualizar
+                                </button>
+                            </div>
+                            <div class="o_lqa_accounting__nc_form">
+                                <label>
+                                    <span>Codigo TLQV</span>
+                                    <input type="text" placeholder="TLQV-18997" t-model="state.notasCredito.history.filters.tlqvCode"/>
+                                </label>
+                            </div>
+                            <div t-if="state.notasCredito.history.result" class="o_lqa_accounting__table_wrap">
+                                <table class="o_lqa_accounting__table">
+                                    <thead>
+                                        <tr><th>Comprobante</th><th>TLQV</th><th>Cliente</th><th>Importe</th><th>CAE</th><th>Fecha</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr t-foreach="state.notasCredito.history.result.items" t-as="item" t-key="item.id || item.numeroDocumento">
+                                            <td><strong t-esc="item.numeroDocumento || '-'"/></td>
+                                            <td t-esc="item.tlqvCode || '-'"/>
+                                            <td t-esc="item.clienteNombre || item.clienteCodigo || '-'"/>
+                                            <td t-esc="formatCurrency(item.importeTotal)"/>
+                                            <td><small t-esc="item.cae || '-'"/></td>
+                                            <td t-esc="formatDate(item.fecha)"/>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+                    </t>
+
+                    <t t-if="state.notasCredito.activeTab === 'issues'">
+                        <section class="o_lqa_accounting__panel">
+                            <div class="o_lqa_accounting__panel_head">
+                                <div>
+                                    <h2>No se pudieron emitir</h2>
+                                    <p>Registro permanente. Una previsualizacion nunca genera un issue.</p>
+                                </div>
+                                <button type="button" class="o_lqa_accounting__ghost" t-on-click="loadNotasCreditoIssues">
+                                    <i t-att-class="state.notasCredito.issues.loading ? 'fa fa-spinner fa-spin' : 'fa fa-refresh'"/>
+                                    Actualizar
+                                </button>
+                            </div>
+                            <div t-if="!state.notasCredito.issues.items.length" class="o_lqa_accounting__empty is-compact">
+                                <i class="fa fa-check-circle"/>
+                                <strong>Ninguna bloqueada</strong>
+                            </div>
+                            <div t-else="" class="o_lqa_accounting__table_wrap">
+                                <table class="o_lqa_accounting__table">
+                                    <thead>
+                                        <tr><th>TLQV</th><th>Motivo</th><th>Veces</th><th>Ultima vez</th><th>Detalle</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr t-foreach="state.notasCredito.issues.items" t-as="issue" t-key="issue.id">
+                                            <td><strong t-esc="issue.tlqvCode"/></td>
+                                            <td t-esc="humanize(issue.reason)"/>
+                                            <td t-esc="formatNumber(issue.occurrences)"/>
+                                            <td t-esc="formatDate(issue.lastSeenAt)"/>
+                                            <td><small t-esc="issue.message"/></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+                    </t>
+
+                    <div t-if="state.notasCredito.confirming" class="o_lqa_accounting__modal" t-on-click="closeNotaCreditoConfirm">
+                        <div class="o_lqa_accounting__modal_panel is-confirm" t-on-click.stop="() => {}">
+                            <div class="o_lqa_accounting__nc_confirm">
+                                <i class="fa fa-exclamation-triangle"/>
+                                <h2>Confirmar emision</h2>
+                                <p t-if="state.notasCredito.mode === 'single'">
+                                    Vas a anular la factura
+                                    <strong t-esc="state.notasCredito.preview.item.cancelledInvoice.numeroDocumento"/>
+                                    por
+                                    <strong t-esc="formatCurrency(state.notasCredito.preview.item.cancelledInvoice.importeTotal)"/>.
+                                </p>
+                                <p t-else="">
+                                    Vas a emitir hasta
+                                    <strong><t t-esc="state.notasCredito.preview.codes.length"/> notas de credito</strong>,
+                                    una por cada TLQV seleccionado.
+                                </p>
+                                <p class="is-warning">
+                                    Sale con CAE de AFIP y no se puede deshacer. Solo se corrige con otro comprobante.
+                                </p>
+                                <div class="o_lqa_accounting__nc_confirm_actions">
+                                    <button type="button" class="o_lqa_accounting__ghost" t-on-click="closeNotaCreditoConfirm">Cancelar</button>
+                                    <button type="button" class="o_lqa_accounting__danger"
+                                        t-on-click="emitNotaCredito" t-att-disabled="state.notasCredito.emitting">
+                                        <i t-att-class="state.notasCredito.emitting ? 'fa fa-spinner fa-spin' : 'fa fa-ban'"/>
+                                        <t t-esc="state.notasCredito.emitting ? 'Emitiendo...' : 'Si, emitir'"/>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+
                 <t t-if="isArcaBilling">
                     <section class="o_lqa_accounting__comprobantes_topbar">
                         <div>

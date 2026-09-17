@@ -3267,3 +3267,208 @@
         max-height: 92vh;
     }
 }
+
+// ---------------------------------------------------------------------
+// Notas de credito
+// ---------------------------------------------------------------------
+
+.o_lqa_accounting__nc_warning {
+    display: flex;
+    width: 100%;
+    max-width: 1400px;
+    align-items: flex-start;
+    gap: 12px;
+    margin: 4px auto 0;
+    padding: 14px 16px;
+    border: 1px solid var(--lqa-red-soft);
+    border-left: 3px solid var(--lqa-red);
+    border-radius: 12px;
+    background: var(--lqa-red-soft);
+
+    > i {
+        margin-top: 2px;
+        color: var(--lqa-red-dark);
+        font-size: 15px;
+    }
+
+    strong {
+        display: block;
+        color: var(--lqa-ink);
+        font-size: 13px;
+    }
+
+    span {
+        color: var(--lqa-muted-strong);
+        font-size: 12px;
+    }
+}
+
+.o_lqa_accounting__nc_form {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    padding: 18px 22px;
+
+    label {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: 6px;
+        margin: 0;
+
+        &.is-wide {
+            grid-column: 1 / -1;
+        }
+
+        > span {
+            color: var(--lqa-muted-strong);
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        input,
+        textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--lqa-border);
+            border-radius: 10px;
+            background: var(--lqa-surface);
+            color: var(--lqa-ink);
+            font-size: 13px;
+            resize: vertical;
+
+            &:focus {
+                border-color: var(--lqa-red);
+                outline: none;
+            }
+        }
+
+        > small {
+            color: var(--lqa-muted);
+            font-size: 11px;
+        }
+    }
+}
+
+.o_lqa_accounting__nc_actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 0 22px 20px;
+
+    > small {
+        color: var(--lqa-muted);
+        font-size: 11px;
+    }
+}
+
+// Emitir es destructivo e irreversible: el boton tiene que leerse distinto de
+// cualquier accion de consulta.
+.o_lqa_accounting__danger {
+    display: inline-flex;
+    align-items: center;
+    min-height: 38px;
+    gap: 8px;
+    padding: 0 16px;
+    border: 0;
+    border-radius: 10px;
+    background: var(--lqa-red);
+    color: #fff;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 700;
+    transition:
+        background-color 0.15s ease,
+        opacity 0.15s ease;
+
+    &:hover:not(:disabled) {
+        background: var(--lqa-red-dark);
+    }
+
+    &:disabled {
+        cursor: not-allowed;
+        opacity: 0.45;
+    }
+}
+
+.o_lqa_accounting__nc_blockers {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0 22px 20px;
+    list-style: none;
+
+    li {
+        display: flex;
+        align-items: baseline;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: var(--lqa-chip);
+
+        strong {
+            color: var(--lqa-red-dark);
+            font-size: 11px;
+            letter-spacing: 0.04em;
+        }
+
+        span {
+            color: var(--lqa-muted-strong);
+            font-size: 12px;
+        }
+
+        em {
+            color: var(--lqa-green-dark);
+            font-size: 11px;
+            font-style: normal;
+        }
+    }
+}
+
+.o_lqa_accounting__modal_panel.is-confirm {
+    max-width: 480px;
+}
+
+.o_lqa_accounting__nc_confirm {
+    padding: 26px 24px 22px;
+    text-align: center;
+
+    > i {
+        display: block;
+        margin-bottom: 12px;
+        color: var(--lqa-red);
+        font-size: 26px;
+    }
+
+    h2 {
+        margin: 0 0 10px;
+        color: var(--lqa-ink);
+        font-size: 17px;
+    }
+
+    p {
+        margin: 0 0 8px;
+        color: var(--lqa-muted-strong);
+        font-size: 13px;
+
+        &.is-warning {
+            margin-top: 14px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: var(--lqa-red-soft);
+            color: var(--lqa-red-dark);
+            font-weight: 600;
+        }
+    }
+}
+
+.o_lqa_accounting__nc_confirm_actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 18px;
+}

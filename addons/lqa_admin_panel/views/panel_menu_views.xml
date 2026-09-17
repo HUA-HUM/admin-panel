@@ -59,6 +59,12 @@
         <field name="params" eval="{'view': 'xubio_facturacion'}"/>
     </record>
 
+    <record id="action_lqa_administracion_xubio_notas_credito" model="ir.actions.client">
+        <field name="name">Notas de credito</field>
+        <field name="tag">lqa_admin_panel.accounting</field>
+        <field name="params" eval="{'view': 'xubio_notas_credito'}"/>
+    </record>
+
     <record id="action_lqa_retailers_marketplaces" model="ir.actions.client">
         <field name="name">Marketplaces</field>
         <field name="tag">lqa_admin_panel.retailers</field>
@@ -517,6 +523,15 @@
         parent="menu_lqa_administracion_xubio"
         action="action_lqa_administracion_xubio_facturacion"
         sequence="30"
+        groups="lqa_admin_panel.group_lqa_commercial_user"
+    />
+
+    <menuitem
+        id="menu_lqa_administracion_xubio_notas_credito"
+        name="Notas de credito"
+        parent="menu_lqa_administracion_xubio"
+        action="action_lqa_administracion_xubio_notas_credito"
+        sequence="40"
         groups="lqa_admin_panel.group_lqa_commercial_user"
     />
 

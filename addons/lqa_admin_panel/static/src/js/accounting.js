@@ -160,6 +160,42 @@ export class LqaAccounting extends Component {
                     },
                 },
             },
+            notasCredito: {
+                activeTab: "emit",
+                mode: "single",
+                form: {
+                    tlqvCode: "",
+                    tlqvCodes: "",
+                    issueDate: inputDate(today),
+                },
+                // La previsualizacion es el paso obligatorio antes de emitir:
+                // el usuario tiene que ver que factura se anula y por cuanto.
+                preview: null,
+                previewing: false,
+                confirming: false,
+                emitting: false,
+                result: null,
+                batch: {
+                    batchId: "",
+                    status: null,
+                    loading: false,
+                    polling: false,
+                },
+                batches: {
+                    loading: false,
+                    items: [],
+                },
+                history: {
+                    loading: false,
+                    result: null,
+                    filters: { tlqvCode: "", limit: 50, offset: 0 },
+                },
+                issues: {
+                    loading: false,
+                    items: [],
+                    status: "open",
+                },
+            },
         });
 
         this.queueTimer = null;
@@ -169,7 +205,10 @@ export class LqaAccounting extends Component {
                 await this.loadArcaData();
             }
         });
-        onWillUnmount(() => this.stopQueuePolling());
+        onWillUnmount(() => {
+            this.stopQueuePolling();
+            this.clearNotaCreditoTimer();
+        });
     }
 
     get isDashboard() {
@@ -192,8 +231,18 @@ export class LqaAccounting extends Component {
         return this.state.view === "xubio_facturacion";
     }
 
+    get isNotasCredito() {
+        return this.state.view === "xubio_notas_credito";
+    }
+
     get isWorkspace() {
-        return this.isArcaBilling || this.isClients || this.isXubio || this.isXubioFacturacion;
+        return (
+            this.isArcaBilling ||
+            this.isClients ||
+            this.isXubio ||
+            this.isXubioFacturacion ||
+            this.isNotasCredito
+        );
     }
 
     get pageTitle() {
@@ -205,6 +254,9 @@ export class LqaAccounting extends Component {
         }
         if (this.isXubioFacturacion) {
             return "Facturacion Xubio";
+        }
+        if (this.isNotasCredito) {
+            return "Notas de credito";
         }
         return this.isArcaBilling ? "Comprobantes Xubio" : "Administracion";
     }
@@ -218,6 +270,9 @@ export class LqaAccounting extends Component {
         }
         if (this.isXubioFacturacion) {
             return "Creacion de facturas conectada a Xubio.";
+        }
+        if (this.isNotasCredito) {
+            return "Anulacion de facturas emitidas mediante notas de credito.";
         }
         return this.isArcaBilling
             ? "Consulta y auditoria de comprobantes sincronizados con Xubio."
@@ -245,7 +300,12 @@ export class LqaAccounting extends Component {
     }
 
     async openBack() {
-        if (this.isClients || this.isArcaBilling || this.isXubioFacturacion) {
+        if (
+            this.isClients ||
+            this.isArcaBilling ||
+            this.isXubioFacturacion ||
+            this.isNotasCredito
+        ) {
             await this.openXubio();
             return;
         }
@@ -276,6 +336,12 @@ export class LqaAccounting extends Component {
         await this.loadArcaData();
     }
 
+    async openNotasCredito() {
+        this.state.view = "xubio_notas_credito";
+        this.state.activeTab = "notas_credito";
+        await this.loadArcaData();
+    }
+
     async loadArcaData() {
         if (this.isClients) {
             await Promise.all([this.loadClientJobs(), this.searchClientIssues()]);
@@ -287,6 +353,10 @@ export class LqaAccounting extends Component {
         }
         if (this.isXubioFacturacion) {
             await this.loadFacturacionTabData();
+            return;
+        }
+        if (this.isNotasCredito) {
+            await this.loadNotasCreditoTabData();
         }
     }
 
@@ -1041,6 +1111,306 @@ export class LqaAccounting extends Component {
                 resolved: "Resuelto",
                 ignored: "Ignorado",
             }[key] || this.humanize(status)
+        );
+    }
+
+    // ------------------------------------------------------------------
+    // Notas de credito
+    //
+    // Emitir es irreversible: sale con CAE de AFIP. El flujo obliga a
+    // previsualizar antes de confirmar, y la confirmacion viaja explicita al
+    // backend en vez de depender de un default.
+    // ------------------------------------------------------------------
+
+    setNotasCreditoTab(tab) {
+        this.state.notasCredito.activeTab = tab;
+        this.loadNotasCreditoTabData();
+    }
+
+    setNotasCreditoMode(mode) {
+        this.state.notasCredito.mode = mode;
+        this.state.notasCredito.preview = null;
+        this.state.notasCredito.result = null;
+    }
+
+    async loadNotasCreditoTabData() {
+        const tab = this.state.notasCredito.activeTab;
+        if (tab === "runs") {
+            await this.loadNotasCreditoBatches();
+            return;
+        }
+        if (tab === "history") {
+            await this.searchNotasCreditoHistory();
+            return;
+        }
+        if (tab === "issues") {
+            await this.loadNotasCreditoIssues();
+        }
+    }
+
+    get notasCreditoCodes() {
+        return String(this.state.notasCredito.form.tlqvCodes || "")
+            .split(/[\s,;]+/)
+            .map((code) => code.trim())
+            .filter(Boolean);
+    }
+
+    get notasCreditoPreviewTotal() {
+        const preview = this.state.notasCredito.preview;
+        if (!preview) {
+            return 0;
+        }
+        if (preview.kind === "single") {
+            return Number(preview.item?.cancelledInvoice?.importeTotal || 0);
+        }
+        return 0;
+    }
+
+    get notasCreditoCanEmit() {
+        const preview = this.state.notasCredito.preview;
+        if (!preview) {
+            return false;
+        }
+        return preview.kind === "single"
+            ? preview.item?.status !== "blocked"
+            : Boolean(preview.batchId);
+    }
+
+    async previewNotaCredito() {
+        const nc = this.state.notasCredito;
+        nc.result = null;
+        nc.preview = null;
+        if (nc.mode === "single") {
+            const code = String(nc.form.tlqvCode || "").trim();
+            if (!code) {
+                this.notification.add("Ingresá un código TLQV.", { type: "warning" });
+                return;
+            }
+            nc.previewing = true;
+            try {
+                const item = await this.orm.call(
+                    "lqa.accounting.service",
+                    "preview_nota_credito",
+                    [{ tlqvCode: code, issueDate: nc.form.issueDate }]
+                );
+                nc.preview = { kind: "single", item };
+            } catch (error) {
+                this.notifyError(error, "No se pudo previsualizar la nota de crédito.");
+            } finally {
+                nc.previewing = false;
+            }
+            return;
+        }
+
+        const codes = this.notasCreditoCodes;
+        if (!codes.length) {
+            this.notification.add("Ingresá al menos un código TLQV.", { type: "warning" });
+            return;
+        }
+        nc.previewing = true;
+        try {
+            const result = await this.orm.call(
+                "lqa.accounting.service",
+                "start_nota_credito_bulk",
+                [{ tlqvCodes: codes, dryRun: true, issueDate: nc.form.issueDate }]
+            );
+            nc.preview = {
+                kind: "bulk",
+                codes,
+                batchId: result.payload?.batchId || "",
+                payload: result.payload,
+            };
+            if (nc.preview.batchId) {
+                nc.batch.batchId = nc.preview.batchId;
+                await this.pollNotaCreditoBatch(nc.preview.batchId);
+            }
+        } catch (error) {
+            this.notifyError(error, "No se pudo previsualizar el lote.");
+        } finally {
+            nc.previewing = false;
+        }
+    }
+
+    openNotaCreditoConfirm() {
+        if (!this.notasCreditoCanEmit) {
+            return;
+        }
+        this.state.notasCredito.confirming = true;
+    }
+
+    closeNotaCreditoConfirm() {
+        this.state.notasCredito.confirming = false;
+    }
+
+    async emitNotaCredito() {
+        const nc = this.state.notasCredito;
+        nc.emitting = true;
+        try {
+            if (nc.mode === "single") {
+                const item = await this.orm.call(
+                    "lqa.accounting.service",
+                    "create_nota_credito",
+                    [
+                        {
+                            tlqvCode: nc.preview.item.tlqvCode,
+                            issueDate: nc.form.issueDate,
+                            confirm: true,
+                        },
+                    ]
+                );
+                nc.result = { kind: "single", item };
+                nc.preview = null;
+                this.notification.add(
+                    item.createdNumeroDocumento
+                        ? `Nota de crédito ${item.createdNumeroDocumento} emitida.`
+                        : "La ejecución terminó sin emitir.",
+                    { type: item.createdNumeroDocumento ? "success" : "warning" }
+                );
+            } else {
+                const result = await this.orm.call(
+                    "lqa.accounting.service",
+                    "start_nota_credito_bulk",
+                    [
+                        {
+                            tlqvCodes: nc.preview.codes,
+                            dryRun: false,
+                            confirm: true,
+                            issueDate: nc.form.issueDate,
+                        },
+                    ]
+                );
+                nc.result = { kind: "bulk", payload: result.payload };
+                nc.preview = null;
+                nc.batch.batchId = result.payload?.batchId || "";
+                this.notification.add("Lote encolado. Seguí el avance abajo.", {
+                    type: "success",
+                });
+                if (nc.batch.batchId) {
+                    await this.pollNotaCreditoBatch(nc.batch.batchId);
+                }
+            }
+        } catch (error) {
+            this.notifyError(error, "No se pudo emitir la nota de crédito.");
+        } finally {
+            nc.emitting = false;
+            nc.confirming = false;
+        }
+    }
+
+    async pollNotaCreditoBatch(batchId) {
+        const nc = this.state.notasCredito;
+        const id = String(batchId || nc.batch.batchId || "").trim();
+        if (!id) {
+            return;
+        }
+        nc.batch.loading = true;
+        try {
+            const status = await this.orm.call(
+                "lqa.accounting.service",
+                "get_nota_credito_batch_status",
+                [id]
+            );
+            nc.batch.batchId = id;
+            nc.batch.status = status;
+            // Mientras queden jobs sin resolver seguimos mirando; el backend
+            // recomienda 2-3s y la cola procesa de a uno.
+            if (status.found && Number(status.results?.pending || 0) > 0) {
+                nc.batch.polling = true;
+                this.clearNotaCreditoTimer();
+                this.notaCreditoTimer = setTimeout(
+                    () => this.pollNotaCreditoBatch(id),
+                    3000
+                );
+            } else {
+                nc.batch.polling = false;
+                this.clearNotaCreditoTimer();
+            }
+        } catch (error) {
+            nc.batch.polling = false;
+            this.clearNotaCreditoTimer();
+            this.notifyError(error, "No se pudo consultar el avance del lote.");
+        } finally {
+            nc.batch.loading = false;
+        }
+    }
+
+    clearNotaCreditoTimer() {
+        if (this.notaCreditoTimer) {
+            clearTimeout(this.notaCreditoTimer);
+            this.notaCreditoTimer = null;
+        }
+    }
+
+    async loadNotasCreditoBatches() {
+        const nc = this.state.notasCredito;
+        nc.batches.loading = true;
+        try {
+            const result = await this.orm.call(
+                "lqa.accounting.service",
+                "get_nota_credito_batches",
+                [20]
+            );
+            nc.batches.items = result.batches || [];
+        } catch (error) {
+            this.notifyError(error, "No se pudieron cargar las corridas.");
+        } finally {
+            nc.batches.loading = false;
+        }
+    }
+
+    async searchNotasCreditoHistory(offset = 0) {
+        const nc = this.state.notasCredito;
+        nc.history.loading = true;
+        nc.history.filters.offset = offset;
+        try {
+            nc.history.result = await this.orm.call(
+                "lqa.accounting.service",
+                "get_nota_credito_comprobantes",
+                [{ ...nc.history.filters }]
+            );
+        } catch (error) {
+            this.notifyError(error, "No se pudo cargar el historial.");
+        } finally {
+            nc.history.loading = false;
+        }
+    }
+
+    async loadNotasCreditoIssues() {
+        const nc = this.state.notasCredito;
+        nc.issues.loading = true;
+        try {
+            const result = await this.orm.call(
+                "lqa.accounting.service",
+                "get_nota_credito_issues",
+                [{ status: nc.issues.status, limit: 100 }]
+            );
+            nc.issues.items = result.items || [];
+        } catch (error) {
+            this.notifyError(error, "No se pudieron cargar las bloqueadas.");
+        } finally {
+            nc.issues.loading = false;
+        }
+    }
+
+    notaCreditoStatusLabel(status) {
+        return (
+            {
+                created: "Emitida",
+                skipped: "Sin emitir",
+                blocked: "Bloqueada",
+                pending: "Pendiente",
+            }[String(status || "").toLowerCase()] || this.humanize(status)
+        );
+    }
+
+    notaCreditoStatusClass(status) {
+        return (
+            {
+                created: "is-green",
+                skipped: "is-muted",
+                blocked: "is-red",
+                pending: "is-amber",
+            }[String(status || "").toLowerCase()] || "is-muted"
         );
     }
 
