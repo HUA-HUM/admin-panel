@@ -1048,6 +1048,10 @@ export class LqaAccounting extends Component {
         this.state.facturacion.invoice.selectedJob = job;
     }
 
+    closeInvoiceJob() {
+        this.state.facturacion.invoice.selectedJob = null;
+    }
+
     invoiceModeLabel(job) {
         return job?.dryRun ? "Simulacion" : "Creacion en Xubio";
     }
@@ -1061,12 +1065,15 @@ export class LqaAccounting extends Component {
                 [30]
             );
             this.state.facturacion.invoice.jobs = jobs;
-            const selected =
+            // El detalle ahora es un modal, asi que solo se abre cuando el
+            // usuario elige una fila o acaba de ejecutar algo. Antes caia en
+            // jobs[0] y al entrar a la pantalla se mostraba el resultado de la
+            // ultima corrida, de otro dia y sin que nadie lo pidiera.
+            const current = this.state.facturacion.invoice.selectedJob;
+            this.state.facturacion.invoice.selectedJob =
                 (preferJobId && jobs.find((job) => job.id === preferJobId)) ||
-                jobs.find((job) => job.id === this.state.facturacion.invoice.selectedJob?.id) ||
-                jobs[0] ||
+                (current && jobs.find((job) => job.id === current.id)) ||
                 null;
-            this.state.facturacion.invoice.selectedJob = selected;
         } catch (error) {
             this.notifyError(error, "No se pudieron cargar los registros de facturacion.");
         } finally {

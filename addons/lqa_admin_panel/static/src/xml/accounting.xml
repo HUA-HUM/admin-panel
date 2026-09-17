@@ -469,21 +469,6 @@
                 </t>
 
                 <t t-if="isXubioFacturacion">
-                    <section class="o_lqa_accounting__facturacion_topbar">
-                        <div>
-                            <p>Administracion / Xubio</p>
-                            <h2>Facturacion Xubio</h2>
-                            <span>
-                                Emision de facturas desde codigos TLQV a traves de Invoice API.
-                            </span>
-                        </div>
-                        <button type="button" class="o_lqa_accounting__ghost" t-on-click="openXubio">
-                            <i class="fa fa-arrow-left"/>
-                            Xubio
-                        </button>
-                    </section>
-
-
                     <nav class="o_lqa_accounting__section_nav" role="tablist">
                         <button
                             type="button"
@@ -774,67 +759,6 @@
                             </div>
                         </section>
 
-                        <section
-                            t-if="state.facturacion.creationMode === 'single' &amp;&amp; state.facturacion.invoice.selectedJob"
-                            class="o_lqa_accounting__panel is-invoice_result"
-                        >
-                            <div class="o_lqa_accounting__panel_head">
-                                <div>
-                                    <h2>Resultado seleccionado</h2>
-                                    <p>
-                                        <t t-esc="state.facturacion.invoice.selectedJob.tlqvCode"/>
-                                        ·
-                                        <t t-esc="invoiceModeLabel(state.facturacion.invoice.selectedJob)"/>
-                                        ·
-                                        <t t-esc="formatDate(state.facturacion.invoice.selectedJob.createdAt)"/>
-                                    </p>
-                                </div>
-                                <span
-                                    t-att-class="'o_lqa_accounting__pill ' + stateClass(state.facturacion.invoice.selectedJob.state)"
-                                    t-esc="stateLabel(state.facturacion.invoice.selectedJob.state)"
-                                />
-                            </div>
-                            <div class="o_lqa_accounting__invoice_result_grid">
-                                <div>
-                                    <small>Letra</small>
-                                    <strong t-esc="state.facturacion.invoice.selectedJob.invoiceLetter || '-'"/>
-                                </div>
-                                <div>
-                                    <small>Items</small>
-                                    <strong t-esc="formatNumber(state.facturacion.invoice.selectedJob.itemsCount)"/>
-                                </div>
-                                <div>
-                                    <small>Total estimado</small>
-                                    <strong t-esc="formatCurrency(state.facturacion.invoice.selectedJob.invoiceTotal)"/>
-                                </div>
-                                <div>
-                                    <small>Cliente Xubio</small>
-                                    <strong t-esc="state.facturacion.invoice.selectedJob.xubioClienteId || '-'"/>
-                                </div>
-                            </div>
-                            <div class="o_lqa_accounting__invoice_message">
-                                <strong>Detalle</strong>
-                                <span t-esc="state.facturacion.invoice.selectedJob.message || '-'"/>
-                            </div>
-                            <ul
-                                t-if="state.facturacion.invoice.selectedJob.steps &amp;&amp; state.facturacion.invoice.selectedJob.steps.length"
-                                class="o_lqa_accounting__invoice_steps"
-                            >
-                                <li t-foreach="state.facturacion.invoice.selectedJob.steps" t-as="step" t-key="step.name || step.message">
-                                    <strong t-esc="humanize(step.name)"/>
-                                    <span t-att-class="'o_lqa_accounting__pill ' + stateClass(step.status)" t-esc="stateLabel(step.status)"/>
-                                    <small t-esc="step.message || '-'"/>
-                                </li>
-                            </ul>
-                            <details class="o_lqa_accounting__disclosure">
-                                <summary>
-                                    <i class="fa fa-chevron-right"/>
-                                    Ver respuesta completa
-                                </summary>
-                                <pre class="o_lqa_accounting__code is-invoice_payload" t-esc="formatJson(state.facturacion.invoice.selectedJob.payload)"/>
-                            </details>
-                        </section>
-
                         <section t-if="state.facturacion.creationMode === 'single'" class="o_lqa_accounting__panel is-invoice_history">
                             <div class="o_lqa_accounting__panel_head">
                                 <div>
@@ -888,6 +812,80 @@
                                 </table>
                             </div>
                         </section>
+
+                    <div
+                        t-if="state.facturacion.invoice.selectedJob"
+                        class="o_lqa_accounting__modal"
+                        t-on-click="closeInvoiceJob"
+                    >
+                        <div class="o_lqa_accounting__modal_panel" t-on-click.stop="() => {}">
+                            <button
+                                type="button"
+                                class="o_lqa_accounting__modal_close"
+                                aria-label="Cerrar"
+                                title="Cerrar"
+                                t-on-click="closeInvoiceJob"
+                            >
+                                <i class="fa fa-times"/>
+                            </button>
+
+                                <div class="o_lqa_accounting__panel_head">
+                                    <div>
+                                        <h2>Detalle de la ejecucion</h2>
+                                        <p>
+                                            <t t-esc="state.facturacion.invoice.selectedJob.tlqvCode"/>
+                                            ·
+                                            <t t-esc="invoiceModeLabel(state.facturacion.invoice.selectedJob)"/>
+                                            ·
+                                            <t t-esc="formatDate(state.facturacion.invoice.selectedJob.createdAt)"/>
+                                        </p>
+                                    </div>
+                                    <span
+                                        t-att-class="'o_lqa_accounting__pill ' + stateClass(state.facturacion.invoice.selectedJob.state)"
+                                        t-esc="stateLabel(state.facturacion.invoice.selectedJob.state)"
+                                    />
+                                </div>
+                                <div class="o_lqa_accounting__invoice_result_grid">
+                                    <div>
+                                        <small>Letra</small>
+                                        <strong t-esc="state.facturacion.invoice.selectedJob.invoiceLetter || '-'"/>
+                                    </div>
+                                    <div>
+                                        <small>Items</small>
+                                        <strong t-esc="formatNumber(state.facturacion.invoice.selectedJob.itemsCount)"/>
+                                    </div>
+                                    <div>
+                                        <small>Total estimado</small>
+                                        <strong t-esc="formatCurrency(state.facturacion.invoice.selectedJob.invoiceTotal)"/>
+                                    </div>
+                                    <div>
+                                        <small>Cliente Xubio</small>
+                                        <strong t-esc="state.facturacion.invoice.selectedJob.xubioClienteId || '-'"/>
+                                    </div>
+                                </div>
+                                <div class="o_lqa_accounting__invoice_message">
+                                    <strong>Detalle</strong>
+                                    <span t-esc="state.facturacion.invoice.selectedJob.message || '-'"/>
+                                </div>
+                                <ul
+                                    t-if="state.facturacion.invoice.selectedJob.steps &amp;&amp; state.facturacion.invoice.selectedJob.steps.length"
+                                    class="o_lqa_accounting__invoice_steps"
+                                >
+                                    <li t-foreach="state.facturacion.invoice.selectedJob.steps" t-as="step" t-key="step.name || step.message">
+                                        <strong t-esc="humanize(step.name)"/>
+                                        <span t-att-class="'o_lqa_accounting__pill ' + stateClass(step.status)" t-esc="stateLabel(step.status)"/>
+                                        <small t-esc="step.message || '-'"/>
+                                    </li>
+                                </ul>
+                                <details class="o_lqa_accounting__disclosure">
+                                    <summary>
+                                        <i class="fa fa-chevron-right"/>
+                                        Ver respuesta completa
+                                    </summary>
+                                    <pre class="o_lqa_accounting__code is-invoice_payload" t-esc="formatJson(state.facturacion.invoice.selectedJob.payload)"/>
+                                </details>
+                        </div>
+                    </div>
                     </t>
 
                     <t t-if="state.facturacion.activeTab === 'queue'">

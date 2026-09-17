@@ -49,7 +49,6 @@
 .o_lqa_accounting__panel,
 .o_lqa_accounting__comprobante_hero,
 .o_lqa_accounting__comprobantes_topbar,
-.o_lqa_accounting__facturacion_topbar,
 .o_lqa_accounting__client_sections,
 .o_lqa_accounting__client_workspace {
     width: 100%;
@@ -954,7 +953,6 @@
     }
 }
 
-
 // ---------------------------------------------------------------------
 // isXubio: module landing
 // ---------------------------------------------------------------------
@@ -1126,68 +1124,6 @@
 
 .o_lqa_accounting__comprobante_hero.is-xubio_invoice_hero {
     margin-top: 4px;
-}
-
-.o_lqa_accounting__facturacion_topbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    margin-top: 4px;
-    padding: 16px 18px;
-    border: 1px solid var(--lqa-border);
-    border-radius: 14px;
-    background: var(--lqa-surface);
-    box-shadow: var(--lqa-shadow-card);
-
-    p,
-    h2,
-    span {
-        margin: 0;
-    }
-
-    p {
-        display: flex;
-        align-items: center;
-        gap: 7px;
-        color: var(--lqa-red-dark);
-        font-size: 10px;
-        font-weight: 800;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-
-        &::before {
-            display: inline-block;
-            width: 6px;
-            height: 6px;
-            border-radius: 999px;
-            background: var(--lqa-red);
-            content: "";
-        }
-    }
-
-    h2 {
-        margin-top: 5px;
-        color: var(--lqa-ink);
-        font-size: 24px;
-        font-weight: 800;
-        letter-spacing: -0.02em;
-        line-height: 1.15;
-    }
-
-    span {
-        display: block;
-        margin-top: 5px;
-        color: var(--lqa-muted-strong);
-        font-size: 13px;
-        line-height: 1.4;
-    }
-
-    .o_lqa_accounting__ghost {
-        min-height: 34px;
-        padding: 0 13px;
-        font-size: 12.5px;
-    }
 }
 
 .o_lqa_accounting__panel.is-xubio_invoice {
@@ -3163,7 +3099,6 @@
     .o_lqa_accounting__admin_overview,
     .o_lqa_accounting__comprobante_hero,
     .o_lqa_accounting__comprobantes_topbar,
-    .o_lqa_accounting__facturacion_topbar,
     .o_lqa_accounting__panel_head,
     .o_lqa_accounting__section_head,
     .o_lqa_accounting__export_head {
@@ -3240,5 +3175,95 @@
                 width: 100%;
             }
         }
+    }
+}
+
+// ---------------------------------------------------------------------
+// Detalle de una ejecucion de facturacion
+//
+// Antes vivia como un panel mas del flujo y se autoabria con el ultimo
+// registro al entrar a la pantalla. Ahora es un modal: solo aparece cuando
+// se elige una fila del historial o termina una corrida.
+// ---------------------------------------------------------------------
+
+.o_lqa_accounting__modal {
+    position: fixed;
+    z-index: 1060;
+    display: grid;
+    padding: 24px;
+    inset: 0;
+    animation: lqa-acc-modal-in 0.14s ease-out;
+    background: rgba(15, 18, 28, 0.46);
+    place-items: center;
+}
+
+@keyframes lqa-acc-modal-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.o_lqa_accounting__modal_panel {
+    position: relative;
+    width: 100%;
+    max-width: 780px;
+    max-height: 88vh;
+    padding: 4px 0 8px;
+    overflow-y: auto;
+    border-radius: var(--lqa-radius);
+    background: var(--lqa-surface);
+    box-shadow: 0 26px 64px rgba(12, 16, 26, 0.3);
+
+    > .o_lqa_accounting__panel_head {
+        padding-right: 52px;
+    }
+
+    // El contenido reusa el panel original, que ya trae su propio marco.
+    > * {
+        padding-right: 22px;
+        padding-left: 22px;
+    }
+}
+
+.o_lqa_accounting__modal_close {
+    position: absolute;
+    z-index: 1;
+    top: 14px;
+    right: 16px;
+    display: inline-flex;
+    width: 32px;
+    height: 32px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--lqa-border);
+    border-radius: 9px;
+    background: var(--lqa-surface);
+    color: var(--lqa-muted-strong);
+    cursor: pointer;
+    transition:
+        background-color 0.15s ease,
+        color 0.15s ease;
+
+    &:hover {
+        background: var(--lqa-chip);
+        color: var(--lqa-ink);
+    }
+}
+
+// La fila del historial abre el detalle: que se note que es clickeable.
+.o_lqa_accounting__table.is-invoice_jobs tbody tr {
+    transition: background-color 0.12s ease;
+
+    &:hover {
+        background: var(--lqa-chip);
+    }
+}
+
+@media (max-width: 767px) {
+    .o_lqa_accounting__modal {
+        padding: 12px;
+    }
+
+    .o_lqa_accounting__modal_panel {
+        max-height: 92vh;
     }
 }
