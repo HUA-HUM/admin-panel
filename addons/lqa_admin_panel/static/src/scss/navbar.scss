@@ -62,29 +62,29 @@ $lqa-sidebar-line: rgba(255, 255, 255, 0.08);
     align-items: center;
     justify-content: space-between;
     flex: 0 0 auto;
-    min-height: 56px;
-    padding: 10px 14px 10px 18px;
+    min-height: 66px;
+    padding: 14px 14px 12px 18px;
     border-bottom: 1px solid $lqa-sidebar-line;
-    background: rgba(0, 0, 0, 0.14);
 }
 
 .o_lqa_sidebar__brand-logo {
     display: flex;
     align-items: center;
-    padding: 4px 8px;
+    padding: 4px 6px;
     border-radius: 8px;
-    transition: background-color 0.15s ease;
+    opacity: 0.95;
+    transition: opacity 0.15s ease;
 
     img {
         display: block;
         width: auto;
-        height: 28px;
-        max-width: 116px;
+        height: 34px;
+        max-width: 140px;
         object-fit: contain;
     }
 
     &:hover {
-        background: $lqa-sidebar-hover;
+        opacity: 1;
     }
 }
 
@@ -407,12 +407,6 @@ $lqa-sidebar-line: rgba(255, 255, 255, 0.08);
         font-weight: 500;
     }
 
-    .o_lqa_sidebar__menu-link > i {
-        width: 13px;
-        color: #66778e;
-        text-align: center;
-    }
-
     .o_lqa_sidebar__favorite {
         width: 26px;
         min-width: 26px;
@@ -522,40 +516,6 @@ $lqa-sidebar-line: rgba(255, 255, 255, 0.08);
     }
 }
 
-.o_lqa_sidebar__brandline {
-    padding: 10px 6px 0;
-
-    span,
-    small {
-        display: block;
-    }
-
-    span {
-        display: flex;
-        align-items: center;
-        gap: 7px;
-        color: #f4f7fb;
-        font-size: 12px;
-        font-weight: 700;
-
-        &::before {
-            display: inline-block;
-            width: 6px;
-            height: 6px;
-            border-radius: 999px;
-            background: $lqa-sidebar-red;
-            content: "";
-        }
-    }
-
-    small {
-        margin-top: 3px;
-        margin-left: 13px;
-        color: #7f90a5;
-        font-size: 11px;
-    }
-}
-
 .o_web_client > .o_action_manager {
     margin-left: $lqa-sidebar-width;
 }
@@ -582,13 +542,12 @@ $lqa-sidebar-line: rgba(255, 255, 255, 0.08);
     }
 
     .o_lqa_sidebar__brand {
-        min-height: 62px;
-        padding: 9px 12px 9px 18px;
-        background: #fff;
+        min-height: 66px;
+        padding: 12px 12px 12px 18px;
 
         img {
-            width: 96px;
-            height: 38px;
+            width: auto;
+            height: 34px;
             object-fit: contain;
         }
 

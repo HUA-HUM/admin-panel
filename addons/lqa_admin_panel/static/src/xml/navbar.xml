@@ -31,7 +31,7 @@
                         title="Ir al inicio"
                     >
                         <img
-                            src="/lqa_admin_panel/static/src/img/tienda-logo-navbar.png?v=2"
+                            src="/lqa_admin_panel/static/src/img/tienda-logo-sidebar.png?v=1"
                             alt="Tienda Lo Quiero Aca"
                         />
                     </a>
@@ -219,25 +219,6 @@
                                                 class="o_lqa_sidebar__menu-link"
                                                 t-on-click="() => this.lqaSelectMenu(grandchild)"
                                             >
-                                                <i
-                                                    t-att-class="grandchild.name === 'Selecciones'
-                                                        ? 'fa fa-folder-open-o'
-                                                        : grandchild.name === 'Productos'
-                                                            ? 'fa fa-th'
-                                                            : grandchild.name === 'Todos los marketplaces'
-                                                                ? 'fa fa-th-large'
-                                                                : grandchild.name === 'Catalogo'
-                                                                    ? 'fa fa-th'
-                                                                : grandchild.name === 'Carpetas'
-                                                                    ? 'fa fa-folder-open-o'
-                                                                    : grandchild.name === 'Publicar'
-                                                                        ? 'fa fa-cloud-upload'
-                                                                : grandchild.name === 'Seguimiento'
-                                                                    ? 'fa fa-list-alt'
-                                                                    : grandchild.name === 'Acciones'
-                                                                        ? 'fa fa-trash-o'
-                                                            : 'fa fa-shopping-cart'"
-                                                />
                                                 <span t-esc="grandchild.name"/>
                                             </button>
                                             <button
@@ -273,13 +254,6 @@
                                                     class="o_lqa_sidebar__menu-link"
                                                     t-on-click="() => this.lqaSelectMenu(greatgrandchild)"
                                                 >
-                                                    <i
-                                                        t-att-class="greatgrandchild.name === 'Acciones'
-                                                            ? 'fa fa-trash-o'
-                                                            : greatgrandchild.name === 'Productos'
-                                                                ? 'fa fa-th'
-                                                                : 'fa fa-circle-o'"
-                                                    />
                                                     <span t-esc="greatgrandchild.name"/>
                                                 </button>
                                                 <button
@@ -312,35 +286,6 @@
                                         class="o_lqa_sidebar__menu-link"
                                         t-on-click="() => this.lqaSelectMenu(child)"
                                     >
-                                        <i
-                                            t-att-class="child.name === 'Dashboard'
-                                                ? 'fa fa-line-chart'
-                                                : child.name === 'Catalogo'
-                                                    ? 'fa fa-th'
-                                                        : child.name === 'Eliminador'
-                                                            ? 'fa fa-trash-o'
-                                                            : child.name === 'Usuarios'
-                                                                ? 'fa fa-users'
-                                                                : child.name === 'Pricing'
-                                                                    ? 'fa fa-usd'
-                                                                    : child.name === 'Central de Promociones'
-                                                                        ? 'fa fa-bullhorn'
-                                                                        : child.name === 'Marketplaces'
-                                                                            ? 'fa fa-shopping-cart'
-                                                                            : child.name === 'Orders'
-                                                                                ? 'fa fa-list-alt'
-                                                                                : child.name === 'Acciones masivas'
-                                                                                    ? 'fa fa-bolt'
-                                                                                    : child.name === 'Facturacion ARCA'
-                                                                                        ? 'fa fa-file-text-o'
-                                                                                    : child.name === 'Comprobantes'
-                                                                                        ? 'fa fa-file-text-o'
-                                                                                    : child.name === 'Xubio'
-                                                                                        ? 'fa fa-exchange'
-                                                                                    : child.name === 'Clientes'
-                                                                                        ? 'fa fa-users'
-                                                                                    : 'fa fa-circle-o'"
-                                        />
                                         <span t-esc="child.name"/>
                                     </button>
                                     <button
@@ -424,10 +369,6 @@
                         >
                             <i class="fa fa-sign-out"/>
                         </a>
-                    </div>
-                    <div class="o_lqa_sidebar__brandline">
-                        <span>Panel Interno</span>
-                        <small>Lo Quiero Aca</small>
                     </div>
                 </div>
             </aside>
