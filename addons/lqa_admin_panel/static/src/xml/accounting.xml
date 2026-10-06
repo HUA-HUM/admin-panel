@@ -1323,8 +1323,15 @@
                     <div class="o_lqa_accounting__nc_warning">
                         <i class="fa fa-exclamation-triangle"/>
                         <div>
-                            <strong>Una nota de credito no se deshace.</strong>
-                            <span>Sale con CAE de AFIP y solo se corrige con otro comprobante. Previsualiza siempre antes de emitir.</span>
+                            <strong>La nota se emite sin CAE: el CAE se pide a mano en Xubio.</strong>
+                            <span>Anular no se deshace, y el orden de lo que sigue importa. Previsualiza siempre antes de emitir.</span>
+                            <ol class="o_lqa_accounting__nc_steps">
+                                <li><span>1</span> Emitir la nota de credito aca</li>
+                                <li><span>2</span> Pedir el CAE en Xubio</li>
+                                <li><span>3</span> Recien ahi editar la ficha del cliente</li>
+                                <li><span>4</span> Volver a facturar el TLQV</li>
+                            </ol>
+                            <small>Si editas el cliente antes de pedir el CAE, AFIP rechaza la nota.</small>
                         </div>
                     </div>
 
@@ -1637,7 +1644,8 @@
                                     una por cada TLQV seleccionado.
                                 </p>
                                 <p class="is-warning">
-                                    Sale con CAE de AFIP y no se puede deshacer. Solo se corrige con otro comprobante.
+                                    Anular no se deshace. La nota sale sin CAE: despues hay que pedirlo
+                                    en Xubio, y recien entonces se puede editar el cliente.
                                 </p>
                                 <div class="o_lqa_accounting__nc_confirm_actions">
                                     <button type="button" class="o_lqa_accounting__ghost" t-on-click="closeNotaCreditoConfirm">Cancelar</button>
