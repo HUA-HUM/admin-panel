@@ -2,255 +2,260 @@
 <templates xml:space="preserve">
     <t t-name="lqa_admin_panel.RetailersOrders">
         <div class="o_lqa_orders">
-            <header class="o_lqa_orders__header">
-                <div>
-                    <p>Retailers / Frávega</p>
-                    <h1>Órdenes VTEX</h1>
-                    <span>Consulta temporal de órdenes y datos de facturación de Frávega.</span>
-                </div>
-                <div class="o_lqa_orders__actions">
-                    <span class="o_lqa_orders_live"><i class="fa fa-circle"/> Datos en vivo</span>
-                    <button type="button" class="btn btn-secondary" t-att-disabled="state.loading" t-on-click="() => this.loadOrders(state.orders.pagination.page)">
-                        <i t-att-class="state.loading ? 'fa fa-refresh fa-spin' : 'fa fa-refresh'"/>
-                        Actualizar
-                    </button>
-                </div>
-            </header>
-
-            <section class="o_lqa_orders_notice">
-                <i class="fa fa-info-circle"/>
-                <div>
-                    <strong>Vista temporal de Frávega</strong>
-                    <span>El listado se consulta directamente en Marketplace API. Abrí una orden para obtener su detalle de facturación.</span>
-                </div>
-            </section>
-
-            <section class="o_lqa_orders_summary">
-                <article class="o_lqa_orders_summary__main">
-                    <small>Total de órdenes</small>
-                    <strong t-esc="formatNumber(state.orders.pagination.total)"/>
-                    <span>Disponibles en VTEX</span>
-                </article>
-                <article>
-                    <small>Página actual</small>
-                    <strong><t t-esc="formatNumber(state.orders.pagination.page)"/>/<t t-esc="formatNumber(state.orders.pagination.totalPages)"/></strong>
-                    <span><t t-esc="formatNumber(state.orders.pagination.from)"/>–<t t-esc="formatNumber(state.orders.pagination.to)"/> visibles</span>
-                </article>
-                <article class="is-success">
-                    <small>Listas para preparar</small>
-                    <strong t-esc="formatNumber(pageStats.ready)"/>
-                    <span>En esta página</span>
-                </article>
-                <article class="is-danger">
-                    <small>Canceladas</small>
-                    <strong t-esc="formatNumber(pageStats.canceled)"/>
-                    <span>En esta página</span>
-                </article>
-                <article>
-                    <small>Valor visible</small>
-                    <strong class="is-money" t-esc="formatCurrency(pageStats.value)"/>
-                    <span>Suma de la página</span>
-                </article>
-            </section>
-
-            <section class="o_lqa_orders_list">
-                <div class="o_lqa_orders_list__head">
+            <section class="o_lqa_orders__filters">
+                <div class="o_lqa_orders__filters_head">
                     <div>
-                        <h2>Órdenes de Frávega</h2>
-                        <span>Seleccioná una fila para consultar facturación, cliente, pago y envío.</span>
+                        <h1>Ordenes</h1>
+                        <span>Ordenes de todos los marketplaces, desde Madre.</span>
                     </div>
-                    <label class="o_lqa_orders_search">
-                        <i class="fa fa-search"/>
-                        <input type="search" placeholder="Buscar en esta página" t-model="state.search"/>
+                    <div class="o_lqa_orders__filters_actions">
+                        <button
+                            type="button"
+                            class="o_lqa_orders__ghost"
+                            t-on-click="clearFilters"
+                            t-att-disabled="!hasFilters"
+                        >
+                            Limpiar
+                        </button>
+                        <button type="button" class="o_lqa_orders__primary" t-on-click="applyFilters">
+                            <i t-att-class="state.loading ? 'fa fa-spinner fa-spin' : 'fa fa-search'"/>
+                            <t t-esc="state.loading ? 'Buscando...' : 'Buscar'"/>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="o_lqa_orders__filters_grid">
+                    <label class="is-wide">
+                        <span>Buscar</span>
+                        <input
+                            type="text"
+                            placeholder="Orden, cliente, documento o TLQV"
+                            t-model="state.filters.search"
+                            t-on-keyup="(ev) => ev.key === 'Enter' and this.applyFilters()"
+                        />
+                    </label>
+                    <label>
+                        <span>Marketplace</span>
+                        <select t-model="state.filters.marketplace">
+                            <option value="">Todos</option>
+                            <option
+                                t-foreach="state.options.marketplaces"
+                                t-as="code"
+                                t-key="code"
+                                t-att-value="code"
+                                t-esc="marketplaceLabel(code)"
+                            />
+                        </select>
+                    </label>
+                    <label>
+                        <span>Estado</span>
+                        <select t-model="state.filters.persistenceStatus">
+                            <option value="">Todos</option>
+                            <option
+                                t-foreach="state.options.statuses"
+                                t-as="code"
+                                t-key="code"
+                                t-att-value="code"
+                                t-esc="statusLabel(code)"
+                            />
+                        </select>
+                    </label>
+                    <label>
+                        <span>Desde</span>
+                        <input type="date" t-model="state.filters.from"/>
+                    </label>
+                    <label>
+                        <span>Hasta</span>
+                        <input type="date" t-model="state.filters.to"/>
+                    </label>
+                    <label>
+                        <span>Por pagina</span>
+                        <select t-model.number="state.filters.limit">
+                            <option
+                                t-foreach="state.options.pageSizes"
+                                t-as="size"
+                                t-key="size"
+                                t-att-value="size"
+                                t-esc="size"
+                            />
+                        </select>
                     </label>
                 </div>
+            </section>
 
-                <div t-if="state.loading" class="o_lqa_orders_loading">
-                    <span/>
-                    Consultando órdenes de Frávega...
+            <section class="o_lqa_orders__results">
+                <div class="o_lqa_orders__results_head">
+                    <div>
+                        <strong t-esc="formatNumber(state.pagination.total or 0)"/>
+                        <span>ordenes encontradas</span>
+                    </div>
+                    <div class="o_lqa_orders__pager" t-if="state.pagination.total">
+                        <span>
+                            <t t-esc="formatNumber(state.pagination.from)"/>–<t t-esc="formatNumber(state.pagination.to)"/>
+                            de <t t-esc="formatNumber(state.pagination.total)"/>
+                        </span>
+                        <button
+                            type="button"
+                            t-on-click="previousPage"
+                            t-att-disabled="!state.pagination.hasPrevious or state.loading"
+                        >
+                            <i class="fa fa-chevron-left"/>
+                        </button>
+                        <button
+                            type="button"
+                            t-on-click="nextPage"
+                            t-att-disabled="!state.pagination.hasNext or state.loading"
+                        >
+                            <i class="fa fa-chevron-right"/>
+                        </button>
+                    </div>
                 </div>
-                <div t-elif="!visibleOrders.length" class="o_lqa_orders_empty">
-                    No hay órdenes que coincidan con la búsqueda.
+
+                <div t-if="state.loading" class="o_lqa_orders__empty">
+                    <i class="fa fa-circle-o-notch fa-spin"/>
+                    <strong>Consultando Madre</strong>
                 </div>
-                <div t-else="" class="o_lqa_orders_table_wrap">
-                    <table class="o_lqa_orders_table">
+
+                <div t-elif="!state.items.length" class="o_lqa_orders__empty">
+                    <i class="fa fa-inbox"/>
+                    <strong>Sin ordenes</strong>
+                    <span>Probá ampliar el rango de fechas o limpiar los filtros.</span>
+                </div>
+
+                <div t-else="" class="o_lqa_orders__table_wrap">
+                    <table class="o_lqa_orders__table">
                         <thead>
                             <tr>
+                                <th>Marketplace</th>
                                 <th>Orden</th>
-                                <th>Estado</th>
-                                <th>Cliente</th>
                                 <th>Fecha</th>
-                                <th>Unidades</th>
-                                <th>Total</th>
-                                <th>Entrega estimada</th>
-                                <th/>
+                                <th>Cliente</th>
+                                <th class="is-right">Importe</th>
+                                <th class="is-center">Items</th>
+                                <th>Estado</th>
+                                <th>TLQV</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr t-foreach="visibleOrders" t-as="order" t-key="order.key" t-on-click="() => this.openOrder(order)">
+                            <tr
+                                t-foreach="state.items"
+                                t-as="order"
+                                t-key="order.uniqueKey"
+                                t-on-click="() => this.openOrder(order)"
+                            >
                                 <td>
-                                    <strong t-esc="order.id"/>
-                                    <small>Secuencia <t t-esc="order.sequence || '-'"/></small>
+                                    <span t-att-class="'o_lqa_orders__mk is-' + order.marketplace"
+                                        t-esc="marketplaceLabel(order.marketplace)"/>
                                 </td>
-                                <td><span t-att-class="'o_lqa_orders_badge ' + statusClass(order.status)" t-esc="statusLabel(order.status, order.statusDescription)"/></td>
-                                <td t-esc="order.clientName || '-'"/>
-                                <td t-esc="formatDateTime(order.createdAt)"/>
-                                <td t-esc="formatNumber(order.totalItems)"/>
-                                <td><strong t-esc="formatCurrency(order.total)"/></td>
-                                <td t-esc="formatDateTime(order.shippingEstimatedAt)"/>
-                                <td><button type="button" class="o_lqa_orders_open" title="Ver detalle"><i class="fa fa-chevron-right"/></button></td>
+                                <td>
+                                    <strong t-esc="order.externalOrderId || '-'"/>
+                                    <small t-if="order.externalSuborderId" t-esc="order.externalSuborderId"/>
+                                </td>
+                                <td t-esc="formatDateTime(order.purchaseDate)"/>
+                                <td>
+                                    <strong t-esc="order.customerName || '-'"/>
+                                    <small t-if="order.shippingProvince" t-esc="order.shippingProvince"/>
+                                </td>
+                                <td class="is-right">
+                                    <strong t-esc="formatCurrency(order.amountTotal, order.currency)"/>
+                                </td>
+                                <td class="is-center" t-esc="formatNumber(order.itemsQuantity)"/>
+                                <td>
+                                    <span t-att-class="'o_lqa_orders__pill ' + statusClass(order.persistenceStatus)"
+                                        t-esc="statusLabel(order.persistenceStatus)"/>
+                                    <small t-if="order.status" t-esc="order.status"/>
+                                </td>
+                                <td>
+                                    <strong t-if="order.floxuCode" t-esc="order.floxuCode"/>
+                                    <span t-else="" class="o_lqa_orders__muted">-</span>
+                                </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
-
-                <footer class="o_lqa_orders_pagination">
-                    <span>Página <strong t-esc="state.orders.pagination.page"/> de <strong t-esc="state.orders.pagination.totalPages"/></span>
-                    <div>
-                        <button type="button" class="btn btn-secondary" t-att-disabled="state.loading || !state.orders.pagination.hasPrevious" t-on-click="previousPage"><i class="fa fa-chevron-left"/></button>
-                        <button type="button" t-foreach="visiblePages" t-as="page" t-key="page" t-att-class="page === state.orders.pagination.page ? 'is-active' : ''" t-on-click="() => this.loadOrders(page)" t-esc="page"/>
-                        <button type="button" class="btn btn-secondary" t-att-disabled="state.loading || !state.orders.pagination.hasNext" t-on-click="nextPage"><i class="fa fa-chevron-right"/></button>
-                    </div>
-                </footer>
             </section>
 
-            <div t-if="state.selectedOrderId" class="o_lqa_order_drawer_backdrop">
-                <aside class="o_lqa_order_drawer">
-                    <header class="o_lqa_order_drawer__head">
+            <div t-if="state.selected" class="o_lqa_orders__modal" t-on-click="closeOrder">
+                <div class="o_lqa_orders__modal_panel" t-on-click.stop="() => {}">
+                    <header>
                         <div>
-                            <p>Detalle de la orden</p>
-                            <h2 t-esc="state.selectedOrderId"/>
+                            <span t-att-class="'o_lqa_orders__mk is-' + state.selected.marketplace"
+                                t-esc="marketplaceLabel(state.selected.marketplace)"/>
+                            <h2 t-esc="state.selected.externalOrderId || state.selected.uniqueKey"/>
+                            <small t-if="state.selected.externalSuborderId" t-esc="state.selected.externalSuborderId"/>
                         </div>
-                        <button type="button" title="Cerrar" t-on-click="closeOrder"><i class="fa fa-times"/></button>
+                        <div class="o_lqa_orders__modal_head_right">
+                            <span t-att-class="'o_lqa_orders__pill ' + statusClass(state.selected.persistenceStatus)"
+                                t-esc="statusLabel(state.selected.persistenceStatus)"/>
+                            <button type="button" t-on-click="closeOrder" aria-label="Cerrar">
+                                <i class="fa fa-times"/>
+                            </button>
+                        </div>
                     </header>
 
-                    <div t-if="state.loadingDetail" class="o_lqa_order_drawer__loading">
-                        <span/>
-                        <strong>Consultando la orden...</strong>
-                        <small>Obteniendo productos, cliente, pago y logística.</small>
+                    <div t-if="state.loadingDetail" class="o_lqa_orders__modal_loading">
+                        <i class="fa fa-circle-o-notch fa-spin"/>
+                        Cargando detalle
                     </div>
-                    <div t-elif="state.detailError" class="o_lqa_order_drawer__error">
-                        <i class="fa fa-exclamation-triangle"/>
-                        <strong>No se pudo cargar el detalle</strong>
-                        <span t-esc="state.detailError"/>
+
+                    <div class="o_lqa_orders__metrics">
+                        <div>
+                            <small>Importe</small>
+                            <strong t-esc="formatCurrency(state.selected.amountTotal, state.selected.currency)"/>
+                        </div>
+                        <div>
+                            <small>Items</small>
+                            <strong t-esc="formatNumber(state.selected.itemsQuantity)"/>
+                        </div>
+                        <div>
+                            <small>Compra</small>
+                            <strong t-esc="formatDateTime(state.selected.purchaseDate)"/>
+                        </div>
+                        <div>
+                            <small>Entrega estimada</small>
+                            <strong t-esc="formatDateTime(state.selected.estimatedDeliveryDate)"/>
+                        </div>
                     </div>
-                    <div t-elif="state.detail" class="o_lqa_order_drawer__body">
-                        <section class="o_lqa_order_hero">
-                            <div class="o_lqa_order_hero__top">
-                                <span t-att-class="'o_lqa_orders_badge ' + statusClass(state.detail.status)" t-esc="statusLabel(state.detail.status, state.detail.statusDescription)"/>
-                                <span class="o_lqa_order_hero__seq">Secuencia <t t-esc="state.detail.sequence || '-'"/></span>
-                            </div>
-                            <strong class="o_lqa_order_hero__total" t-esc="formatCurrency(state.detail.total)"/>
-                            <div class="o_lqa_order_hero__meta">
-                                <span><i class="fa fa-calendar-o"/> Creada <t t-esc="formatDateTime(state.detail.createdAt)"/></span>
-                                <span t-if="state.detail.updatedAt"><i class="fa fa-refresh"/> Actualizada <t t-esc="formatDateTime(state.detail.updatedAt)"/></span>
-                            </div>
-                        </section>
 
-                        <section t-if="state.detail.items.length" class="o_lqa_order_block">
-                            <div class="o_lqa_order_block__title">
-                                <i class="fa fa-cube"/><h3>Productos</h3>
-                                <span class="o_lqa_order_block__count" t-esc="state.detail.items.length"/>
-                            </div>
-                            <article t-foreach="state.detail.items" t-as="item" t-key="item.id || item_index" class="o_lqa_order_item">
-                                <img t-if="item.imageUrl" t-att-src="itemImage(item.imageUrl)" t-att-alt="item.name" loading="lazy"/>
-                                <div class="o_lqa_order_item__body">
-                                    <div class="o_lqa_order_item__head">
-                                        <div class="o_lqa_order_item__name">
-                                            <strong t-esc="item.name"/>
-                                            <small t-if="item.brand" t-esc="item.brand"/>
-                                        </div>
-                                        <div class="o_lqa_order_item__money">
-                                            <strong t-esc="formatCurrency(item.total)"/>
-                                            <small><t t-esc="formatNumber(item.quantity)"/> x <t t-esc="formatCurrency(item.unitPrice)"/></small>
-                                        </div>
-                                    </div>
-                                    <dl t-if="item.attributes.length" class="o_lqa_order_attrs">
-                                        <div t-foreach="item.attributes" t-as="field" t-key="field.label">
-                                            <dt t-esc="field.label"/>
-                                            <dd t-esc="formatField(field)"/>
-                                        </div>
-                                    </dl>
-                                </div>
-                            </article>
-                        </section>
-
-                        <section t-if="state.detail.totals.length" class="o_lqa_order_block">
-                            <div class="o_lqa_order_block__title"><i class="fa fa-calculator"/><h3>Totales</h3></div>
-                            <ul class="o_lqa_order_totals">
-                                <li t-foreach="state.detail.totals" t-as="total" t-key="total.label">
-                                    <span t-esc="total.label"/>
-                                    <strong t-esc="formatCurrency(total.value)"/>
-                                </li>
-                                <li class="is-grand">
-                                    <span>Total de la orden</span>
-                                    <strong t-esc="formatCurrency(state.detail.total)"/>
-                                </li>
-                            </ul>
-                        </section>
-
-                        <section t-if="state.detail.payments.length" class="o_lqa_order_block">
-                            <div class="o_lqa_order_block__title"><i class="fa fa-credit-card"/><h3>Pago</h3></div>
-                            <article t-foreach="state.detail.payments" t-as="payment" t-key="payment_index" class="o_lqa_order_card">
-                                <div class="o_lqa_order_card__head">
-                                    <div>
-                                        <strong t-esc="payment.method"/>
-                                        <small t-if="payment.installments"><t t-esc="formatNumber(payment.installments)"/> cuotas</small>
-                                    </div>
-                                    <span t-esc="formatCurrency(payment.value)"/>
-                                </div>
-                                <dl t-if="payment.attributes.length" class="o_lqa_order_attrs">
-                                    <div t-foreach="payment.attributes" t-as="field" t-key="field.label">
-                                        <dt t-esc="field.label"/>
-                                        <dd t-esc="formatField(field)"/>
-                                    </div>
-                                </dl>
-                            </article>
-                        </section>
-
-                        <section t-if="state.detail.logistics.length" class="o_lqa_order_block">
-                            <div class="o_lqa_order_block__title"><i class="fa fa-truck"/><h3>Envío</h3></div>
-                            <article t-foreach="state.detail.logistics" t-as="logistic" t-key="logistic_index" class="o_lqa_order_card">
-                                <div class="o_lqa_order_card__head">
-                                    <div>
-                                        <strong t-esc="logistic.service"/>
-                                        <small t-if="logistic.company" t-esc="logistic.company"/>
-                                    </div>
-                                    <span t-esc="formatCurrency(logistic.price)"/>
-                                </div>
-                                <dl t-if="logistic.attributes.length" class="o_lqa_order_attrs">
-                                    <div t-foreach="logistic.attributes" t-as="field" t-key="field.label">
-                                        <dt t-esc="field.label"/>
-                                        <dd t-esc="formatField(field)"/>
-                                    </div>
-                                </dl>
-                            </article>
-                        </section>
-
-                        <section t-foreach="state.detail.sections" t-as="block" t-key="block.key" class="o_lqa_order_block">
-                            <div class="o_lqa_order_block__title">
-                                <i t-attf-class="fa {{block.icon}}"/><h3 t-esc="block.title"/>
-                            </div>
-                            <dl class="o_lqa_order_detail_grid">
-                                <div t-foreach="block.fields" t-as="field" t-key="field.label">
-                                    <dt t-esc="field.label"/>
-                                    <dd>
-                                        <a t-if="fieldHref(field)" t-att-href="fieldHref(field)" t-esc="formatField(field)"/>
-                                        <t t-else="" t-esc="formatField(field)"/>
-                                    </dd>
-                                </div>
+                    <div class="o_lqa_orders__detail_grid">
+                        <section>
+                            <h3>Cliente</h3>
+                            <dl>
+                                <dt>Nombre</dt><dd t-esc="state.selected.customerName || '-'"/>
+                                <dt>Documento</dt><dd t-esc="state.selected.customerDocument || '-'"/>
+                                <dt>Telefono</dt><dd t-esc="state.selected.customerPhone || '-'"/>
+                                <dt>Email</dt><dd t-esc="state.selected.customerEmail || '-'"/>
                             </dl>
                         </section>
-
-                        <section class="o_lqa_order_detail_raw">
-                            <button type="button" t-on-click="() => this.state.showRaw = !this.state.showRaw">
-                                <span><i class="fa fa-code"/> Respuesta técnica completa</span>
-                                <i t-att-class="state.showRaw ? 'fa fa-chevron-up' : 'fa fa-chevron-down'"/>
-                            </button>
-                            <pre t-if="state.showRaw" t-esc="state.detail.rawJson"/>
+                        <section>
+                            <h3>Envio</h3>
+                            <dl>
+                                <dt>Direccion</dt><dd t-esc="shippingLine || '-'"/>
+                                <dt>Estado envio</dt><dd t-esc="state.selected.deliveryStatus || '-'"/>
+                                <dt>Estado marketplace</dt><dd t-esc="state.selected.status || '-'"/>
+                            </dl>
+                        </section>
+                        <section>
+                            <h3>Integraciones</h3>
+                            <dl>
+                                <dt>TLQV (Floxu)</dt><dd t-esc="state.selected.floxuCode || '-'"/>
+                                <dt>Notif. Floxu</dt><dd t-esc="state.selected.notificationFloxu || '-'"/>
+                                <dt>Notif. Azure</dt><dd t-esc="state.selected.notificationAzure || '-'"/>
+                                <dt>VBI venta</dt><dd t-esc="state.selected.vbiNroVenta || '-'"/>
+                            </dl>
                         </section>
                     </div>
-                </aside>
+
+                    <div t-if="state.selected.lastError" class="o_lqa_orders__error">
+                        <strong>Ultimo error</strong>
+                        <span t-esc="state.selected.lastError"/>
+                    </div>
+
+                    <details t-if="selectedPayload" class="o_lqa_orders__disclosure">
+                        <summary>Ver payload</summary>
+                        <pre t-esc="selectedPayload"/>
+                    </details>
+                </div>
             </div>
         </div>
     </t>

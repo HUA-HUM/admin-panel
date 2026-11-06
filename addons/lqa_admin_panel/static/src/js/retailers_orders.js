@@ -1,213 +1,209 @@
 /** @odoo-module **/
 
-import { Component, onMounted, useState } from "@odoo/owl";
+import { Component, onWillStart, useState } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 
-const emptyOrders = () => ({
-    items: [],
-    pagination: {
-        page: 1,
-        perPage: 15,
-        total: 0,
-        totalPages: 1,
-        from: 0,
-        to: 0,
-        hasPrevious: false,
-        hasNext: false,
-    },
+const MARKETPLACE_LABELS = {
+    fravega: "Frávega",
+    megatone: "Megatone",
+    oncity: "OnCity",
+    mercadolibre: "MercadoLibre",
+};
+
+const STATUS_LABELS = {
+    PENDING: "Pendiente",
+    PROCESSED_FLOXU: "Procesada en Floxu",
+    COMPLETED: "Completada",
+    CANCELLED: "Cancelada",
+    FAILED: "Fallida",
+};
+
+const STATUS_CLASSES = {
+    PENDING: "is-amber",
+    PROCESSED_FLOXU: "is-blue",
+    COMPLETED: "is-green",
+    CANCELLED: "is-muted",
+    FAILED: "is-red",
+};
+
+const emptyFilters = () => ({
+    marketplace: "",
+    persistenceStatus: "",
+    from: "",
+    to: "",
+    search: "",
+    limit: 50,
+    offset: 0,
 });
 
 export class LqaRetailersOrders extends Component {
     static template = "lqa_admin_panel.RetailersOrders";
 
     setup() {
-        this.notification = useService("notification");
         this.orm = useService("orm");
+        this.notification = useService("notification");
         this.state = useState({
             loading: true,
-            orders: emptyOrders(),
-            search: "",
-            selectedOrderId: "",
-            detail: null,
+            items: [],
+            pagination: {},
+            filters: emptyFilters(),
+            options: { marketplaces: [], statuses: [], pageSizes: [50] },
+            selected: null,
             loadingDetail: false,
-            detailError: "",
-            showRaw: false,
         });
-        onMounted(() => this.loadOrders(1));
+
+        onWillStart(async () => {
+            await this.loadOptions();
+            await this.search(0);
+        });
     }
 
-    get visibleOrders() {
-        const query = String(this.state.search || "").trim().toLowerCase();
-        if (!query) {
-            return this.state.orders.items || [];
-        }
-        return (this.state.orders.items || []).filter((order) =>
-            [order.id, order.sequence, order.clientName, order.status]
-                .some((value) => String(value || "").toLowerCase().includes(query))
-        );
-    }
-
-    get pageStats() {
-        const items = this.state.orders.items || [];
-        return {
-            ready: items.filter((item) => item.status === "ready-for-handling").length,
-            canceled: items.filter((item) => ["canceled", "cancelled"].includes(item.status)).length,
-            value: items.reduce((total, item) => total + (Number(item.total) || 0), 0),
-        };
-    }
-
-    get visiblePages() {
-        const pagination = this.state.orders.pagination;
-        const start = Math.max(pagination.page - 2, 1);
-        const end = Math.min(start + 4, pagination.totalPages);
-        const adjustedStart = Math.max(end - 4, 1);
-        return Array.from(
-            { length: Math.max(end - adjustedStart + 1, 0) },
-            (_, index) => adjustedStart + index
-        );
-    }
-
-    async loadOrders(page = 1) {
-        this.state.loading = true;
+    async loadOptions() {
         try {
-            this.state.orders = await this.orm.call(
+            this.state.options = await this.orm.call(
                 "lqa.retailers.service",
-                "get_fravega_orders",
-                [Number(page) || 1]
+                "get_retailer_order_options",
+                []
             );
+        } catch {
+            // Si no llegan, los filtros quedan con el valor por defecto.
+        }
+    }
+
+    async search(offset = 0) {
+        this.state.loading = true;
+        this.state.filters.offset = Math.max(offset, 0);
+        try {
+            const result = await this.orm.call(
+                "lqa.retailers.service",
+                "get_retailer_orders",
+                [{ ...this.state.filters }]
+            );
+            this.state.items = result.items || [];
+            this.state.pagination = result.pagination || {};
         } catch (error) {
-            this.state.orders = emptyOrders();
-            this.notifyError(error, "No se pudieron cargar las órdenes de Frávega.");
+            this.state.items = [];
+            this.state.pagination = {};
+            this.notifyError(error, "No se pudieron cargar las órdenes.");
         } finally {
             this.state.loading = false;
         }
     }
 
-    async openOrder(order) {
-        if (!order?.id) {
-            return;
+    applyFilters() {
+        // Cualquier cambio de filtro vuelve a la primera página: mantener el
+        // offset mostraria una pagina vacia de un resultado mas chico.
+        this.search(0);
+    }
+
+    clearFilters() {
+        this.state.filters = emptyFilters();
+        this.search(0);
+    }
+
+    get hasFilters() {
+        const f = this.state.filters;
+        return Boolean(
+            f.marketplace || f.persistenceStatus || f.from || f.to || f.search
+        );
+    }
+
+    nextPage() {
+        if (this.state.pagination.hasNext) {
+            this.search(this.state.pagination.nextOffset);
         }
-        this.state.selectedOrderId = order.id;
-        this.state.detail = null;
-        this.state.detailError = "";
-        this.state.showRaw = false;
+    }
+
+    previousPage() {
+        if (this.state.pagination.hasPrevious) {
+            this.search(this.state.pagination.previousOffset);
+        }
+    }
+
+    async openOrder(order) {
+        this.state.selected = order;
         this.state.loadingDetail = true;
         try {
-            this.state.detail = await this.orm.call(
+            this.state.selected = await this.orm.call(
                 "lqa.retailers.service",
-                "get_fravega_order_detail",
-                [order.id]
+                "get_retailer_order_detail",
+                [order.uniqueKey]
             );
         } catch (error) {
-            this.state.detailError =
-                error?.data?.message || "No se pudo obtener el detalle de la orden.";
+            // El detalle completo fallo, pero la fila ya trae lo esencial.
+            this.notifyError(error, "No se pudo cargar el detalle completo.");
         } finally {
             this.state.loadingDetail = false;
         }
     }
 
     closeOrder() {
-        this.state.selectedOrderId = "";
-        this.state.detail = null;
-        this.state.detailError = "";
-        this.state.showRaw = false;
+        this.state.selected = null;
     }
 
-    previousPage() {
-        const pagination = this.state.orders.pagination;
-        if (pagination.hasPrevious) {
-            this.loadOrders(pagination.page - 1);
-        }
+    marketplaceLabel(code) {
+        return MARKETPLACE_LABELS[code] || this.humanize(code);
     }
 
-    nextPage() {
-        const pagination = this.state.orders.pagination;
-        if (pagination.hasNext) {
-            this.loadOrders(pagination.page + 1);
-        }
+    statusLabel(status) {
+        return STATUS_LABELS[status] || this.humanize(status);
     }
 
-    formatField(field) {
-        if (!field) {
-            return "-";
+    statusClass(status) {
+        return STATUS_CLASSES[status] || "is-muted";
+    }
+
+    get selectedPayload() {
+        const sel = this.state.selected;
+        if (!sel) {
+            return "";
         }
-        switch (field.type) {
-            case "money":
-                return this.formatCurrency(field.value);
-            case "datetime":
-                return this.formatDateTime(field.value);
-            case "number":
-                return this.formatNumber(field.value);
-            case "bool":
-                return field.value ? "Sí" : "No";
-            default:
-                return String(field.value ?? "");
+        const raw = sel.normalizedPayload || sel.sourcePayload;
+        if (!raw) {
+            return "";
+        }
+        try {
+            return JSON.stringify(
+                typeof raw === "string" ? JSON.parse(raw) : raw,
+                null,
+                2
+            );
+        } catch {
+            return String(raw);
         }
     }
 
-    fieldHref(field) {
-        if (field?.type === "email" && field.value) {
-            return `mailto:${field.value}`;
+    get shippingLine() {
+        const sel = this.state.selected;
+        if (!sel) {
+            return "";
         }
-        if (field?.type === "phone" && field.value) {
-            return `tel:${String(field.value).replace(/[^+\d]/g, "")}`;
-        }
-        return "";
-    }
-
-    itemImage(url) {
-        // VTEX sirve el thumbnail de 55px; pedimos la variante mas grande.
-        return url ? String(url).replace(/(\/ids\/\d+)-\d+-\d+\//, "$1-160-160/") : "";
-    }
-
-    statusLabel(value, description = "") {
-        const labels = {
-            "ready-for-handling": "Lista para preparar",
-            "waiting-ffmt-authorization": "Esperando autorización",
-            canceled: "Cancelada",
-            cancelled: "Cancelada",
-            invoiced: "Facturada",
-            handling: "En preparación",
-        };
-        return labels[String(value || "").toLowerCase()] || description || this.humanize(value);
-    }
-
-    statusClass(value) {
-        const normalized = String(value || "").toLowerCase();
-        if (["ready-for-handling", "invoiced", "completed"].includes(normalized)) {
-            return "is-green";
-        }
-        if (["canceled", "cancelled", "error", "failed"].includes(normalized)) {
-            return "is-red";
-        }
-        if (["waiting-ffmt-authorization", "handling", "pending"].includes(normalized)) {
-            return "is-blue";
-        }
-        return "is-gray";
+        return [sel.shippingAddress, sel.shippingCity, sel.shippingProvince, sel.shippingZipCode]
+            .filter(Boolean)
+            .join(", ");
     }
 
     humanize(value) {
-        const cleanValue = String(value || "").trim();
-        return cleanValue
-            ? cleanValue.toLowerCase().replace(/[_-]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase())
-            : "Sin dato";
+        const text = String(value || "").replace(/[_-]+/g, " ").trim();
+        return text ? text.charAt(0).toUpperCase() + text.slice(1).toLowerCase() : "-";
     }
 
     formatNumber(value) {
-        return new Intl.NumberFormat("es-AR").format(Number(value) || 0);
+        return new Intl.NumberFormat("es-AR").format(Number(value || 0));
     }
 
-    formatCurrency(value) {
-        const numericValue = Number(value);
-        if (!Number.isFinite(numericValue)) {
-            return "-";
+    formatCurrency(value, currency = "ARS") {
+        const amount = Number(value || 0);
+        try {
+            return new Intl.NumberFormat("es-AR", {
+                style: "currency",
+                currency: currency || "ARS",
+                maximumFractionDigits: 0,
+            }).format(amount);
+        } catch {
+            return `$ ${this.formatNumber(amount)}`;
         }
-        return new Intl.NumberFormat("es-AR", {
-            style: "currency",
-            currency: "ARS",
-            maximumFractionDigits: 0,
-        }).format(numericValue);
     }
 
     formatDateTime(value) {
@@ -216,20 +212,24 @@ export class LqaRetailersOrders extends Component {
         }
         const date = new Date(value);
         if (Number.isNaN(date.getTime())) {
-            return value;
+            return String(value);
         }
-        return new Intl.DateTimeFormat("es-AR", {
+        return date.toLocaleString("es-AR", {
             day: "2-digit",
             month: "2-digit",
             year: "numeric",
             hour: "2-digit",
             minute: "2-digit",
-        }).format(date);
+        });
     }
 
     notifyError(error, fallback) {
-        this.notification.add(error?.data?.message || fallback, { type: "danger" });
+        this.notification.add(error?.data?.message || error?.message || fallback, {
+            type: "danger",
+        });
     }
 }
 
-registry.category("actions").add("lqa_admin_panel.retailers_orders", LqaRetailersOrders);
+registry
+    .category("actions")
+    .add("lqa_admin_panel.retailers_orders", LqaRetailersOrders);

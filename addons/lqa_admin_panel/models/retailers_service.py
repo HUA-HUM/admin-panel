@@ -405,6 +405,158 @@ class LqaRetailersService(models.AbstractModel):
         )
         return self._normalize_orders_response(response, mode)
 
+    # ------------------------------------------------------------------
+    # Ordenes de retailers (Madre)
+    #
+    # Reemplazan la vista que leia VTEX de Fravega: esta es multi-marketplace
+    # y trae los filtros reales que necesita operaciones.
+    # ------------------------------------------------------------------
+
+    ORDER_MARKETPLACES = ["fravega", "megatone", "oncity", "mercadolibre"]
+    ORDER_PERSISTENCE_STATUSES = [
+        "PENDING",
+        "PROCESSED_FLOXU",
+        "COMPLETED",
+        "CANCELLED",
+        "FAILED",
+    ]
+    ORDER_PAGE_SIZES = [25, 50, 100, 200]
+
+    @api.model
+    def get_retailer_orders(self, filters=None):
+        self._check_access()
+        filters = filters if isinstance(filters, dict) else {}
+        params = {}
+
+        marketplace = self._clean(filters.get("marketplace")).lower()
+        if marketplace:
+            if marketplace not in self.ORDER_MARKETPLACES:
+                raise UserError(_("Marketplace no valido: %s") % marketplace)
+            params["marketplace"] = marketplace
+
+        status = self._clean(filters.get("persistenceStatus")).upper()
+        if status:
+            if status not in self.ORDER_PERSISTENCE_STATUSES:
+                raise UserError(_("Estado de persistencia no valido: %s") % status)
+            params["persistence_status"] = status
+
+        for key, target in (("from", "from"), ("to", "to")):
+            value = self._clean(filters.get(key))
+            if value:
+                params[target] = value
+
+        search = self._clean(filters.get("search"))
+        if search:
+            params["search"] = search
+
+        limit = self._as_int(filters.get("limit"), 50)
+        params["limit"] = limit if limit in self.ORDER_PAGE_SIZES else 50
+        params["offset"] = max(self._as_int(filters.get("offset"), 0), 0)
+
+        response = self.env["lqa.api.client"].request_absolute_json(
+            "GET",
+            self._join_url(self._madre_base_url(), "/api/orders"),
+            params=params,
+            headers=self._madre_internal_headers(),
+            timeout=self._timeout(),
+        )
+        payload = response if isinstance(response, dict) else {}
+        items = [
+            self._normalize_retailer_order(item)
+            for item in self._response_items(payload.get("items"))
+        ]
+        total = self._as_int(payload.get("total"), len(items))
+        offset = self._as_int(payload.get("offset"), params["offset"])
+        page_size = max(self._as_int(payload.get("limit"), params["limit"]), 1)
+        return {
+            "items": items,
+            "filters": params,
+            "pagination": {
+                "total": total,
+                "count": self._as_int(payload.get("count"), len(items)),
+                "limit": page_size,
+                "offset": offset,
+                "hasNext": bool(payload.get("hasNext")),
+                "nextOffset": self._as_int(
+                    payload.get("nextOffset"), offset + page_size
+                ),
+                "hasPrevious": offset > 0,
+                "previousOffset": max(offset - page_size, 0),
+                "from": offset + 1 if items else 0,
+                "to": offset + len(items),
+                "page": (offset // page_size) + 1,
+                "totalPages": max(-(-total // page_size), 1) if total else 1,
+            },
+        }
+
+    @api.model
+    def get_retailer_order_detail(self, unique_key):
+        self._check_access()
+        unique_key = self._clean(unique_key)
+        if not unique_key:
+            raise UserError(_("Falta la clave de la orden."))
+        response = self.env["lqa.api.client"].request_absolute_json(
+            "GET",
+            self._join_url(
+                self._madre_base_url(),
+                "/api/orders/%s" % quote(unique_key, safe=""),
+            ),
+            headers=self._madre_internal_headers(),
+            timeout=self._timeout(),
+        )
+        payload = response if isinstance(response, dict) else {}
+        # El detalle puede venir envuelto o plano segun el endpoint.
+        order = payload.get("order") if isinstance(payload.get("order"), dict) else payload
+        detail = self._normalize_retailer_order(order)
+        detail["sourcePayload"] = order.get("source_payload")
+        detail["normalizedPayload"] = order.get("normalized_payload")
+        return detail
+
+    @api.model
+    def get_retailer_order_options(self):
+        """Opciones de los filtros, tomadas del contrato de Madre."""
+        self._check_access()
+        return {
+            "marketplaces": self.ORDER_MARKETPLACES,
+            "statuses": self.ORDER_PERSISTENCE_STATUSES,
+            "pageSizes": self.ORDER_PAGE_SIZES,
+        }
+
+    def _normalize_retailer_order(self, order):
+        order = order if isinstance(order, dict) else {}
+        amount = self._as_float(order.get("amount_total"), 0.0)
+        return {
+            "uniqueKey": self._clean(order.get("unique_key")),
+            "marketplace": self._clean(order.get("marketplace")).lower(),
+            "externalOrderId": self._clean(order.get("external_order_id")),
+            "externalSuborderId": self._clean(order.get("external_suborder_id")),
+            "purchaseDate": self._clean(order.get("purchase_date")),
+            "customerName": self._clean(order.get("customer_name")),
+            "customerDocument": self._clean(order.get("customer_document")),
+            "customerPhone": self._clean(order.get("customer_phone")),
+            "customerEmail": self._clean(order.get("customer_email")),
+            "amountTotal": amount,
+            # currency null significa ARS implicito, segun el contrato.
+            "currency": self._clean(order.get("currency")) or "ARS",
+            "status": self._clean(order.get("status")),
+            "deliveryStatus": self._clean(order.get("delivery_status")),
+            "itemsQuantity": self._as_int(order.get("items_quantity"), 0),
+            "shippingAddress": self._clean(order.get("shipping_address")),
+            "shippingCity": self._clean(order.get("shipping_city")),
+            "shippingProvince": self._clean(order.get("shipping_province")),
+            "shippingZipCode": self._clean(order.get("shipping_zip_code")),
+            "estimatedDeliveryDate": self._clean(order.get("estimated_delivery_date")),
+            "persistenceStatus": self._clean(order.get("persistence_status")).upper()
+            or "PENDING",
+            "notificationFloxu": self._clean(order.get("notification_system_a_status")),
+            "notificationAzure": self._clean(order.get("notification_system_b_status")),
+            "floxuCode": self._clean(order.get("floxu_code")),
+            "vbiSaleId": self._clean(order.get("vbi_sale_id")),
+            "vbiNroVenta": self._clean(order.get("vbi_nro_venta")),
+            "lastError": self._clean(order.get("last_error")),
+            "schemaVersion": self._clean(order.get("source_schema_version")),
+        }
+
     @api.model
     def get_fravega_orders(self, page=1):
         """Vista temporal paginada de ordenes VTEX de Fravega."""
