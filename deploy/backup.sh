@@ -32,4 +32,13 @@ find "$BACKUP_DIR" -type f -mtime +14 \
     \( -name "database-*.dump" -o -name "filestore-*.tar.gz" \) \
     -delete
 
+# Techo por cantidad ademas del de antiguedad: con varios deploys por dia la
+# regla de 14 dias sola puede acumular decenas de GB.
+KEEP=${BACKUP_KEEP:-10}
+for pattern in "database-*.dump" "filestore-*.tar.gz"; do
+    find "$BACKUP_DIR" -maxdepth 1 -name "$pattern" -printf '%T@ %p\n' 2>/dev/null \
+        | sort -rn | tail -n +$((KEEP + 1)) | cut -d' ' -f2- \
+        | while IFS= read -r old_file; do rm -f "$old_file"; done
+done
+
 echo "Backup completed: $STAMP"

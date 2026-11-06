@@ -66,10 +66,18 @@ while IFS= read -r file; do
     esac
 done <<< "$CHANGED"
 
-# Un upgrade toca el esquema: conviene tener de donde volver.
+# Un upgrade toca el esquema: conviene tener de donde volver. Pero el dump
+# ronda los 600 MB y tarda tres minutos, asi que no tiene sentido repetirlo en
+# deploys seguidos: uno reciente sirve igual para volver atras.
 if [ "$NEEDS_UPGRADE" = "1" ] && [ "${SKIP_BACKUP:-0}" != "1" ]; then
-    log "backup previo al upgrade"
-    ./deploy/backup.sh >/dev/null || fail "fallo el backup; se aborta el deploy"
+    RECENT=$(find "${BACKUP_DIR:-backups}" -maxdepth 1 -name 'database-*.dump' \
+        -mmin -${BACKUP_MAX_AGE_MIN:-60} 2>/dev/null | head -1)
+    if [ -n "$RECENT" ]; then
+        log "hay un backup de hace menos de ${BACKUP_MAX_AGE_MIN:-60} min; se reutiliza"
+    else
+        log "backup previo al upgrade"
+        ./deploy/backup.sh >/dev/null || fail "fallo el backup; se aborta el deploy"
+    fi
 fi
 
 if [ "$NEEDS_RECREATE" = "1" ]; then
