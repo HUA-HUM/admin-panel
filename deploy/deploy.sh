@@ -89,18 +89,36 @@ fi
 
 if [ "$NEEDS_RECREATE" = "1" ]; then
     $COMPOSE up -d odoo
-else
-    $COMPOSE restart odoo
 fi
+# Siempre reiniciar, incluso despues de un up -d: compose no recrea el
+# contenedor si la configuracion no cambio, y el codigo Python solo se carga
+# al arrancar el proceso. Sin esto el upgrade corria pero Odoo seguia
+# sirviendo la version anterior.
+$COMPOSE restart odoo
 
 log "esperando que el panel responda"
+READY=0
 for i in $(seq 1 30); do
     if $COMPOSE exec -T odoo curl -fsS -o /dev/null http://localhost:8069/web/login 2>/dev/null; then
-        # Recien aca el commit cuenta como desplegado.
-        echo "$AFTER" > "$STATE_FILE"
-        log "OK en ${AFTER:0:7}"
-        exit 0
+        READY=1
+        break
     fi
     sleep 2
 done
-fail "el panel no respondio tras el deploy de ${AFTER:0:7}"
+[ "$READY" = "1" ] || fail "el panel no respondio tras el deploy de ${AFTER:0:7}"
+
+# Que responda no prueba que tenga el codigo nuevo: un Odoo viejo contesta
+# igual. Comparamos la version que quedo instalada contra el manifiesto.
+MANIFEST_VERSION=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+    addons/lqa_admin_panel/__manifest__.py | head -1)
+INSTALLED_VERSION=$($COMPOSE exec -T db psql -U "${POSTGRES_USER:-odoo}" -d "$DB" -tAc \
+    "SELECT latest_version FROM ir_module_module WHERE name='lqa_admin_panel'" 2>/dev/null | tr -d '[:space:]')
+
+if [ -n "$MANIFEST_VERSION" ] && [ -n "$INSTALLED_VERSION" ] \
+   && [ "$MANIFEST_VERSION" != "$INSTALLED_VERSION" ]; then
+    fail "el modulo quedo en $INSTALLED_VERSION y el repo trae $MANIFEST_VERSION"
+fi
+
+echo "$AFTER" > "$STATE_FILE"
+log "OK en ${AFTER:0:7} (modulo ${INSTALLED_VERSION:-?})"
+exit 0
