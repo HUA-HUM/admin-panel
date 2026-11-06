@@ -12,3 +12,4 @@ __pycache__/
 odoo-web-data/
 odoo-db-data/
 backups/
+.deploy-state

@@ -22,13 +22,19 @@ fail() { log "ERROR: $*"; exit 1; }
 
 [ -f .env.production ] || fail "falta .env.production"
 
+# El commit que quedo efectivamente desplegado, que no es lo mismo que el que
+# esta en el working tree: si el deploy aborta despues del reset, HEAD ya
+# avanzo pero el modulo nunca se actualizo. Comparar contra HEAD daba ese
+# estado a medias por bueno.
+STATE_FILE=".deploy-state"
+
 log "buscando cambios en origin/$BRANCH"
 git fetch --quiet origin "$BRANCH"
-BEFORE=$(git rev-parse HEAD)
+BEFORE=$(cat "$STATE_FILE" 2>/dev/null || git rev-parse HEAD)
 AFTER=$(git rev-parse "origin/$BRANCH")
 
 if [ "$BEFORE" = "$AFTER" ] && [ "${FORCE_DEPLOY:-0}" != "1" ]; then
-    log "ya esta al dia en ${BEFORE:0:7}; nada que hacer"
+    log "ya esta desplegado ${BEFORE:0:7}; nada que hacer"
     exit 0
 fi
 
@@ -42,6 +48,7 @@ git reset --hard --quiet "origin/$BRANCH"
 
 if [ -z "$CHANGED" ]; then
     log "los commits no tocan el addon ni la infra; sin reinicio"
+    echo "$AFTER" > "$STATE_FILE"
     exit 0
 fi
 
@@ -89,6 +96,8 @@ fi
 log "esperando que el panel responda"
 for i in $(seq 1 30); do
     if $COMPOSE exec -T odoo curl -fsS -o /dev/null http://localhost:8069/web/login 2>/dev/null; then
+        # Recien aca el commit cuenta como desplegado.
+        echo "$AFTER" > "$STATE_FILE"
         log "OK en ${AFTER:0:7}"
         exit 0
     fi
