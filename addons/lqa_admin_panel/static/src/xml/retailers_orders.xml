@@ -48,19 +48,6 @@
                         </select>
                     </label>
                     <label>
-                        <span>Estado</span>
-                        <select t-model="state.filters.persistenceStatus">
-                            <option value="">Todos</option>
-                            <option
-                                t-foreach="state.options.statuses"
-                                t-as="code"
-                                t-key="code"
-                                t-att-value="code"
-                                t-esc="statusLabel(code)"
-                            />
-                        </select>
-                    </label>
-                    <label>
                         <span>Desde</span>
                         <input type="date" t-model="state.filters.from"/>
                     </label>
@@ -80,6 +67,25 @@
                             />
                         </select>
                     </label>
+                </div>
+
+                <div class="o_lqa_orders__chips">
+                    <button
+                        type="button"
+                        t-att-class="!state.filters.persistenceStatus ? 'is-active' : ''"
+                        t-on-click="() => this.setStatus('')"
+                    >
+                        Todos
+                    </button>
+                    <button
+                        type="button"
+                        t-foreach="state.options.statuses"
+                        t-as="code"
+                        t-key="code"
+                        t-att-class="(state.filters.persistenceStatus === code ? 'is-active ' : '') + statusClass(code)"
+                        t-on-click="() => this.setStatus(code)"
+                        t-esc="statusLabel(code)"
+                    />
                 </div>
             </section>
 
@@ -208,40 +214,37 @@
                             <strong t-esc="formatNumber(state.selected.itemsQuantity)"/>
                         </div>
                         <div>
-                            <small>Compra</small>
-                            <strong t-esc="formatDateTime(state.selected.purchaseDate)"/>
+                            <small>Moneda</small>
+                            <strong t-esc="state.selected.currency"/>
                         </div>
                         <div>
-                            <small>Entrega estimada</small>
-                            <strong t-esc="formatDateTime(state.selected.estimatedDeliveryDate)"/>
+                            <small>Fecha de compra</small>
+                            <strong t-esc="formatDateTime(state.selected.purchaseDate)"/>
                         </div>
                     </div>
 
-                    <div class="o_lqa_orders__detail_grid">
-                        <section>
-                            <h3>Cliente</h3>
+                    <div class="o_lqa_orders__groups">
+                        <section t-foreach="selectedRows" t-as="group" t-key="group.title">
+                            <h3>
+                                <i t-att-class="'fa ' + group.icon"/>
+                                <t t-esc="group.title"/>
+                            </h3>
                             <dl>
-                                <dt>Nombre</dt><dd t-esc="state.selected.customerName || '-'"/>
-                                <dt>Documento</dt><dd t-esc="state.selected.customerDocument || '-'"/>
-                                <dt>Telefono</dt><dd t-esc="state.selected.customerPhone || '-'"/>
-                                <dt>Email</dt><dd t-esc="state.selected.customerEmail || '-'"/>
-                            </dl>
-                        </section>
-                        <section>
-                            <h3>Envio</h3>
-                            <dl>
-                                <dt>Direccion</dt><dd t-esc="shippingLine || '-'"/>
-                                <dt>Estado envio</dt><dd t-esc="state.selected.deliveryStatus || '-'"/>
-                                <dt>Estado marketplace</dt><dd t-esc="state.selected.status || '-'"/>
-                            </dl>
-                        </section>
-                        <section>
-                            <h3>Integraciones</h3>
-                            <dl>
-                                <dt>TLQV (Floxu)</dt><dd t-esc="state.selected.floxuCode || '-'"/>
-                                <dt>Notif. Floxu</dt><dd t-esc="state.selected.notificationFloxu || '-'"/>
-                                <dt>Notif. Azure</dt><dd t-esc="state.selected.notificationAzure || '-'"/>
-                                <dt>VBI venta</dt><dd t-esc="state.selected.vbiNroVenta || '-'"/>
+                                <t t-foreach="group.rows" t-as="row" t-key="row[0]">
+                                    <dt t-esc="row[0]"/>
+                                    <dd t-att-class="row[2] ? 'is-mono' : ''">
+                                        <span t-esc="row[1] || '-'"/>
+                                        <button
+                                            t-if="row[2] and row[1]"
+                                            type="button"
+                                            class="o_lqa_orders__copy"
+                                            t-att-title="'Copiar ' + row[0]"
+                                            t-on-click="() => this.copy(row[1], row[0] + ' copiado')"
+                                        >
+                                            <i class="fa fa-clone"/>
+                                        </button>
+                                    </dd>
+                                </t>
                             </dl>
                         </section>
                     </div>
@@ -252,7 +255,16 @@
                     </div>
 
                     <details t-if="selectedPayload" class="o_lqa_orders__disclosure">
-                        <summary>Ver payload</summary>
+                        <summary>
+                            Ver payload crudo
+                            <button
+                                type="button"
+                                t-on-click.stop.prevent="() => this.copy(selectedPayload, 'Payload copiado')"
+                            >
+                                <i class="fa fa-clone"/>
+                                Copiar
+                            </button>
+                        </summary>
                         <pre t-esc="selectedPayload"/>
                     </details>
                 </div>

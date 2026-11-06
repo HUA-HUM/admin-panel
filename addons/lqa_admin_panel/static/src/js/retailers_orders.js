@@ -142,6 +142,88 @@ export class LqaRetailersOrders extends Component {
         this.state.selected = null;
     }
 
+    setStatus(status) {
+        this.state.filters.persistenceStatus = status;
+        this.search(0);
+    }
+
+    async copy(value, label = "Copiado") {
+        if (!value) {
+            return;
+        }
+        try {
+            await navigator.clipboard.writeText(String(value));
+            this.notification.add(label, { type: "success" });
+        } catch {
+            this.notification.add("No se pudo copiar.", { type: "warning" });
+        }
+    }
+
+    get selectedRows() {
+        // Todas las propiedades del contrato, agrupadas para el modal. Se
+        // arman aca y no en el template para no repetir la estructura por
+        // cada bloque.
+        const o = this.state.selected;
+        if (!o) {
+            return [];
+        }
+        return [
+            {
+                title: "Identificacion",
+                icon: "fa-hashtag",
+                rows: [
+                    ["Marketplace", this.marketplaceLabel(o.marketplace)],
+                    ["Orden", o.externalOrderId, true],
+                    ["Suborden", o.externalSuborderId, true],
+                    ["Clave unica", o.uniqueKey, true],
+                    ["Version de schema", o.schemaVersion],
+                ],
+            },
+            {
+                title: "Cliente",
+                icon: "fa-user-o",
+                rows: [
+                    ["Nombre", o.customerName],
+                    ["Documento", o.customerDocument, true],
+                    ["Telefono", o.customerPhone],
+                    ["Email", o.customerEmail, true],
+                ],
+            },
+            {
+                title: "Envio",
+                icon: "fa-truck",
+                rows: [
+                    ["Direccion", o.shippingAddress],
+                    ["Ciudad", o.shippingCity],
+                    ["Provincia", o.shippingProvince],
+                    ["Codigo postal", o.shippingZipCode],
+                    ["Entrega estimada", this.formatDateTime(o.estimatedDeliveryDate)],
+                ],
+            },
+            {
+                title: "Estados",
+                icon: "fa-flag-o",
+                rows: [
+                    ["Persistencia", this.statusLabel(o.persistenceStatus)],
+                    ["Marketplace (raw)", o.status],
+                    ["Entrega (raw)", o.deliveryStatus],
+                    ["Ultimo error", o.lastError],
+                ],
+            },
+            {
+                title: "Integraciones",
+                icon: "fa-plug",
+                rows: [
+                    ["TLQV / Floxu", o.floxuCode, true],
+                    ["Notificacion Floxu", o.notificationFloxu],
+                    ["Notificacion Azure", o.notificationAzure],
+                    ["VBI saleId", o.vbiSaleId, true],
+                    ["VBI nro venta", o.vbiNroVenta, true],
+                ],
+            },
+        ];
+    }
+
     marketplaceLabel(code) {
         return MARKETPLACE_LABELS[code] || this.humanize(code);
     }
@@ -172,16 +254,6 @@ export class LqaRetailersOrders extends Component {
         } catch {
             return String(raw);
         }
-    }
-
-    get shippingLine() {
-        const sel = this.state.selected;
-        if (!sel) {
-            return "";
-        }
-        return [sel.shippingAddress, sel.shippingCity, sel.shippingProvince, sel.shippingZipCode]
-            .filter(Boolean)
-            .join(", ");
     }
 
     humanize(value) {

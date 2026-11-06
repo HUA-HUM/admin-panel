@@ -389,41 +389,6 @@ $lqa-navy: #2d3277;
     }
 }
 
-.o_lqa_orders__detail_grid {
-    display: grid;
-    gap: 16px;
-    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-    padding: 0 22px 18px;
-
-    h3 {
-        margin: 0 0 8px;
-        color: $lqa-muted;
-        font-size: 10px;
-        font-weight: 800;
-        letter-spacing: 0.05em;
-        text-transform: uppercase;
-    }
-
-    dl {
-        display: grid;
-        margin: 0;
-        gap: 5px 10px;
-        grid-template-columns: auto 1fr;
-    }
-
-    dt {
-        color: $lqa-muted;
-        font-size: 12px;
-        font-weight: 500;
-    }
-
-    dd {
-        margin: 0;
-        font-size: 12px;
-        overflow-wrap: anywhere;
-    }
-}
-
 .o_lqa_orders__error {
     margin: 0 22px 18px;
     padding: 12px 14px;
@@ -474,5 +439,181 @@ $lqa-navy: #2d3277;
 
     .o_lqa_orders__filters_grid label.is-wide {
         grid-column: span 1;
+    }
+}
+
+// --- Chips de estado ---------------------------------------------------
+
+.o_lqa_orders__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid $lqa-border;
+
+    button {
+        padding: 6px 13px;
+        border: 1px solid $lqa-border;
+        border-radius: 999px;
+        background: $lqa-surface;
+        color: $lqa-muted;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 600;
+        transition:
+            background-color 0.15s ease,
+            border-color 0.15s ease,
+            color 0.15s ease;
+
+        &:hover {
+            border-color: #cbd5e6;
+            color: $lqa-ink;
+        }
+
+        // El chip activo toma el color de su propio estado, asi el filtro
+        // puesto se lee de un vistazo sin buscarlo en un select.
+        &.is-active {
+            border-color: transparent;
+            background: $lqa-navy;
+            color: #fff;
+        }
+
+        &.is-active.is-green { background: #1f7a45; }
+        &.is-active.is-amber { background: #8a6207; }
+        &.is-active.is-red { background: #b3262f; }
+        &.is-active.is-blue { background: #1f4fa8; }
+        &.is-active.is-muted { background: #5c6b80; }
+    }
+}
+
+// --- Tabla -------------------------------------------------------------
+
+.o_lqa_orders__table_wrap {
+    max-height: calc(100vh - 360px);
+    overflow: auto;
+}
+
+.o_lqa_orders__table thead th {
+    position: sticky;
+    z-index: 1;
+    top: 0;
+}
+
+.o_lqa_orders__table td.is-right strong {
+    font-variant-numeric: tabular-nums;
+}
+
+// --- Detalle -----------------------------------------------------------
+
+.o_lqa_orders__groups {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(268px, 1fr));
+    padding: 0 22px 18px;
+
+    > section {
+        padding: 14px 16px;
+        border: 1px solid $lqa-border;
+        border-radius: 12px;
+        background: #fcfdff;
+    }
+
+    h3 {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin: 0 0 10px;
+        color: $lqa-muted;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+
+        i {
+            color: $lqa-muted-soft;
+            font-size: 11px;
+        }
+    }
+
+    dl {
+        display: grid;
+        margin: 0;
+        gap: 7px 12px;
+        grid-template-columns: minmax(96px, auto) 1fr;
+    }
+
+    dt {
+        color: $lqa-muted;
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    dd {
+        display: flex;
+        align-items: baseline;
+        margin: 0;
+        gap: 6px;
+        font-size: 12px;
+        overflow-wrap: anywhere;
+
+        &.is-mono span {
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 11.5px;
+        }
+    }
+}
+
+.o_lqa_orders__copy {
+    flex: 0 0 auto;
+    padding: 2px 4px;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: $lqa-muted-soft;
+    cursor: pointer;
+    font-size: 11px;
+    opacity: 0;
+    transition: opacity 0.12s ease, color 0.12s ease;
+
+    &:hover {
+        color: $lqa-navy;
+    }
+
+    dd:hover &,
+    &:focus {
+        opacity: 1;
+    }
+}
+
+.o_lqa_orders__disclosure summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+
+    button {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 9px;
+        border: 1px solid $lqa-border;
+        border-radius: 7px;
+        background: $lqa-surface;
+        color: $lqa-muted;
+        cursor: pointer;
+        font-size: 11px;
+        font-weight: 600;
+
+        &:hover {
+            background: $lqa-chip;
+            color: $lqa-ink;
+        }
+    }
+}
+
+@media (max-width: 767px) {
+    .o_lqa_orders__table_wrap {
+        max-height: none;
     }
 }
