@@ -1,0 +1,99 @@
+name: Deploy al droplet
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "addons/**"
+      - "config/**"
+      - "deploy/**"
+      - "docker-compose.prod.yml"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+
+concurrency:
+  # Dos deploys pisandose dejarian el modulo a medio actualizar.
+  group: deploy-droplet
+  cancel-in-progress: false
+
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar validadores
+        run: pip install --quiet libsass
+
+      - name: Python compila
+        run: python -m compileall -q addons/lqa_admin_panel
+
+      - name: XML bien formado
+        run: |
+          python - <<'PY'
+          import glob, sys
+          from xml.etree import ElementTree as ET
+          bad = 0
+          for f in glob.glob('addons/**/*.xml', recursive=True):
+              try:
+                  ET.parse(f)
+              except ET.ParseError as e:
+                  print(f"{f}: {e}"); bad += 1
+          sys.exit(1 if bad else 0)
+          PY
+
+      - name: SCSS compila con libsass
+        # Es el mismo compilador que usa Odoo. Un min() con unidades mezcladas
+        # tira abajo los estilos de todo el panel y la vista queda sin CSS.
+        run: |
+          python - <<'PY'
+          import glob, sys, sass
+          bad = 0
+          for f in sorted(glob.glob('addons/**/static/src/scss/*.scss', recursive=True)):
+              try:
+                  sass.compile(filename=f)
+              except sass.CompileError as e:
+                  print(f"{f}: {e}"); bad += 1
+          sys.exit(1 if bad else 0)
+          PY
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: JS parsea como modulo
+        # node --check sobre un .js lo trata como CommonJS y no detecta errores
+        # dentro de un objeto; hay que chequearlo como ESM.
+        run: |
+          set -e
+          mkdir -p /tmp/esm
+          for f in addons/**/static/src/js/*.js; do
+            cp "$f" "/tmp/esm/$(basename "${f%.js}").mjs"
+          done
+          for m in /tmp/esm/*.mjs; do node --check "$m"; done
+
+      - name: Firmas de los metodos del addon
+        run: python deploy/check_signatures.py
+
+  desplegar:
+    needs: validar
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Abrir sesion SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DROPLET_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          # Fijamos la huella del servidor en vez de aceptar cualquiera.
+          echo "${{ secrets.DROPLET_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+
+      - name: Desplegar
+        run: |
+          ssh -i ~/.ssh/id_ed25519 \
+              root@${{ secrets.DROPLET_HOST }} \
+              'cd /opt/admin-panel && ./deploy/deploy.sh'
