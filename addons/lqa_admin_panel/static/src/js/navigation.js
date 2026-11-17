@@ -229,12 +229,43 @@ patch(NavBar.prototype, {
         return classes.join(" ");
     },
 
+    // getCurrentMenu solo devuelve algo cuando se llego por un click en el
+    // menu. Entrando por URL -- /odoo/action-103, un favorito, un F5 -- queda
+    // en null y el sidebar no marcaba nada. En ese caso ubicamos el item por
+    // la accion que esta abierta, que es lo que el usuario realmente ve.
     lqaCurrentMenu() {
         try {
-            return this.menuService?.getCurrentMenu?.() || null;
+            const fromService = this.menuService?.getCurrentMenu?.();
+            if (fromService) {
+                return fromService;
+            }
         } catch {
+            // getCurrentMenu puede explotar si el registro todavia no cargo.
+        }
+        const actionId =
+            this.lqaActionIdValue(this.lqaCurrentAction()?.id) ||
+            this.lqaCurrentRouteActionId();
+        if (!actionId) {
             return null;
         }
+        return this.lqaFindMenuByAction(this.lqaPanelRootMenu(), actionId);
+    },
+
+    lqaFindMenuByAction(menu, actionId) {
+        if (!menu || !actionId) {
+            return null;
+        }
+        const menuActionId = this.lqaActionIdValue(menu.actionID || menu.actionId);
+        if (menuActionId && menuActionId === Number(actionId)) {
+            return menu;
+        }
+        for (const child of menu.childrenTree || []) {
+            const found = this.lqaFindMenuByAction(child, actionId);
+            if (found) {
+                return found;
+            }
+        }
+        return null;
     },
 
     lqaCurrentAction() {
