@@ -98,7 +98,7 @@ export class LqaMercadolibreDeleter extends Component {
         this.state.idsText = ids.join("\n");
         event.target.value = "";
         this.notification.add(
-            `${ids.length} publicaciones validas encontradas en el archivo.`,
+            `${ids.length} publicaciones válidas encontradas en el archivo.`,
             { type: ids.length ? "success" : "warning" }
         );
     }
@@ -112,13 +112,13 @@ export class LqaMercadolibreDeleter extends Component {
 
     openConfirmation() {
         if (!this.state.parsedIds.length) {
-            this.notification.add("Ingresa al menos un MLA valido.", {
+            this.notification.add("Ingresá al menos un MLA válido.", {
                 type: "warning",
             });
             return;
         }
         if (!this.trimmedReason) {
-            this.notification.add("Escribi un motivo para registrar el lote.", {
+            this.notification.add("Escribí un motivo para registrar el lote.", {
                 type: "warning",
             });
             return;

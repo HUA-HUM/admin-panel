@@ -344,9 +344,9 @@ class LqaMercadolibrePricingService(models.AbstractModel):
         self._check_access()
         rows = self._parse_input(content)
         if not rows:
-            raise UserError(_("No encontre filas validas para procesar."))
+            raise UserError(_("No encontré filas válidas para procesar."))
         if len(rows) > self.MAX_ITEMS:
-            raise UserError(_("Podes procesar hasta %s filas por job.") % self.MAX_ITEMS)
+            raise UserError(_("Podés procesar hasta %s filas por job.") % self.MAX_ITEMS)
 
         job = self.env["lqa.mercadolibre.pricing.job"].sudo().create(
             {
@@ -619,7 +619,7 @@ class LqaMercadolibrePricingService(models.AbstractModel):
             "exportError": (
                 import_job.export_error
                 or (
-                    _("El archivo vencio; podes generarlo nuevamente.")
+                    _("El archivo vencio; podés generarlo nuevamente.")
                     if import_job.export_state == "done" and not export_ready
                     else ""
                 )
@@ -1304,7 +1304,7 @@ class LqaMercadolibrePricingService(models.AbstractModel):
             try:
                 data = json.loads(content)
             except ValueError as error:
-                raise UserError(_("El JSON ingresado no es valido.")) from error
+                raise UserError(_("El JSON ingresado no es válido.")) from error
             return [self._normalize_row(row) for row in data if isinstance(row, dict)]
 
         reader = csv.DictReader(io.StringIO(content))
@@ -1389,7 +1389,7 @@ class LqaMercadolibrePricingService(models.AbstractModel):
             300,
         )
         if not endpoint or not api_key:
-            raise UserError(_("Configura la URL y la API key de Pricing."))
+            raise UserError(_("Configurá la URL y la API key de Pricing."))
         return endpoint, api_key, timeout
 
     def _get_job(self, job_id):
@@ -1402,7 +1402,7 @@ class LqaMercadolibrePricingService(models.AbstractModel):
             not self.env.user.has_group("lqa_admin_panel.group_lqa_admin")
             and job.user_id != self.env.user
         ):
-            raise AccessError(_("No tenes permisos para ver este job."))
+            raise AccessError(_("No tenés permisos para ver este job."))
         return job
 
     def _get_folder_import(self, import_id):
@@ -1415,7 +1415,7 @@ class LqaMercadolibrePricingService(models.AbstractModel):
             not self.env.user.has_group("lqa_admin_panel.group_lqa_admin")
             and import_job.user_id != self.env.user
         ):
-            raise AccessError(_("No tenes permisos para ver este proceso."))
+            raise AccessError(_("No tenés permisos para ver este proceso."))
         return import_job
 
     def _job_to_dict(self, job, include_lines=False):
@@ -1449,7 +1449,7 @@ class LqaMercadolibrePricingService(models.AbstractModel):
         if not self.env.user.has_group(
             "lqa_admin_panel.group_lqa_commercial_user"
         ):
-            raise AccessError(_("No tenes permisos para usar Pricing."))
+            raise AccessError(_("No tenés permisos para usar Pricing."))
 
     @staticmethod
     def _chunks(records, size):

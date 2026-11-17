@@ -69,7 +69,7 @@ class LqaRetailersTeamsNotification(models.Model):
     def send_test_notification(self):
         config = self._teams_config()
         if not config["webhook_url"]:
-            raise UserError(_("Configura primero el webhook de Microsoft Teams."))
+            raise UserError(_("Configurá primero el webhook de Microsoft Teams."))
         payload = {
             "@type": "MessageCard",
             "@context": "http://schema.org/extensions",

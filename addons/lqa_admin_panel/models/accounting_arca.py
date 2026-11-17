@@ -327,10 +327,10 @@ class LqaAccountingService(models.AbstractModel):
         )
         tlqv_codes = self._parse_tlqv_codes(source)
         if not tlqv_codes:
-            raise UserError(_("No encontre codigos TLQV validos para procesar."))
+            raise UserError(_("No encontré códigos TLQV válidos para procesar."))
         if len(tlqv_codes) > self.MAX_TLQV_CODES:
             raise UserError(
-                _("Podes procesar hasta %s codigos TLQV por lote.")
+                _("Podés procesar hasta %s códigos TLQV por lote.")
                 % self.MAX_TLQV_CODES
             )
 
@@ -428,7 +428,7 @@ class LqaAccountingService(models.AbstractModel):
         self._check_access()
         tlqv_code = self._normalize_tlqv(tlqv_code)
         if not tlqv_code:
-            raise UserError(_("Indica un codigo TLQV valido."))
+            raise UserError(_("Indicá un código TLQV válido."))
 
         job = self.env["lqa.accounting.tlqv.client.job"].sudo().create(
             {
@@ -535,7 +535,7 @@ class LqaAccountingService(models.AbstractModel):
         fecha_desde = self._clean(options.get("fechaDesde"))
         fecha_hasta = self._clean(options.get("fechaHasta"))
         if not fecha_desde or not fecha_hasta:
-            raise UserError(_("Indica fecha desde y fecha hasta para ejecutar el backfill."))
+            raise UserError(_("Indicá fecha desde y fecha hasta para ejecutar el backfill."))
 
         try:
             parsed_desde = fields.Date.from_string(fecha_desde)
@@ -632,7 +632,7 @@ class LqaAccountingService(models.AbstractModel):
         dry_run = bool(options.get("dryRun"))
         note = self._clean(options.get("note"))
         if not tlqv_code:
-            raise UserError(_("Ingresa un codigo TLQV valido."))
+            raise UserError(_("Ingresá un código TLQV válido."))
         if not issue_date:
             issue_date = fields.Date.to_string(fields.Date.context_today(self))
         try:
@@ -719,7 +719,7 @@ class LqaAccountingService(models.AbstractModel):
         options = options if isinstance(options, dict) else {}
         raw_codes = options.get("tlqvCodes")
         if not isinstance(raw_codes, list) or not raw_codes:
-            raise UserError(_("Ingresa al menos un codigo TLQV."))
+            raise UserError(_("Ingresá al menos un código TLQV."))
 
         tlqv_codes = []
         invalid_codes = []
@@ -731,7 +731,7 @@ class LqaAccountingService(models.AbstractModel):
                 invalid_codes.append(self._clean(raw_code) or _("(vacio)"))
         if invalid_codes:
             raise UserError(
-                _("Hay codigos TLQV invalidos: %s") % ", ".join(invalid_codes[:10])
+                _("Hay códigos TLQV inválidos: %s") % ", ".join(invalid_codes[:10])
             )
 
         issue_date = self._clean(options.get("issueDate"))
@@ -828,7 +828,7 @@ class LqaAccountingService(models.AbstractModel):
 
     def _nota_credito_codes(self, raw_codes):
         if not isinstance(raw_codes, list) or not raw_codes:
-            raise UserError(_("Selecciona al menos un codigo TLQV."))
+            raise UserError(_("Seleccioná al menos un código TLQV."))
         codes, invalid = [], []
         for raw in raw_codes:
             normalized = self._normalize_tlqv(raw)
@@ -838,11 +838,11 @@ class LqaAccountingService(models.AbstractModel):
                 invalid.append(self._clean(raw) or _("(vacio)"))
         if invalid:
             raise UserError(
-                _("Hay codigos TLQV invalidos: %s") % ", ".join(invalid[:10])
+                _("Hay códigos TLQV inválidos: %s") % ", ".join(invalid[:10])
             )
         if len(codes) > self.NOTA_CREDITO_MAX_CODES:
             raise UserError(
-                _("Podes anular como maximo %s comprobantes por lote.")
+                _("Podés anular como máximo %s comprobantes por lote.")
                 % self.NOTA_CREDITO_MAX_CODES
             )
         return codes
@@ -934,7 +934,7 @@ class LqaAccountingService(models.AbstractModel):
         options = options if isinstance(options, dict) else {}
         tlqv_code = self._normalize_tlqv(options.get("tlqvCode"))
         if not tlqv_code:
-            raise UserError(_("Ingresa un codigo TLQV valido."))
+            raise UserError(_("Ingresá un código TLQV válido."))
         body = {"tlqvCode": tlqv_code, "dryRun": True}
         issue_date = self._nota_credito_issue_date(options)
         if issue_date:
@@ -955,7 +955,7 @@ class LqaAccountingService(models.AbstractModel):
         options = options if isinstance(options, dict) else {}
         tlqv_code = self._normalize_tlqv(options.get("tlqvCode"))
         if not tlqv_code:
-            raise UserError(_("Ingresa un codigo TLQV valido."))
+            raise UserError(_("Ingresá un código TLQV válido."))
         # La emision es irreversible: exigimos que el panel la pida de forma
         # explicita en vez de heredarla de un default.
         if options.get("confirm") is not True:
@@ -1202,7 +1202,7 @@ class LqaAccountingService(models.AbstractModel):
         params = {"limit": min(max(self._as_int(filters.get("limit"), 50), 1), 500)}
         status = self._clean(filters.get("status")).lower() or "open"
         if status not in self.INVOICE_ISSUE_STATUSES:
-            raise UserError(_("Estado de issue no valido: %s") % status)
+            raise UserError(_("Estado de issue no válido: %s") % status)
         params["status"] = status
 
         response = self._request_json(
@@ -1355,13 +1355,13 @@ class LqaAccountingService(models.AbstractModel):
         reason = self._clean(filters.get("reason")).upper()
         if reason:
             if reason not in self.INVOICE_ISSUE_REASONS:
-                raise UserError(_("Motivo de bloqueo no valido: %s") % reason)
+                raise UserError(_("Motivo de bloqueo no válido: %s") % reason)
             params["reason"] = reason
 
         status = self._clean(filters.get("status")).lower()
         if status:
             if status not in self.INVOICE_ISSUE_STATUSES:
-                raise UserError(_("Estado de issue no valido: %s") % status)
+                raise UserError(_("Estado de issue no válido: %s") % status)
             params["status"] = status
 
         limit = min(max(self._as_int(filters.get("limit"), 100), 1), 500)
@@ -1424,7 +1424,7 @@ class LqaAccountingService(models.AbstractModel):
         self._check_access()
         tlqv_code = self._normalize_tlqv(tlqv_code)
         if not tlqv_code:
-            raise UserError(_("Ingresa un codigo TLQV valido."))
+            raise UserError(_("Ingresá un código TLQV válido."))
 
         response = self._request_json(
             "GET",
@@ -1606,7 +1606,7 @@ class LqaAccountingService(models.AbstractModel):
         self._check_access()
         tlqv_code = self._normalize_tlqv(tlqv_code)
         if not tlqv_code:
-            raise UserError(_("El comprobante no tiene TLQV valido para generar PDF."))
+            raise UserError(_("El comprobante no tiene TLQV válido para generar PDF."))
 
         headers = self._invoice_headers()
         headers["Content-Type"] = "application/json"
@@ -2268,7 +2268,7 @@ class LqaAccountingService(models.AbstractModel):
             or os.environ.get("LQA_ACCOUNTING_INVOICE_API_KEY", "")
         ).strip()
         if not key:
-            raise UserError(_("Configura la clave interna de Invoice ARCA."))
+            raise UserError(_("Configurá la clave interna de Invoice ARCA."))
         return {"x-internal-api-key": key}
 
     def _madre_headers(self):
@@ -2280,7 +2280,7 @@ class LqaAccountingService(models.AbstractModel):
             or os.environ.get("LQA_INTERNAL_API_KEY", "")
         ).strip()
         if not key:
-            raise UserError(_("Configura la clave interna de Madre para contabilidad."))
+            raise UserError(_("Configurá la clave interna de Madre para contabilidad."))
         return {"x-internal-api-key": key}
 
     def _timeout(self):
@@ -2296,13 +2296,13 @@ class LqaAccountingService(models.AbstractModel):
 
     def _check_access(self):
         if not self.env.user.has_group("lqa_admin_panel.group_lqa_commercial_user"):
-            raise AccessError(_("No tenes permisos para acceder al modulo contable."))
+            raise AccessError(_("No tenés permisos para acceder al modulo contable."))
 
     def _job_name(self, filename, count):
         filename = self._clean(filename)
         if filename:
             return _("Clientes TLQV - %s") % filename
-        return _("Clientes TLQV - %s codigos") % count
+        return _("Clientes TLQV - %s códigos") % count
 
     @staticmethod
     def _json_dumps(value):

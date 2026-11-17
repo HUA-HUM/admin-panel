@@ -330,13 +330,13 @@ class LqaMercadolibrePromotionsService(models.AbstractModel):
         action_key = self._clean({"value": action_key}, "value")
         config = self.ACTIONS.get(action_key)
         if not config:
-            raise UserError(_("Accion no valida."))
+            raise UserError(_("Acción no válida."))
 
         values = values or {}
         updated_by = self._clean(values, "updatedBy") or self.env.user.login or self.env.user.name
         promotion_id = self._clean(values, "promotionId")
         if config.get("requires_promotion_id") and not promotion_id:
-            raise UserError(_("Ingresa el promotionId que queres sincronizar."))
+            raise UserError(_("Ingresá el promotionId que queres sincronizar."))
 
         payload = {"updatedBy": updated_by}
         if promotion_id:
@@ -377,7 +377,7 @@ class LqaMercadolibrePromotionsService(models.AbstractModel):
         if not self.env.user.has_group(
             "lqa_admin_panel.group_lqa_commercial_user"
         ):
-            raise AccessError(_("No tenes permisos para consultar promociones."))
+            raise AccessError(_("No tenés permisos para consultar promociones."))
 
     def _endpoint(self, parameter, default):
         endpoint = (
@@ -385,7 +385,7 @@ class LqaMercadolibrePromotionsService(models.AbstractModel):
             or default
         )
         if not endpoint:
-            raise UserError(_("Configura el endpoint de la Central de Promociones."))
+            raise UserError(_("Configurá el endpoint de la Central de Promociones."))
         return endpoint
 
     def _timeout(self):

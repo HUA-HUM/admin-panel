@@ -356,7 +356,7 @@ export class LqaMercadolibrePricing extends Component {
 
     async submitCsv() {
         if (!this.state.csvContent) {
-            this.notification.add("Selecciona un CSV para procesar.", {
+            this.notification.add("Seleccioná un CSV para procesar.", {
                 type: "warning",
             });
             return;

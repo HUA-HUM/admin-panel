@@ -31,11 +31,11 @@ class LqaUserManagementService(models.AbstractModel):
         role = self._clean(values.get("role")) or self.ROLE_COMMERCIAL
 
         if not name or not login:
-            raise UserError(_("Completa nombre y email/login."))
+            raise UserError(_("Completá nombre y email/login."))
         if len(password) < 8:
             raise UserError(_("La contrasena debe tener al menos 8 caracteres."))
         if role not in {self.ROLE_COMMERCIAL, self.ROLE_ADMIN}:
-            raise UserError(_("Selecciona un permiso valido."))
+            raise UserError(_("Seleccioná un permiso válido."))
 
         existing = (
             self.env["res.users"]
@@ -81,7 +81,7 @@ class LqaUserManagementService(models.AbstractModel):
         role = self._clean(values.get("role")) or self._role_for_user(user)
         active = bool(values.get("active", user.active))
         if user.id == self.env.uid and (not active or role != self.ROLE_ADMIN):
-            raise UserError(_("No podes quitarte tu propio acceso administrador."))
+            raise UserError(_("No podés quitarte tu propio acceso administrador."))
 
         write_values = {
             "name": self._clean(values.get("name")) or user.name,
@@ -112,7 +112,7 @@ class LqaUserManagementService(models.AbstractModel):
 
     def _check_access(self):
         if not self.env.user.has_group("lqa_admin_panel.group_lqa_admin"):
-            raise AccessError(_("No tenes permisos para administrar usuarios."))
+            raise AccessError(_("No tenés permisos para administrar usuarios."))
 
     def _serialize_user(self, user):
         return {
@@ -151,7 +151,7 @@ class LqaUserManagementService(models.AbstractModel):
 
     def _apply_role(self, user, role):
         if role not in {self.ROLE_COMMERCIAL, self.ROLE_ADMIN}:
-            raise UserError(_("Selecciona un permiso valido."))
+            raise UserError(_("Seleccioná un permiso válido."))
 
         commercial = self.env.ref("lqa_admin_panel.group_lqa_commercial_user")
         admin = self.env.ref("lqa_admin_panel.group_lqa_admin")

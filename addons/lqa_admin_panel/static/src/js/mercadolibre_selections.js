@@ -445,7 +445,7 @@ export class LqaMercadolibreSelections extends Component {
 
     async downloadFolderCsv(folder) {
         if (!this.selectedColumnCount) {
-            this.notification.add("Selecciona al menos una columna para el CSV.", {
+            this.notification.add("Seleccioná al menos una columna para el CSV.", {
                 type: "warning",
             });
             return;

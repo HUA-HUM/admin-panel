@@ -214,6 +214,14 @@ $fb-types: (
 
 // ---------------------------------------------------------------- dialogos de error
 
+// El de UserError (modal-md por feedback.xml) suele ser una linea: angosto.
+// Los de traceback siguen en xl, con el mismo estilo.
+.modal-md > .modal-content.o_error_dialog {
+    max-width: 460px;
+    margin-right: auto;
+    margin-left: auto;
+}
+
 .modal-content.o_error_dialog {
     overflow: hidden;
     border: 0;
@@ -297,6 +305,13 @@ $fb-types: (
             &:hover {
                 border-color: #23286a;
                 background: #23286a;
+            }
+
+            // Odoo le da foco al abrir: el anillo violeta de Bootstrap
+            // desentona; queda uno tenue en el navy del panel.
+            &:focus,
+            &:focus-visible {
+                box-shadow: 0 0 0 3px rgba(45, 50, 119, 0.18);
             }
         }
 

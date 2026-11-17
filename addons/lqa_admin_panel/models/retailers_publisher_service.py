@@ -159,7 +159,7 @@ class LqaRetailersPublisherService(models.AbstractModel):
         self._check_access()
         name = self._clean(name)
         if not name:
-            raise UserError(_("Ingresa un nombre para la carpeta."))
+            raise UserError(_("Ingresá un nombre para la carpeta."))
         if len(name) > 120:
             raise UserError(_("El nombre de la carpeta no puede superar 120 caracteres."))
 
@@ -199,7 +199,7 @@ class LqaRetailersPublisherService(models.AbstractModel):
         self._check_access()
         if confirm is not True:
             raise UserError(
-                _("Confirma el borrado de la carpeta: es permanente.")
+                _("Confirmá el borrado de la carpeta: es permanente.")
             )
         folder_id = self._normalize_folder_id(folder_id)
         self.env["lqa.api.client"].request_absolute_json(
@@ -300,7 +300,7 @@ class LqaRetailersPublisherService(models.AbstractModel):
             seen.add(product_id)
             normalized_ids.append(product_id)
         if not normalized_ids:
-            raise UserError(_("Selecciona al menos un producto para eliminar."))
+            raise UserError(_("Seleccioná al menos un producto para eliminar."))
 
         batches = 0
         for offset in range(0, len(normalized_ids), self.BULK_BATCH_SIZE):
@@ -345,7 +345,7 @@ class LqaRetailersPublisherService(models.AbstractModel):
             ):
                 normalized_marketplaces.append(marketplace)
         if not normalized_marketplaces:
-            raise UserError(_("Selecciona al menos un marketplace para publicar."))
+            raise UserError(_("Seleccioná al menos un marketplace para publicar."))
 
         history_values = {
             "user_id": self.env.user.id,
@@ -477,7 +477,7 @@ class LqaRetailersPublisherService(models.AbstractModel):
         self._check_access()
         run_id = self._clean(run_id)
         if not run_id:
-            raise UserError(_("Ingresa el run ID para seguir la publicacion."))
+            raise UserError(_("Ingresá el run ID para seguir la publicación."))
         response = self.env["lqa.api.client"].request_absolute_json(
             "GET",
             self._join_url(
@@ -521,7 +521,7 @@ class LqaRetailersPublisherService(models.AbstractModel):
         self._check_access()
         run_id = self._clean(run_id)
         if not run_id:
-            raise UserError(_("Ingresa el run ID para consultar sus publicaciones."))
+            raise UserError(_("Ingresá el run ID para consultar sus publicaciones."))
         limit = min(max(self._as_int(limit, 50), 1), 100)
         offset = max(self._as_int(offset, 0), 0)
         response = self.env["lqa.api.client"].request_absolute_json(
@@ -570,7 +570,7 @@ class LqaRetailersPublisherService(models.AbstractModel):
 
     def _send_products(self, folder_id, products):
         if not products:
-            raise UserError(_("No hay productos validos para agregar."))
+            raise UserError(_("No hay productos válidos para agregar."))
 
         batches = 0
         for offset in range(0, len(products), self.BULK_BATCH_SIZE):
@@ -595,11 +595,11 @@ class LqaRetailersPublisherService(models.AbstractModel):
     def _parse_import_file(self, filename, content_base64):
         filename = self._clean(filename)
         if not filename:
-            raise UserError(_("Selecciona un archivo para importar."))
+            raise UserError(_("Seleccioná un archivo para importar."))
         try:
             content = base64.b64decode(content_base64 or "", validate=True)
         except (ValueError, TypeError) as error:
-            raise UserError(_("El archivo recibido no es valido.")) from error
+            raise UserError(_("El archivo recibido no es válido.")) from error
         if not content:
             raise UserError(_("El archivo esta vacio."))
         if len(content) > self.MAX_UPLOAD_BYTES:
@@ -611,7 +611,7 @@ class LqaRetailersPublisherService(models.AbstractModel):
         elif extension == ".xlsx":
             rows = self._read_xlsx_rows(content)
         else:
-            raise UserError(_("Usa un archivo de Excel XLSX."))
+            raise UserError(_("Usá un archivo de Excel XLSX."))
         return self._products_from_rows(rows)
 
     def _read_csv_rows(self, content):
@@ -630,7 +630,7 @@ class LqaRetailersPublisherService(models.AbstractModel):
         try:
             workbook = zipfile.ZipFile(io.BytesIO(content))
         except zipfile.BadZipFile as error:
-            raise UserError(_("El archivo XLSX no es valido.")) from error
+            raise UserError(_("El archivo XLSX no es válido.")) from error
 
         with workbook:
             shared_strings = self._xlsx_shared_strings(workbook)
@@ -758,7 +758,7 @@ class LqaRetailersPublisherService(models.AbstractModel):
 
     def _normalize_products(self, products):
         if not isinstance(products, list):
-            raise UserError(_("El listado de productos no es valido."))
+            raise UserError(_("El listado de productos no es válido."))
         normalized = []
         seen = set()
         for item in products:
@@ -778,7 +778,7 @@ class LqaRetailersPublisherService(models.AbstractModel):
             normalized.append({"productId": product_id, "sellerSku": seller_sku})
         if len(normalized) > self.MAX_IMPORT_ROWS:
             raise UserError(
-                _("No se pueden agregar mas de %s productos por importacion.")
+                _("No se pueden agregar más de %s productos por importación.")
                 % self.MAX_IMPORT_ROWS
             )
         return normalized
@@ -1157,7 +1157,7 @@ class LqaRetailersPublisherService(models.AbstractModel):
             or os.environ.get("LQA_API_TOKEN", "")
         ).strip()
         if not token:
-            raise UserError(_("Configura el token de Madre para usar el Publicador."))
+            raise UserError(_("Configurá el token de Madre para usar el Publicador."))
         return {"Authorization": f"Bearer {token}"}
 
     def _madre_base_url(self):
@@ -1177,7 +1177,7 @@ class LqaRetailersPublisherService(models.AbstractModel):
         ).strip()
         if not key:
             raise UserError(
-                _("Configura la API key de Products API para poder publicar.")
+                _("Configurá la API key de Products API para poder publicar.")
             )
         return {"x-api-key": key}
 
@@ -1206,12 +1206,12 @@ class LqaRetailersPublisherService(models.AbstractModel):
 
     def _check_access(self):
         if not self.env.user.has_group("lqa_admin_panel.group_lqa_commercial_user"):
-            raise UserError(_("No tenes permisos para usar el publicador de retailers."))
+            raise UserError(_("No tenés permisos para usar el publicador de retailers."))
 
     def _normalize_folder_id(self, folder_id):
         value = self._clean(folder_id)
         if not value:
-            raise UserError(_("Selecciona una carpeta."))
+            raise UserError(_("Seleccioná una carpeta."))
         return int(value) if value.isdigit() else value
 
     def _favorites_url(self, folder_id):

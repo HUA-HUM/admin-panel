@@ -129,7 +129,7 @@ export class LqaAutomeliCatalog extends Component {
             this.state.pagination = response.pagination;
         } catch (error) {
             this.notification.add(
-                error?.data?.message || "No se pudo cargar el catalogo Automeli.",
+                error?.data?.message || "No se pudo cargar el catálogo Automeli.",
                 { type: "danger" }
             );
         } finally {
@@ -147,7 +147,7 @@ export class LqaAutomeliCatalog extends Component {
             );
         } catch (error) {
             this.notification.add(
-                error?.data?.message || "No se pudo cargar el estado del catalogo Automeli.",
+                error?.data?.message || "No se pudo cargar el estado del catálogo Automeli.",
                 { type: "warning" }
             );
         } finally {
@@ -180,7 +180,7 @@ export class LqaAutomeliCatalog extends Component {
     async createFolder() {
         const name = String(this.state.newFolderName || "").trim();
         if (!name) {
-            this.notification.add("Indica un nombre para la carpeta.", {
+            this.notification.add("Indicá un nombre para la carpeta.", {
                 type: "warning",
             });
             return;
@@ -206,7 +206,7 @@ export class LqaAutomeliCatalog extends Component {
 
     async saveSelectionToFolder() {
         if (!this.selectedCount) {
-            this.notification.add("Selecciona productos del catalogo.", {
+            this.notification.add("Seleccioná productos del catálogo.", {
                 type: "warning",
             });
             return;
@@ -226,12 +226,12 @@ export class LqaAutomeliCatalog extends Component {
             await this.loadFolderProducts();
             this.clearSelection();
             this.notification.add(
-                `Seleccion guardada: ${result.added} nuevos, ${result.updated} actualizados.`,
+                `Selección guardada: ${result.added} nuevos, ${result.updated} actualizados.`,
                 { type: "success" }
             );
         } catch (error) {
             this.notification.add(
-                error?.data?.message || "No se pudo guardar la seleccion.",
+                error?.data?.message || "No se pudo guardar la selección.",
                 { type: "danger" }
             );
         } finally {

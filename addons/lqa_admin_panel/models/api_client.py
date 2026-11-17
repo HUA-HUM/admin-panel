@@ -53,7 +53,7 @@ class LqaApiClient(models.AbstractModel):
     def request_json(self, method, path, payload=None, params=None):
         config = self._get_config()
         if not config["base_url"]:
-            raise UserError(_("Configura la URL base de API antes de sincronizar."))
+            raise UserError(_("Configurá la URL base de API antes de sincronizar."))
 
         url = self._join_url(config["base_url"], path)
         return self._request_json_url(

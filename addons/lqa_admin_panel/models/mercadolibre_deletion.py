@@ -85,7 +85,7 @@ class LqaMercadolibreDeletionService(models.AbstractModel):
         self._check_access()
         normalized_ids = self._normalize_ids(ids or [])
         if not normalized_ids:
-            raise UserError(_("Ingresa al menos una publicacion MLA valida."))
+            raise UserError(_("Ingresá al menos una publicación MLA válida."))
 
         app_key = (app_key or "default").strip() or "default"
         reason = self._clean(reason)
@@ -114,7 +114,7 @@ class LqaMercadolibreDeletionService(models.AbstractModel):
         if not endpoint or not api_key:
             return self._mark_failed(
                 batch,
-                _("Configura la URL y la clave interna del eliminador."),
+                _("Configurá la URL y la clave interna del eliminador."),
             )
 
         chunk_size = self._delete_chunk_size(params)
@@ -192,7 +192,7 @@ class LqaMercadolibreDeletionService(models.AbstractModel):
             "message": (
                 _("El lote se proceso correctamente.")
                 if not failed_count
-                else _("No se pudo procesar ningun bloque del lote.")
+                else _("No se pudo procesar ningún bloque del lote.")
                 if failed_count == batch.requested_count
                 else _("El lote termino con algunas publicaciones fallidas.")
             ),
@@ -255,7 +255,7 @@ class LqaMercadolibreDeletionService(models.AbstractModel):
         if not self.env.user.has_group(
             "lqa_admin_panel.group_lqa_commercial_user"
         ):
-            raise AccessError(_("No tenes permisos para eliminar publicaciones."))
+            raise AccessError(_("No tenés permisos para eliminar publicaciones."))
 
     def _normalize_ids(self, ids):
         normalized = []

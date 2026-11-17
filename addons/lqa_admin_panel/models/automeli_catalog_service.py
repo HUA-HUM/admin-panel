@@ -132,7 +132,7 @@ class LqaAutomeliCatalogService(models.AbstractModel):
         if not self.env.user.has_group(
             "lqa_admin_panel.group_lqa_commercial_user"
         ):
-            raise AccessError(_("No tenes permisos para consultar este catalogo."))
+            raise AccessError(_("No tenés permisos para consultar este catálogo."))
 
         params = self._prepare_params(filters or {})
         endpoint = (
@@ -144,7 +144,7 @@ class LqaAutomeliCatalogService(models.AbstractModel):
             )
         )
         if not endpoint:
-            raise UserError(_("Configura la URL del catalogo Automeli."))
+            raise UserError(_("Configurá la URL del catálogo Automeli."))
 
         response = self.env["lqa.api.client"].request_absolute_json(
             "GET",
@@ -184,7 +184,7 @@ class LqaAutomeliCatalogService(models.AbstractModel):
             )
         )
         if not endpoint:
-            raise UserError(_("Configura la URL de estado del catalogo Automeli."))
+            raise UserError(_("Configurá la URL de estado del catálogo Automeli."))
 
         response = self.env["lqa.api.client"].request_absolute_json("GET", endpoint)
         response = response if isinstance(response, dict) else {}
@@ -208,7 +208,7 @@ class LqaAutomeliCatalogService(models.AbstractModel):
         self._check_access()
         name = str(name or "").strip()
         if not name:
-            raise UserError(_("Indica un nombre para la carpeta."))
+            raise UserError(_("Indicá un nombre para la carpeta."))
         folder = self.env["lqa.automeli.selection.folder"].create(
             {
                 "name": name,
@@ -222,7 +222,7 @@ class LqaAutomeliCatalogService(models.AbstractModel):
         self._check_access()
         folder = self._get_folder(folder_id)
         if not isinstance(products, list) or not products:
-            raise UserError(_("Selecciona al menos un producto."))
+            raise UserError(_("Seleccioná al menos un producto."))
 
         result = self._save_product_batch(folder, products)
         return {
@@ -283,7 +283,7 @@ class LqaAutomeliCatalogService(models.AbstractModel):
             )
         )
         if not endpoint:
-            raise UserError(_("Configura la URL del catalogo Automeli."))
+            raise UserError(_("Configurá la URL del catálogo Automeli."))
 
         products = []
         seen = set()
@@ -368,7 +368,7 @@ class LqaAutomeliCatalogService(models.AbstractModel):
         self._check_access()
         folder = self._get_folder(folder_id)
         if not self.env.user.has_group("lqa_admin_panel.group_lqa_admin") and folder.create_uid != self.env.user:
-            raise AccessError(_("Solo podes eliminar carpetas creadas por tu usuario."))
+            raise AccessError(_("Solo podés eliminar carpetas creadas por tu usuario."))
         folder.unlink()
         return {"deleted": True}
 
@@ -398,7 +398,7 @@ class LqaAutomeliCatalogService(models.AbstractModel):
         if not self.env.user.has_group(
             "lqa_admin_panel.group_lqa_commercial_user"
         ):
-            raise AccessError(_("No tenes permisos para consultar este catalogo."))
+            raise AccessError(_("No tenés permisos para consultar este catálogo."))
 
     def _get_folder(self, folder_id):
         folder = self.env["lqa.automeli.selection.folder"].browse(

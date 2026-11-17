@@ -436,7 +436,7 @@ export class LqaAccounting extends Component {
 
     async runClientCreation() {
         if (!this.state.clients.fileContent && !this.state.clients.manualInput) {
-            this.notification.add("Carga un CSV o pega codigos TLQV.", {
+            this.notification.add("Cargá un CSV o pegá códigos TLQV.", {
                 type: "warning",
             });
             return;
@@ -544,7 +544,7 @@ export class LqaAccounting extends Component {
     async createConsumerFinalManual() {
         const tlqvCode = this.state.issueClients.manualTlqv;
         if (!tlqvCode) {
-            this.notification.add("Ingresa un TLQV para crear consumidor final.", {
+            this.notification.add("Ingresá un TLQV para crear consumidor final.", {
                 type: "warning",
             });
             return;
@@ -562,7 +562,7 @@ export class LqaAccounting extends Component {
 
     async createConsumerFinalFromTlqv(tlqvCode) {
         if (!tlqvCode) {
-            this.notification.add("Indica un TLQV valido.", { type: "warning" });
+            this.notification.add("Indicá un TLQV válido.", { type: "warning" });
             return false;
         }
         if (
@@ -628,7 +628,7 @@ export class LqaAccounting extends Component {
                 selected: Boolean(column.default),
             }));
         } catch (error) {
-            this.notifyError(error, "No se pudieron cargar las columnas de exportacion.");
+            this.notifyError(error, "No se pudieron cargar las columnas de exportación.");
         }
     }
 
@@ -683,7 +683,7 @@ export class LqaAccounting extends Component {
 
     async exportXubioComprobantes() {
         if (!this.xubioExportColumnKeys.length) {
-            this.notification.add("Selecciona al menos una columna para exportar.", {
+            this.notification.add("Seleccioná al menos una columna para exportar.", {
                 type: "warning",
             });
             return;
@@ -710,7 +710,7 @@ export class LqaAccounting extends Component {
     async runXubioBackfillNow() {
         const form = this.state.xubio.backfill.form;
         if (!form.fechaDesde || !form.fechaHasta) {
-            this.notification.add("Completa fecha desde y fecha hasta.", {
+            this.notification.add("Completá fecha desde y fecha hasta.", {
                 type: "warning",
             });
             return;
@@ -795,7 +795,7 @@ export class LqaAccounting extends Component {
         const bulk = this.state.facturacion.bulk;
         const tlqvCodes = this.bulkInvoiceCodes;
         if (!tlqvCodes.length) {
-            this.notification.add("Ingresa al menos un TLQV para encolar.", {
+            this.notification.add("Ingresá al menos un TLQV para encolar.", {
                 type: "warning",
             });
             return;
@@ -938,7 +938,7 @@ export class LqaAccounting extends Component {
     async trackBatch(batchId) {
         const target = String(batchId || "").trim();
         if (!target) {
-            this.notification.add("Ingresa un Batch ID para seguir.", {
+            this.notification.add("Ingresá un Batch ID para seguir.", {
                 type: "warning",
             });
             return;
@@ -1445,7 +1445,7 @@ export class LqaAccounting extends Component {
                 (current && jobs.find((job) => job.id === current.id)) ||
                 null;
         } catch (error) {
-            this.notifyError(error, "No se pudieron cargar los registros de facturacion.");
+            this.notifyError(error, "No se pudieron cargar los registros de facturación.");
         } finally {
             this.state.facturacion.invoice.loadingJobs = false;
         }
@@ -1455,7 +1455,7 @@ export class LqaAccounting extends Component {
         const form = this.state.facturacion.invoice.form;
         const tlqvCode = String(form.tlqvCode || "").trim().toUpperCase();
         if (!tlqvCode) {
-            this.notification.add("Ingresa un TLQV para crear la factura.", {
+            this.notification.add("Ingresá un TLQV para crear la factura.", {
                 type: "warning",
             });
             return;

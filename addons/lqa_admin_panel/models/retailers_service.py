@@ -95,7 +95,7 @@ class LqaRetailersService(models.AbstractModel):
         self._check_access()
         seller_sku = self._clean(seller_sku)
         if not seller_sku:
-            raise UserError(_("Ingresa un seller SKU para buscar."))
+            raise UserError(_("Ingresá un seller SKU para buscar."))
         response = self.env["lqa.api.client"].request_absolute_json(
             "GET",
             self._join_url(
@@ -355,7 +355,7 @@ class LqaRetailersService(models.AbstractModel):
         }
         path = path_by_mode.get(mode)
         if not path:
-            raise UserError(_("Periodo de ordenes no valido."))
+            raise UserError(_("Período de ordenes no válido."))
 
         response = self.env["lqa.api.client"].request_absolute_json(
             "GET",
@@ -391,13 +391,13 @@ class LqaRetailersService(models.AbstractModel):
         marketplace = self._clean(filters.get("marketplace")).lower()
         if marketplace:
             if marketplace not in self.ORDER_MARKETPLACES:
-                raise UserError(_("Marketplace no valido: %s") % marketplace)
+                raise UserError(_("Marketplace no válido: %s") % marketplace)
             params["marketplace"] = marketplace
 
         status = self._clean(filters.get("persistenceStatus")).upper()
         if status:
             if status not in self.ORDER_PERSISTENCE_STATUSES:
-                raise UserError(_("Estado de persistencia no valido: %s") % status)
+                raise UserError(_("Estado de persistencia no válido: %s") % status)
             params["persistence_status"] = status
 
         for key, target in (("from", "from"), ("to", "to")):
@@ -562,7 +562,7 @@ class LqaRetailersService(models.AbstractModel):
         self._check_access()
         order_id = self._clean(order_id)
         if not order_id or not re.fullmatch(r"[A-Za-z0-9._-]+", order_id):
-            raise UserError(_("El identificador de la orden no es valido."))
+            raise UserError(_("El identificador de la orden no es válido."))
         response = self.env["lqa.api.client"].request_absolute_json(
             "GET",
             self._join_url(
@@ -928,12 +928,12 @@ class LqaRetailersService(models.AbstractModel):
 
     def _check_access(self):
         if not self.env.user.has_group("lqa_admin_panel.group_lqa_commercial_user"):
-            raise AccessError(_("No tenes permisos para consultar retailers."))
+            raise AccessError(_("No tenés permisos para consultar retailers."))
 
     def _validate_marketplace(self, marketplace_id):
         marketplace_id = self._clean(marketplace_id)
         if marketplace_id not in self.MARKETPLACES:
-            raise UserError(_("Marketplace no valido."))
+            raise UserError(_("Marketplace no válido."))
         return marketplace_id
 
     def _validate_refresh_marketplace(self, marketplace_id):
@@ -1027,11 +1027,11 @@ class LqaRetailersService(models.AbstractModel):
     def _parse_refresh_sku_file(self, filename, content_base64):
         filename = self._clean(filename)
         if not filename:
-            raise UserError(_("Selecciona un archivo con SKUs."))
+            raise UserError(_("Seleccioná un archivo con SKUs."))
         try:
             content = base64.b64decode(content_base64 or "", validate=True)
         except (TypeError, ValueError) as error:
-            raise UserError(_("El archivo recibido no es valido.")) from error
+            raise UserError(_("El archivo recibido no es válido.")) from error
         if not content:
             raise UserError(_("El archivo esta vacio."))
 
@@ -1041,7 +1041,7 @@ class LqaRetailersService(models.AbstractModel):
         elif extension == ".xlsx":
             rows = self._read_xlsx_rows(content)
         else:
-            raise UserError(_("Usa un archivo CSV o Excel XLSX."))
+            raise UserError(_("Usá un archivo CSV o Excel XLSX."))
         return self._skus_from_rows(rows)
 
     def _skus_from_rows(self, rows):
@@ -1081,7 +1081,7 @@ class LqaRetailersService(models.AbstractModel):
             seen.add(normalized)
             skus.append(sku)
         if not skus:
-            raise UserError(_("No encontre SKUs validos en el archivo."))
+            raise UserError(_("No encontré SKUs válidos en el archivo."))
         return skus
 
     def _read_csv_rows(self, content):
@@ -1100,7 +1100,7 @@ class LqaRetailersService(models.AbstractModel):
         try:
             workbook = zipfile.ZipFile(io.BytesIO(content))
         except zipfile.BadZipFile as error:
-            raise UserError(_("El archivo XLSX no es valido.")) from error
+            raise UserError(_("El archivo XLSX no es válido.")) from error
         with workbook:
             shared_strings = self._xlsx_shared_strings(workbook)
             sheet_path = self._xlsx_first_sheet_path(workbook)
@@ -1202,7 +1202,7 @@ class LqaRetailersService(models.AbstractModel):
             or os.environ.get("LQA_API_TOKEN", "")
         ).strip()
         if not token:
-            raise UserError(_("Configura el token interno de Madre para Retailers."))
+            raise UserError(_("Configurá el token interno de Madre para Retailers."))
         return {"x-internal-api-key": token}
 
     def _orders_base_url(self):
@@ -1254,12 +1254,12 @@ class LqaRetailersService(models.AbstractModel):
     def _get_custom_orders(self, filters):
         marketplace = self._clean(filters.get("marketplace") or "all").lower()
         if marketplace not in ("all", *self.ORDER_MARKETPLACES):
-            raise UserError(_("Marketplace de ordenes no valido."))
+            raise UserError(_("Marketplace de ordenes no válido."))
 
         date_from = self._clean(filters.get("from") or filters.get("fechaDesde"))
         date_to = self._clean(filters.get("to") or filters.get("fechaHasta"))
         if not date_from or not date_to:
-            raise UserError(_("Indica fecha desde y hasta para consultar ordenes."))
+            raise UserError(_("Indicá fecha desde y hasta para consultar ordenes."))
 
         params = {
             "from": date_from,

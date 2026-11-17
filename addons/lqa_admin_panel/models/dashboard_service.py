@@ -74,7 +74,7 @@ class LqaDashboardService(models.AbstractModel):
             or not menu.action
             or not self._is_panel_menu(menu)
         ):
-            raise UserError(_("La seccion seleccionada no se puede agregar a favoritos."))
+            raise UserError(_("La sección seleccionada no se puede agregar a favoritos."))
 
         favorite_menu_ids = self._favorite_menu_ids()
         if menu.id in favorite_menu_ids:
@@ -302,7 +302,7 @@ class LqaDashboardService(models.AbstractModel):
         if not self.env.user.has_group(
             "lqa_admin_panel.group_lqa_commercial_user"
         ):
-            raise AccessError(_("No tenes permisos para acceder al panel interno."))
+            raise AccessError(_("No tenés permisos para acceder al panel interno."))
 
     @staticmethod
     def _as_int(value):

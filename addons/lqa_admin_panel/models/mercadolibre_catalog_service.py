@@ -139,7 +139,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
         if not self.env.user.has_group(
             "lqa_admin_panel.group_lqa_commercial_user"
         ):
-            raise AccessError(_("No tenes permisos para consultar este catalogo."))
+            raise AccessError(_("No tenés permisos para consultar este catálogo."))
 
         params = self._prepare_params(filters or {})
         endpoint = (
@@ -151,7 +151,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
             )
         )
         if not endpoint:
-            raise UserError(_("Configura la URL del catalogo MercadoLibre."))
+            raise UserError(_("Configurá la URL del catálogo MercadoLibre."))
 
         response = self.env["lqa.api.client"].request_absolute_json(
             "GET",
@@ -226,12 +226,12 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
             .exists()
         )
         if not query:
-            raise UserError(_("La consulta del catalogo no existe."))
+            raise UserError(_("La consulta del catálogo no existe."))
         if (
             not self.env.user.has_group("lqa_admin_panel.group_lqa_admin")
             and query.requested_by_id != self.env.user
         ):
-            raise AccessError(_("No tenes acceso a esta consulta."))
+            raise AccessError(_("No tenés acceso a esta consulta."))
         result = {}
         if query.state == "done" and query.result_json:
             try:
@@ -332,7 +332,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
         self._check_access()
         name = str(name or "").strip()
         if not name:
-            raise UserError(_("Indica un nombre para la carpeta."))
+            raise UserError(_("Indicá un nombre para la carpeta."))
         folder = self.env["lqa.mercadolibre.selection.folder"].create(
             {
                 "name": name,
@@ -347,9 +347,9 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
         name = self._clean(name)
         filename = self._clean(filename)
         if not name:
-            raise UserError(_("Indica un nombre para la carpeta."))
+            raise UserError(_("Indicá un nombre para la carpeta."))
         if not filename or not content_base64:
-            raise UserError(_("Selecciona un archivo CSV o XLSX."))
+            raise UserError(_("Seleccioná un archivo CSV o XLSX."))
         extension = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
         if extension not in {"csv", "xlsx"}:
             raise UserError(_("El archivo debe ser CSV o XLSX."))
@@ -360,7 +360,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
         if not content:
             raise UserError(_("El archivo esta vacio."))
         if len(content) > self.MLA_FILE_MAX_BYTES:
-            raise UserError(_("El archivo puede pesar como maximo 20 MB."))
+            raise UserError(_("El archivo puede pesar como máximo 20 MB."))
 
         rows = (
             self._read_mla_csv_rows(content)
@@ -369,10 +369,10 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
         )
         mla_codes, invalid_count = self._extract_mla_codes(rows)
         if not mla_codes:
-            raise UserError(_("No encontre MLAs validos en la primera columna."))
+            raise UserError(_("No encontré MLAs válidos en la primera columna."))
         if len(mla_codes) > self.MAX_FILTER_SELECTION_ROWS:
             raise UserError(
-                _("El archivo supera el maximo de %s MLAs por carpeta.")
+                _("El archivo supera el máximo de %s MLAs por carpeta.")
                 % self.MAX_FILTER_SELECTION_ROWS
             )
 
@@ -406,7 +406,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
         self._check_access()
         folder = self._get_folder(folder_id)
         if not isinstance(products, list) or not products:
-            raise UserError(_("Selecciona al menos un producto."))
+            raise UserError(_("Seleccioná al menos un producto."))
 
         current_count = self.env["lqa.mercadolibre.selection.item"].search_count(
             [("folder_id", "=", folder.id)]
@@ -616,7 +616,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
         self._check_access()
         job = self._get_selection_job_for_user(job_id)
         if job.state not in {"queued", "running"}:
-            raise UserError(_("Este proceso ya termino."))
+            raise UserError(_("Este proceso ya terminó."))
         # Dropping the token is what stops the running worker: it re-reads the
         # row before every batch and abandons the job when it is no longer its
         # owner. Rows already saved stay in the folder.
@@ -643,7 +643,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
             not self.env.user.has_group("lqa_admin_panel.group_lqa_admin")
             and job.requested_by_id != self.env.user
         ):
-            raise AccessError(_("No tenes acceso a este proceso."))
+            raise AccessError(_("No tenés acceso a este proceso."))
         return job
 
     @api.model
@@ -1075,7 +1075,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
                 if matched > self.MAX_FILTER_SELECTION_ROWS:
                     raise SelectionLimitError(
                         _(
-                            "El filtro devuelve %s productos y el maximo por carpeta es %s. Refiná el filtro antes de guardar."
+                            "El filtro devuelve %s productos y el máximo por carpeta es %s. Refiná el filtro antes de guardar."
                         )
                         % (matched, self.MAX_FILTER_SELECTION_ROWS)
                     )
@@ -1084,7 +1084,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
                 ):
                     raise SelectionLimitError(
                         _(
-                            "La carpeta ya contiene %s productos. Este filtro podria superar el maximo de %s productos por carpeta."
+                            "La carpeta ya contiene %s productos. Este filtro podria superar el máximo de %s productos por carpeta."
                         )
                         % (existing_count, self.MAX_FILTER_SELECTION_ROWS)
                     )
@@ -1176,7 +1176,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
                 )
         except Exception as error:
             raise UserError(
-                _("No se pudo consultar un lote paralelo del catalogo: %s")
+                _("No se pudo consultar un lote paralelo del catálogo: %s")
                 % error
             ) from error
 
@@ -1256,7 +1256,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
             )
             if folder_count + len(to_create) > max_folder_size:
                 raise UserError(
-                    _("Una carpeta puede contener como maximo %s productos.")
+                    _("Una carpeta puede contener como máximo %s productos.")
                     % max_folder_size
                 )
         if to_create:
@@ -1330,7 +1330,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
         )
         if running:
             raise UserError(
-                _("Ya tenes una exportacion en curso. Espera a que termine o cancelala.")
+                _("Ya tenés una exportación en curso. Esperá a que termine o cancelala.")
             )
 
         export = self.env["lqa.mercadolibre.catalog.export"].sudo().create(
@@ -1373,7 +1373,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
         self._check_access()
         export = self._get_catalog_export_for_user(export_id)
         if export.state not in {"queued", "running"}:
-            raise UserError(_("Esta exportacion ya termino."))
+            raise UserError(_("Esta exportación ya terminó."))
         export.write(
             {
                 "state": "cancelled",
@@ -1393,12 +1393,12 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
             .exists()
         )
         if not export:
-            raise UserError(_("La exportacion no existe."))
+            raise UserError(_("La exportación no existe."))
         if (
             not self.env.user.has_group("lqa_admin_panel.group_lqa_admin")
             and export.requested_by_id != self.env.user
         ):
-            raise AccessError(_("No tenes acceso a esta exportacion."))
+            raise AccessError(_("No tenés acceso a esta exportación."))
         return export
 
     def _catalog_export_to_dict(self, export):
@@ -1612,7 +1612,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
             if column[0] in set(self._json_loads(export.columns_json, []))
         ]
         if not columns:
-            raise UserError(_("Selecciona al menos una columna para exportar."))
+            raise UserError(_("Seleccioná al menos una columna para exportar."))
 
         staging_dir = export.staging_dir
         if not staging_dir or not os.path.isdir(staging_dir):
@@ -1916,7 +1916,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
         try:
             workbook = zipfile.ZipFile(io.BytesIO(content))
         except zipfile.BadZipFile as error:
-            raise UserError(_("El archivo XLSX no es valido.")) from error
+            raise UserError(_("El archivo XLSX no es válido.")) from error
         with workbook:
             shared_strings = self._mla_xlsx_shared_strings(workbook)
             sheet_path = self._mla_xlsx_first_sheet_path(workbook)
@@ -2011,7 +2011,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
             )
         )
         if not endpoint:
-            raise UserError(_("Configura la URL del catalogo MercadoLibre."))
+            raise UserError(_("Configurá la URL del catálogo MercadoLibre."))
         return endpoint
 
     def _fetch_filtered_products(self, filters):
@@ -2027,7 +2027,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
             )
         )
         if not endpoint:
-            raise UserError(_("Configura la URL del catalogo MercadoLibre."))
+            raise UserError(_("Configurá la URL del catálogo MercadoLibre."))
         products = []
         seen = set()
         total = 0
@@ -2117,7 +2117,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
             not self.env.user.has_group("lqa_admin_panel.group_lqa_admin")
             and folder.create_uid != self.env.user
         ):
-            raise AccessError(_("Solo podes eliminar carpetas creadas por tu usuario."))
+            raise AccessError(_("Solo podés eliminar carpetas creadas por tu usuario."))
         folder.unlink()
         return {"deleted": True}
 
@@ -2159,7 +2159,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
         if not self.env.user.has_group(
             "lqa_admin_panel.group_lqa_commercial_user"
         ):
-            raise AccessError(_("No tenes permisos para consultar este catalogo."))
+            raise AccessError(_("No tenés permisos para consultar este catálogo."))
 
     def _get_folder(self, folder_id):
         folder = self.env["lqa.mercadolibre.selection.folder"].browse(

@@ -414,7 +414,7 @@ export class LqaMercadolibreCatalog extends Component {
     async createFolder() {
         const name = String(this.state.newFolderName || "").trim();
         if (!name) {
-            this.notification.add("Indica un nombre para la carpeta.", {
+            this.notification.add("Indicá un nombre para la carpeta.", {
                 type: "warning",
             });
             return;
@@ -440,7 +440,7 @@ export class LqaMercadolibreCatalog extends Component {
 
     async saveSelectionToFolder() {
         if (!this.selectedCount) {
-            this.notification.add("Selecciona productos del catalogo.", {
+            this.notification.add("Seleccioná productos del catálogo.", {
                 type: "warning",
             });
             return;
@@ -460,12 +460,12 @@ export class LqaMercadolibreCatalog extends Component {
             await this.loadFolderProducts();
             this.clearSelection();
             this.notification.add(
-                `Seleccion guardada: ${result.added} nuevos, ${result.updated} actualizados.`,
+                `Selección guardada: ${result.added} nuevos, ${result.updated} actualizados.`,
                 { type: "success" }
             );
         } catch (error) {
             this.notification.add(
-                error?.data?.message || "No se pudo guardar la seleccion.",
+                error?.data?.message || "No se pudo guardar la selección.",
                 { type: "danger" }
             );
         } finally {
@@ -487,7 +487,7 @@ export class LqaMercadolibreCatalog extends Component {
         }
         if (total > MAX_FOLDER_PRODUCTS) {
             this.notification.add(
-                `El filtro tiene ${this.formatNumber(total)} productos. El maximo por carpeta es ${this.formatNumber(MAX_FOLDER_PRODUCTS)}; refina el filtro antes de guardarlo.`,
+                `El filtro tiene ${this.formatNumber(total)} productos. El máximo por carpeta es ${this.formatNumber(MAX_FOLDER_PRODUCTS)}; Refiná el filtro antes de guardarlo.`,
                 { type: "warning" }
             );
             return;
@@ -564,7 +564,7 @@ export class LqaMercadolibreCatalog extends Component {
                     { type: "success" }
                 );
             } else if (job.state === "failed") {
-                this.notification.add(job.error || "El guardado masivo fallo.", {
+                this.notification.add(job.error || "El guardado masivo falló.", {
                     type: "danger",
                 });
             }
@@ -590,7 +590,7 @@ export class LqaMercadolibreCatalog extends Component {
                 [jobId]
             );
             this.updateSelectionFolderProgress(this.state.selectionJob);
-            this.notification.add("El proceso se retomara desde el ultimo lote guardado.", {
+            this.notification.add("El proceso se retomará desde el último lote guardado.", {
                 type: "info",
             });
             this.scheduleSelectionJobPolling();
@@ -849,13 +849,13 @@ export class LqaMercadolibreCatalog extends Component {
 
     openDeleteConfirmation() {
         if (!this.selectedCount) {
-            this.notification.add("Selecciona al menos una publicacion.", {
+            this.notification.add("Seleccioná al menos una publicación.", {
                 type: "warning",
             });
             return;
         }
         if (!this.selectedMlaIds.length) {
-            this.notification.add("La seleccion no tiene IDs MLA validos.", {
+            this.notification.add("La selección no tiene IDs MLA válidos.", {
                 type: "warning",
             });
             return;

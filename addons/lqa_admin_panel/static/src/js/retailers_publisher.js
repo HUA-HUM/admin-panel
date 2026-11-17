@@ -222,7 +222,7 @@ export class LqaRetailersPublisher extends Component {
     async createFolder() {
         const name = this.state.newFolderName.trim();
         if (!name) {
-            this.notification.add("Ingresa un nombre para la carpeta.", {
+            this.notification.add("Ingresá un nombre para la carpeta.", {
                 type: "warning",
             });
             return;
@@ -250,14 +250,14 @@ export class LqaRetailersPublisher extends Component {
 
     async addManualProduct() {
         if (!this.selectedFolder) {
-            this.notification.add("Selecciona una carpeta.", { type: "warning" });
+            this.notification.add("Seleccioná una carpeta.", { type: "warning" });
             return;
         }
         const folderId = this.selectedFolder.id;
         const productId = this.state.manual.productId.trim();
         const sellerSku = this.state.manual.sellerSku.trim();
         if (!productId || !sellerSku) {
-            this.notification.add("Completa productId y sellerSku.", {
+            this.notification.add("Completá productId y sellerSku.", {
                 type: "warning",
             });
             return;
@@ -293,7 +293,7 @@ export class LqaRetailersPublisher extends Component {
         }
         if (!file.name.toLowerCase().endsWith(".xlsx")) {
             this.clearUpload();
-            this.notification.add("Selecciona un archivo de Excel XLSX.", {
+            this.notification.add("Seleccioná un archivo de Excel XLSX.", {
                 type: "warning",
             });
             return;
@@ -310,11 +310,11 @@ export class LqaRetailersPublisher extends Component {
 
     async importFile() {
         if (!this.selectedFolder) {
-            this.notification.add("Selecciona una carpeta.", { type: "warning" });
+            this.notification.add("Seleccioná una carpeta.", { type: "warning" });
             return;
         }
         if (!this.state.upload.content) {
-            this.notification.add("Selecciona un archivo de Excel XLSX.", {
+            this.notification.add("Seleccioná un archivo de Excel XLSX.", {
                 type: "warning",
             });
             return;

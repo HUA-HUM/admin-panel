@@ -196,7 +196,7 @@ export class LqaMercadolibrePromotions extends Component {
                 [{ ...this.state.catalogFilters }]
             );
         } catch (error) {
-            this.notifyError(error, "No se pudo cargar el catalogo de promociones.");
+            this.notifyError(error, "No se pudo cargar el catálogo de promociones.");
         } finally {
             this.state.loadingCatalogs = false;
             this.stopLoadingClockIfIdle();
@@ -252,7 +252,7 @@ export class LqaMercadolibrePromotions extends Component {
             }
             this.scheduleActionPolling();
         } catch (error) {
-            this.notifyError(error, "No se pudo cargar la seccion de acciones.");
+            this.notifyError(error, "No se pudo cargar la sección de acciones.");
         } finally {
             this.state.loadingActions = false;
             this.stopLoadingClockIfIdle();
@@ -328,7 +328,7 @@ export class LqaMercadolibrePromotions extends Component {
             return;
         }
         if (action.requires_promotion_id && !this.state.actionForm.promotionId.trim()) {
-            this.notification.add("Ingresa el promotionId antes de ejecutar.", {
+            this.notification.add("Ingresá el promotionId antes de ejecutar.", {
                 type: "warning",
             });
             return;
@@ -351,7 +351,7 @@ export class LqaMercadolibrePromotions extends Component {
             this.state.pendingAction = null;
             await this.loadActionsContext();
         } catch (error) {
-            this.notifyError(error, "No se pudo ejecutar la accion.");
+            this.notifyError(error, "No se pudo ejecutar la acción.");
         } finally {
             this.state.runningAction = false;
         }

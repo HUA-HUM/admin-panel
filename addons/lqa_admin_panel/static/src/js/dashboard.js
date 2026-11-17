@@ -226,7 +226,7 @@ export class LqaAdminDashboard extends Component {
             this.openAction(section.action_id);
             return;
         }
-        this.notification.add("Esta seccion esta preparada para definir mas adelante.", {
+        this.notification.add("Esta sección esta preparada para definir más adelante.", {
             type: "info",
         });
     }
