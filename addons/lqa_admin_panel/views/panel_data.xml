@@ -159,30 +159,6 @@
         <field name="active">True</field>
     </record>
 
-    <record id="panel_section_retailers_bulk_actions" model="lqa.panel.section">
-        <field name="module_id" ref="panel_module_retailers"/>
-        <field name="name">Acciones masivas</field>
-        <field name="code">bulk_actions</field>
-        <field name="description">Actualizacion forzada de precio, estado y stock por marketplace.</field>
-        <field name="badge">Nuevo</field>
-        <field name="status">available</field>
-        <field name="sequence">50</field>
-        <field name="action_xmlid">lqa_admin_panel.action_lqa_retailers_bulk_actions</field>
-        <field name="active">True</field>
-    </record>
-
-    <record id="panel_section_retailers_pricing" model="lqa.panel.section">
-        <field name="module_id" ref="panel_module_retailers"/>
-        <field name="name">Pricing</field>
-        <field name="code">pricing</field>
-        <field name="description">Rentabilidad y precio sugerido por SKU y canal de venta.</field>
-        <field name="badge">Nuevo</field>
-        <field name="status">available</field>
-        <field name="sequence">40</field>
-        <field name="action_xmlid">lqa_admin_panel.action_lqa_retailers_pricing</field>
-        <field name="active">True</field>
-    </record>
-
     <record id="panel_section_retailers_publisher" model="lqa.panel.section">
         <field name="module_id" ref="panel_module_retailers"/>
         <field name="name">Publicador</field>
@@ -195,18 +171,6 @@
         <field name="active">True</field>
     </record>
 
-    <record id="panel_section_retailers_google_merchant" model="lqa.panel.section">
-        <field name="module_id" ref="panel_module_retailers"/>
-        <field name="name">Google Merchant</field>
-        <field name="code">google-merchant</field>
-        <field name="description">Feed, productos e imports para Google Merchant Center.</field>
-        <field name="badge">Activo</field>
-        <field name="status">available</field>
-        <field name="sequence">10</field>
-        <field name="action_xmlid">lqa_admin_panel.action_lqa_retailers_google_merchant</field>
-        <field name="active">False</field>
-    </record>
-
     <record id="panel_section_retailers_fravega" model="lqa.panel.section">
         <field name="module_id" ref="panel_module_retailers"/>
         <field name="name">Fravega</field>
@@ -216,30 +180,6 @@
         <field name="status">available</field>
         <field name="sequence">20</field>
         <field name="action_xmlid">lqa_admin_panel.action_lqa_retailers_fravega</field>
-        <field name="active">False</field>
-    </record>
-
-    <record id="panel_section_retailers_oncity" model="lqa.panel.section">
-        <field name="module_id" ref="panel_module_retailers"/>
-        <field name="name">OnCity</field>
-        <field name="code">oncity</field>
-        <field name="description">Productos publicados, imports y estados de OnCity.</field>
-        <field name="badge">Activo</field>
-        <field name="status">available</field>
-        <field name="sequence">30</field>
-        <field name="action_xmlid">lqa_admin_panel.action_lqa_retailers_oncity</field>
-        <field name="active">False</field>
-    </record>
-
-    <record id="panel_section_retailers_megatone" model="lqa.panel.section">
-        <field name="module_id" ref="panel_module_retailers"/>
-        <field name="name">Megatone</field>
-        <field name="code">megatone</field>
-        <field name="description">Productos publicados, imports y estados de Megatone.</field>
-        <field name="badge">Activo</field>
-        <field name="status">available</field>
-        <field name="sequence">40</field>
-        <field name="action_xmlid">lqa_admin_panel.action_lqa_retailers_megatone</field>
         <field name="active">False</field>
     </record>
 
@@ -318,20 +258,6 @@
     </function>
 
     <function model="lqa.panel.section" name="write">
-        <value eval="[ref('panel_section_retailers_bulk_actions')]"/>
-        <value
-            eval="{
-                'description': 'Actualizacion forzada de precio, estado y stock por marketplace.',
-                'badge': 'Nuevo',
-                'status': 'available',
-                'sequence': 50,
-                'action_xmlid': 'lqa_admin_panel.action_lqa_retailers_bulk_actions',
-                'active': True,
-            }"
-        />
-    </function>
-
-    <function model="lqa.panel.section" name="write">
         <value eval="[ref('panel_section_retailers_publisher')]"/>
         <value
             eval="{
@@ -340,20 +266,6 @@
                 'status': 'available',
                 'sequence': 30,
                 'action_xmlid': 'lqa_admin_panel.action_lqa_retailers_publisher_folders',
-                'active': True,
-            }"
-        />
-    </function>
-
-    <function model="lqa.panel.section" name="write">
-        <value eval="[ref('panel_section_retailers_pricing')]"/>
-        <value
-            eval="{
-                'description': 'Rentabilidad y precio sugerido por SKU y canal de venta.',
-                'badge': 'Nuevo',
-                'status': 'available',
-                'sequence': 40,
-                'action_xmlid': 'lqa_admin_panel.action_lqa_retailers_pricing',
                 'active': True,
             }"
         />

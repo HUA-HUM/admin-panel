@@ -6,36 +6,12 @@ import { useService } from "@web/core/utils/hooks";
 
 const MARKETPLACES = [
     {
-        id: "oncity",
-        name: "OnCity",
-        subtitle: "Retail marketplace",
-        description: "Productos publicados, imports y estados de publicaciones de OnCity.",
-        accent: "oncity",
-        logo: "/lqa_admin_panel/static/src/img/marketplace/oncity.png?v=1",
-    },
-    {
         id: "fravega",
         name: "Fravega",
         subtitle: "Retail marketplace",
         description: "Catalogo publicado, sincronizaciones y salud operativa de Fravega.",
         accent: "fravega",
         logo: "/lqa_admin_panel/static/src/img/marketplace/fravega.png?v=1",
-    },
-    {
-        id: "google-merchant",
-        name: "Google Merchant",
-        subtitle: "Feed y Merchant Center",
-        description: "Productos, imports y estado de publicaciones para Google Merchant.",
-        accent: "google",
-        logo: "/lqa_admin_panel/static/src/img/marketplace/google-merchant.png?v=1",
-    },
-    {
-        id: "megatone",
-        name: "Megatone",
-        subtitle: "Retail marketplace",
-        description: "Catalogo, stock, precios e importaciones asincronicas de Megatone.",
-        accent: "megatone",
-        logo: "/lqa_admin_panel/static/src/img/marketplace/megatone.svg?v=1",
     },
 ];
 
@@ -71,7 +47,6 @@ export class LqaRetailers extends Component {
         this.notification = useService("notification");
         this.orm = useService("orm");
         this.refreshBulkFileInput = null;
-        this.pausedBulkFileInput = null;
         const params = this.props.action?.params || {};
         const initialMarketplaceId = params.marketplace_id || "";
 
@@ -86,40 +61,10 @@ export class LqaRetailers extends Component {
             loadingImports: false,
             loadingStatus: false,
             loadingBulkActionRuns: false,
-            loadingPausedSkuRuns: false,
-            loadingPausedSkus: false,
             downloadingMarketplaceSkus: false,
-            upsertingPausedSku: false,
-            upsertingPausedSkus: false,
-            deletingPausedSku: "",
-            deletingGoogleMerchantProductKey: "",
-            googleMerchantProductToDelete: null,
             productDetail: null,
             dashboardOrders: emptyOrdersOverview(),
             dashboardError: "",
-            bulkActionTab: "auto",
-            pausedSkuFilters: {
-                sku: "",
-                paused: "",
-                offset: 0,
-                limit: "100",
-            },
-            pausedSingleForm: {
-                sku: "",
-                paused: "true",
-                note: "",
-            },
-            pausedBulkForm: {
-                filename: "",
-                content: "",
-                defaultPaused: "true",
-                note: "",
-            },
-            pausedSingleResult: null,
-            pausedBulkResult: null,
-            bulkActionRuns: [],
-            pausedSkuRuns: [],
-            pausedSkus: { items: [], pagination: {} },
             products: { items: [], summary: {}, pagination: {} },
             imports: { items: [], pagination: {} },
             status: { total: 0, statuses: [] },
@@ -153,13 +98,6 @@ export class LqaRetailers extends Component {
         );
     }
 
-    get canDeleteGoogleMerchantProduct() {
-        return (
-            Boolean(this.state.googleMerchantProductToDelete) &&
-            !this.state.deletingGoogleMerchantProductKey
-        );
-    }
-
     get showDashboard() {
         return this.state.viewMode === "dashboard" && !this.state.marketplaceId;
     }
@@ -168,16 +106,8 @@ export class LqaRetailers extends Component {
         return this.state.viewMode === "marketplaces" && !this.state.marketplaceId;
     }
 
-    get showBulkActions() {
-        return this.state.viewMode === "bulk_actions" && !this.state.marketplaceId;
-    }
-
     get showMarketplaceDetail() {
         return this.state.viewMode === "marketplace" && Boolean(this.state.marketplaceId);
-    }
-
-    get isGoogleMerchantDetail() {
-        return this.state.marketplaceId === "google-merchant";
     }
 
     get dashboardMarketplaceBreakdown() {
@@ -196,14 +126,6 @@ export class LqaRetailers extends Component {
 
     get dashboardErrorsCount() {
         return (this.state.dashboardOrders.errors || []).length;
-    }
-
-    get bulkActionRunsAuto() {
-        return (this.state.bulkActionRuns || []).filter((run) => run.action_type === "published");
-    }
-
-    get bulkActionRunsManual() {
-        return (this.state.bulkActionRuns || []).filter((run) => run.action_type !== "published");
     }
 
     get statusOptions() {
@@ -246,14 +168,6 @@ export class LqaRetailers extends Component {
     loadCurrentView() {
         if (this.showDashboard) {
             this.loadDashboard();
-        } else if (this.showBulkActions) {
-            if (this.state.bulkActionTab === "paused_list") {
-                this.loadPausedSkus();
-            } else if (this.state.bulkActionTab === "paused_insert") {
-                this.loadPausedSkuRuns();
-            } else {
-                this.loadBulkActionRuns();
-            }
         } else if (this.showMarketplaceDetail) {
             this.loadCurrentTab();
         }
@@ -462,47 +376,6 @@ export class LqaRetailers extends Component {
         await this.loadImports();
     }
 
-    async setBulkActionTab(tab) {
-        this.state.bulkActionTab = tab;
-        if (tab === "paused_list") {
-            await this.loadPausedSkus();
-        } else if (tab === "paused_insert") {
-            await this.loadPausedSkuRuns();
-        } else {
-            await this.loadBulkActionRuns();
-        }
-    }
-
-    async loadBulkActionRuns() {
-        this.state.loadingBulkActionRuns = true;
-        try {
-            this.state.bulkActionRuns = await this.orm.call(
-                "lqa.retailers.service",
-                "get_bulk_action_runs",
-                [30]
-            );
-        } catch (error) {
-            this.notifyError(error, "No se pudieron cargar los registros de ejecucion.");
-        } finally {
-            this.state.loadingBulkActionRuns = false;
-        }
-    }
-
-    async loadPausedSkuRuns() {
-        this.state.loadingPausedSkuRuns = true;
-        try {
-            this.state.pausedSkuRuns = await this.orm.call(
-                "lqa.retailers.service",
-                "get_paused_sku_action_runs",
-                [30]
-            );
-        } catch (error) {
-            this.notifyError(error, "No se pudieron cargar los registros de SKUs pausados.");
-        } finally {
-            this.state.loadingPausedSkuRuns = false;
-        }
-    }
-
     readFileAsDataUrl(file) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -510,244 +383,6 @@ export class LqaRetailers extends Component {
             reader.onerror = () => reject(reader.error);
             reader.readAsDataURL(file);
         });
-    }
-
-    async loadPausedSkus() {
-        this.state.loadingPausedSkus = true;
-        try {
-            this.state.pausedSkus = await this.orm.call(
-                "lqa.retailers.service",
-                "get_paused_skus",
-                [{ ...this.state.pausedSkuFilters }]
-            );
-        } catch (error) {
-            this.notifyError(error, "No se pudieron cargar los SKUs pausados.");
-        } finally {
-            this.state.loadingPausedSkus = false;
-        }
-    }
-
-    async previousPausedSkusPage() {
-        const limit = Number(this.state.pausedSkus.pagination.limit || 100);
-        this.state.pausedSkuFilters.offset = Math.max(
-            Number(this.state.pausedSkus.pagination.offset || 0) - limit,
-            0
-        );
-        await this.loadPausedSkus();
-    }
-
-    async nextPausedSkusPage() {
-        this.state.pausedSkuFilters.offset = Number(
-            this.state.pausedSkus.pagination.next_offset || 0
-        );
-        await this.loadPausedSkus();
-    }
-
-    async submitPausedSingle() {
-        if (!this.state.pausedSingleForm.sku.trim()) {
-            this.notification.add("Ingresa un SKU para guardar.", {
-                type: "warning",
-            });
-            return;
-        }
-        this.state.upsertingPausedSku = true;
-        try {
-            const result = await this.orm.call(
-                "lqa.retailers.service",
-                "upsert_paused_sku",
-                [
-                    this.state.pausedSingleForm.sku,
-                    this.state.pausedSingleForm.paused === "true",
-                    this.state.pausedSingleForm.note,
-                ]
-            );
-            this.state.pausedSingleResult = result;
-            this.state.pausedSingleForm.sku = "";
-            this.state.pausedSingleForm.note = "";
-            await Promise.all([this.loadPausedSkus(), this.loadPausedSkuRuns()]);
-            this.notification.add(
-                `${result.sku} guardado como ${this.pausedLabel(result.paused_count > 0)}.`,
-                { type: "success" }
-            );
-        } catch (error) {
-            this.notifyError(error, "No se pudo guardar el SKU pausado.");
-        } finally {
-            this.state.upsertingPausedSku = false;
-        }
-    }
-
-    async deletePausedSku(item) {
-        const sku = String(item?.sku || "").trim();
-        if (!sku) {
-            this.notification.add("No encontre SKU para eliminar.", {
-                type: "warning",
-            });
-            return;
-        }
-        if (!window.confirm(`Eliminar ${sku} del listado de SKUs pausados?`)) {
-            return;
-        }
-        this.state.deletingPausedSku = sku;
-        try {
-            const result = await this.orm.call(
-                "lqa.retailers.service",
-                "delete_paused_sku",
-                [sku]
-            );
-            this.notification.add(
-                result.message || `${result.sku || sku} eliminado del listado.`,
-                { type: "success" }
-            );
-            await this.loadPausedSkus();
-        } catch (error) {
-            this.notifyError(error, "No se pudo eliminar el SKU pausado.");
-        } finally {
-            this.state.deletingPausedSku = "";
-        }
-    }
-
-    async onPausedBulkFileChange(event) {
-        this.pausedBulkFileInput = event.target;
-        const file = event.target.files?.[0];
-        if (!file) {
-            this.clearPausedBulkFile();
-            return;
-        }
-        try {
-            const dataUrl = await this.readFileAsDataUrl(file);
-            this.state.pausedBulkForm.filename = file.name;
-            this.state.pausedBulkForm.content = dataUrl.split(",", 2)[1] || "";
-        } catch (error) {
-            this.clearPausedBulkFile();
-            this.notification.add("No se pudo leer el archivo seleccionado.", {
-                type: "danger",
-            });
-        }
-    }
-
-    clearPausedBulkFile() {
-        this.state.pausedBulkForm.filename = "";
-        this.state.pausedBulkForm.content = "";
-        if (this.pausedBulkFileInput) {
-            this.pausedBulkFileInput.value = "";
-        }
-    }
-
-    async submitPausedBulk() {
-        if (!this.state.pausedBulkForm.content) {
-            this.notification.add("Selecciona un CSV o Excel con SKUs.", {
-                type: "warning",
-            });
-            return;
-        }
-        this.state.upsertingPausedSkus = true;
-        try {
-            const result = await this.orm.call(
-                "lqa.retailers.service",
-                "upsert_paused_skus_bulk",
-                [
-                    this.state.pausedBulkForm.filename,
-                    this.state.pausedBulkForm.content,
-                    this.state.pausedBulkForm.defaultPaused === "true",
-                    this.state.pausedBulkForm.note,
-                ]
-            );
-            this.state.pausedBulkResult = result;
-            this.state.pausedBulkForm.note = "";
-            this.clearPausedBulkFile();
-            await Promise.all([this.loadPausedSkus(), this.loadPausedSkuRuns()]);
-            this.notification.add(
-                `Bulk enviado: ${this.formatNumber(result.sku_count)} SKUs procesados.`,
-                { type: "success" }
-            );
-        } catch (error) {
-            this.notifyError(error, "No se pudo enviar el bulk de SKUs pausados.");
-        } finally {
-            this.state.upsertingPausedSkus = false;
-        }
-    }
-
-    openGoogleMerchantProductDelete(product) {
-        if (!this.googleMerchantProductSku(product)) {
-            this.notification.add(
-                "No encontre el SKU / offer ID para eliminar este producto.",
-                { type: "warning" }
-            );
-            return;
-        }
-        this.state.googleMerchantProductToDelete = product;
-    }
-
-    closeGoogleMerchantProductDelete() {
-        if (!this.state.deletingGoogleMerchantProductKey) {
-            this.state.googleMerchantProductToDelete = null;
-        }
-    }
-
-    async confirmDeleteGoogleMerchantProduct() {
-        const product = this.state.googleMerchantProductToDelete;
-        const sku = this.googleMerchantProductSku(product);
-        if (!product || !sku) {
-            this.notification.add(
-                "No encontre el SKU / offer ID para eliminar este producto.",
-                { type: "warning" }
-            );
-            return;
-        }
-        const productKey = this.productCardKey(product);
-        this.state.deletingGoogleMerchantProductKey = productKey;
-        try {
-            const result = await this.orm.call(
-                "lqa.google.merchant.actions.service",
-                "delete_selected_products",
-                [
-                    [
-                        {
-                            sku,
-                            contentLanguage:
-                                product.content_language || product.contentLanguage || "es",
-                            feedLabel: product.feed_label || product.feedLabel || "AR",
-                        },
-                    ],
-                ]
-            );
-            this.state.googleMerchantProductToDelete = null;
-            await this.loadProducts();
-            this.notification.add(
-                result.message ||
-                    result.error_message ||
-                    `Producto ${sku} eliminado de Google Merchant.`,
-                {
-                    type:
-                        result.status === "failed"
-                            ? "danger"
-                            : result.status === "partial"
-                            ? "warning"
-                            : "success",
-                }
-            );
-        } catch (error) {
-            this.notifyError(error, "No se pudo eliminar el producto.");
-        } finally {
-            this.state.deletingGoogleMerchantProductKey = "";
-        }
-    }
-
-    googleMerchantProductSku(product) {
-        return String(
-            product?.offer_id ||
-                product?.google_product_key ||
-                product?.external_id ||
-                product?.sku ||
-                ""
-        ).trim();
-    }
-
-    isDeletingGoogleMerchantProduct(product) {
-        return (
-            this.state.deletingGoogleMerchantProductKey &&
-            this.state.deletingGoogleMerchantProductKey === this.productCardKey(product)
-        );
     }
 
     productCardKey(product) {
@@ -837,51 +472,6 @@ export class LqaRetailers extends Component {
             return "is-blue";
         }
         return "is-gray";
-    }
-
-    bulkActionLabel(value) {
-        return (
-            {
-                published: "Publicaciones",
-                sku: "SKU puntual",
-                bulk: "Archivo de SKUs",
-                paused_single: "SKU pausado",
-                paused_bulk: "Archivo pausados",
-            }[String(value || "")] || "Accion"
-        );
-    }
-
-    bulkActionIcon(value) {
-        return (
-            {
-                published: "fa-refresh",
-                sku: "fa-barcode",
-                bulk: "fa-file-excel-o",
-                paused_single: "fa-pause-circle-o",
-                paused_bulk: "fa-cloud-upload",
-            }[String(value || "")] || "fa-history"
-        );
-    }
-
-    bulkActionDetail(run) {
-        if (run?.sku) {
-            return run.sku;
-        }
-        if (run?.filename) {
-            const count = Number(run.sku_count || 0);
-            return count > 0
-                ? `${run.filename} · ${this.formatNumber(count)} SKUs`
-                : run.filename;
-        }
-        return "Marketplace completo";
-    }
-
-    pausedLabel(value) {
-        return value ? "Pausado" : "Activo";
-    }
-
-    pausedClass(value) {
-        return value ? "is-red" : "is-green";
     }
 
     importStatusLabel(value) {

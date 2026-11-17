@@ -4,8 +4,6 @@ from . import automeli_catalog_service
 from . import automeli_catalog_item
 from . import automeli_selection
 from . import dashboard_service
-from . import google_merchant_actions
-from . import google_merchant_analytics
 from . import mercadolibre_catalog_service
 from . import mercadolibre_deletion
 from . import mercadolibre_pricing
@@ -14,9 +12,7 @@ from . import mercadolibre_promotions_service
 from . import panel_module
 from . import res_config_settings
 from . import retailers_publication_run
-from . import retailers_bulk_action_run
 from . import retailers_publisher_service
-from . import retailers_pricing
 from . import retailers_service
 from . import retailers_teams_notification
 from . import user_management_service

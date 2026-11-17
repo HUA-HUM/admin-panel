@@ -27,35 +27,16 @@ class LqaRetailersService(models.AbstractModel):
     FRAVEGA_IMAGE_DEFAULT_SIZE = "f500"
     DEFAULT_TIMEOUT_SECONDS = 60
     DEFAULT_ORDERS_TIMEOUT_SECONDS = 90
-    ORDER_MARKETPLACES = ("fravega", "megatone", "oncity")
-    REFRESH_PUBLISHED_MARKETPLACES = ("fravega", "megatone", "oncity")
+    ORDER_MARKETPLACES = ("fravega",)
     REFRESH_BULK_CHUNK_SIZE = 1000
     MARKETPLACE_SKU_EXPORT_PAGE_SIZE = 1000
     MARKETPLACE_SKU_EXPORT_MAX_ROWS = 500000
     MARKETPLACES = {
-        "oncity": {
-            "name": "OnCity",
-            "description": "Publicaciones y sincronizaciones para OnCity.",
-            "accent": "oncity",
-            "logo": "/lqa_admin_panel/static/src/img/marketplace/oncity.png?v=1",
-        },
         "fravega": {
             "name": "Fravega",
             "description": "Catalogo, stock y precios publicados en Fravega.",
             "accent": "fravega",
             "logo": "/lqa_admin_panel/static/src/img/marketplace/fravega.png?v=1",
-        },
-        "google-merchant": {
-            "name": "Google Merchant",
-            "description": "Feed y publicaciones para Google Merchant Center.",
-            "accent": "google",
-            "logo": "/lqa_admin_panel/static/src/img/marketplace/google-merchant.png?v=1",
-        },
-        "megatone": {
-            "name": "Megatone",
-            "description": "Productos, importaciones y estados de Megatone.",
-            "accent": "megatone",
-            "logo": "/lqa_admin_panel/static/src/img/marketplace/megatone.svg?v=1",
         },
     }
 
@@ -945,189 +926,6 @@ class LqaRetailersService(models.AbstractModel):
         numeric_value = self._as_float(value, None)
         return numeric_value / 100 if numeric_value is not None else None
 
-    @api.model
-    def get_bulk_action_runs(self, limit=20):
-        self._check_access()
-        limit = min(max(self._as_int(limit, 20), 1), 100)
-        records = self.env["lqa.retailers.bulk.action.run"].sudo().search(
-            [("action_type", "in", ["published", "sku", "bulk"])],
-            limit=limit,
-        )
-        return [record.to_panel_dict() for record in records]
-
-    @api.model
-    def get_paused_sku_action_runs(self, limit=20):
-        self._check_access()
-        limit = min(max(self._as_int(limit, 20), 1), 100)
-        records = self.env["lqa.retailers.bulk.action.run"].sudo().search(
-            [("action_type", "in", ["paused_single", "paused_bulk"])],
-            limit=limit,
-        )
-        return [record.to_panel_dict() for record in records]
-
-    @api.model
-    def get_paused_skus(self, filters=None):
-        self._check_access()
-        filters = filters or {}
-        limit = min(max(self._as_int(filters.get("limit"), 100), 1), 500)
-        offset = max(self._as_int(filters.get("offset"), 0), 0)
-        params = {
-            "limit": limit,
-            "offset": offset,
-        }
-        sku = self._clean(filters.get("sku"))
-        paused = self._clean(filters.get("paused")).lower()
-        if sku:
-            params["sku"] = sku
-        if paused in ("true", "false"):
-            params["paused"] = paused
-
-        response = self.env["lqa.api.client"].request_absolute_json(
-            "GET",
-            self._join_url(
-                self._madre_base_url(),
-                "/api/internal/marketplace/paused-skus",
-            ),
-            params=params,
-            headers=self._madre_internal_headers(),
-            timeout=self._timeout(),
-        )
-        payload = response if isinstance(response, dict) else {}
-        items = self._response_items(response)
-        total = self._as_int(payload.get("total"), len(items))
-        count = self._as_int(payload.get("count"), len(items))
-        has_next = (
-            bool(payload.get("hasNext"))
-            if "hasNext" in payload
-            else offset + limit < total
-        )
-        next_offset = self._as_int(payload.get("nextOffset"), offset + limit)
-        return {
-            "items": [
-                self._normalize_paused_sku(item, index)
-                for index, item in enumerate(items)
-            ],
-            "pagination": {
-                "total": total,
-                "offset": offset,
-                "limit": limit,
-                "count": count,
-                "has_previous": offset > 0,
-                "has_next": has_next,
-                "next_offset": next_offset,
-                "page": (offset // limit) + 1 if limit else 1,
-            },
-            "filters": {
-                "sku": sku,
-                "paused": paused,
-            },
-        }
-
-    @api.model
-    def delete_paused_sku(self, sku):
-        self._check_access()
-        sku = self._clean(sku)
-        if not sku:
-            raise UserError(_("Ingresa un SKU para eliminar."))
-        response = self.env["lqa.api.client"].request_absolute_json(
-            "DELETE",
-            self._join_url(
-                self._madre_base_url(),
-                f"/api/internal/marketplace/products/paused-skus/{quote(sku, safe='')}",
-            ),
-            headers=self._madre_internal_headers(),
-            timeout=self._timeout(),
-        )
-        payload = response if isinstance(response, dict) else {}
-        return {
-            "sku": self._clean(payload.get("sku")) or sku,
-            "deleted": self._as_bool(payload.get("deleted"), True),
-            "status": self._clean(payload.get("status") or payload.get("result") or "DELETED"),
-            "message": self._clean(payload.get("message") or payload.get("detail")),
-            "triggered_at": fields.Datetime.to_string(fields.Datetime.now()),
-            "raw": payload,
-        }
-
-    @api.model
-    def upsert_paused_sku(self, sku, paused=True, note=""):
-        self._check_access()
-        sku = self._clean(sku)
-        if not sku:
-            raise UserError(_("Ingresa un SKU para guardar."))
-        items = [{"sku": sku, "paused": self._as_bool(paused, True)}]
-        response = self.env["lqa.api.client"].request_absolute_json(
-            "PUT",
-            self._join_url(
-                self._madre_base_url(),
-                "/api/internal/marketplace/products/paused-skus/bulk",
-            ),
-            payload={"items": items},
-            headers=self._madre_internal_headers(),
-            timeout=self._timeout(),
-        )
-        result = self._normalize_paused_sku_upsert_result(
-            response,
-            items,
-            extra={"sku": sku},
-        )
-        return self._store_bulk_action_run(result, "paused_single", note)
-
-    @api.model
-    def upsert_paused_skus_bulk(self, filename, content_base64, default_paused=True, note=""):
-        self._check_access()
-        items = self._parse_paused_sku_file(filename, content_base64, default_paused)
-        response = self.env["lqa.api.client"].request_absolute_json(
-            "PUT",
-            self._join_url(
-                self._madre_base_url(),
-                "/api/internal/marketplace/products/paused-skus/bulk",
-            ),
-            payload={"items": items},
-            headers=self._madre_internal_headers(),
-            timeout=self._timeout(),
-        )
-        result = self._normalize_paused_sku_upsert_result(
-            response,
-            items,
-            extra={
-                "filename": self._clean(filename),
-            },
-        )
-        return self._store_bulk_action_run(result, "paused_bulk", note)
-
-    def _normalize_paused_sku_upsert_result(self, response, items, extra=None):
-        payload = response if isinstance(response, dict) else {}
-        response_items = self._response_items(response)
-        result = {
-            "marketplace": "paused-skus",
-            "marketplace_name": "SKUs pausados",
-            "status": self._clean(
-                payload.get("status")
-                or payload.get("state")
-                or payload.get("result")
-                or "UPDATED"
-            ),
-            "message": self._clean(
-                payload.get("message")
-                or payload.get("detail")
-                or payload.get("description")
-            ),
-            "sku_count": len(items),
-            "paused_count": sum(1 for item in items if item["paused"]),
-            "active_count": sum(1 for item in items if not item["paused"]),
-            "api_count": self._as_int(
-                payload.get("count")
-                or payload.get("total")
-                or payload.get("updated")
-                or payload.get("upserted"),
-                len(response_items) or len(items),
-            ),
-            "triggered_at": fields.Datetime.to_string(fields.Datetime.now()),
-            "raw": payload,
-        }
-        result.update(extra or {})
-        return result
-
     def _check_access(self):
         if not self.env.user.has_group("lqa_admin_panel.group_lqa_commercial_user"):
             raise AccessError(_("No tenes permisos para consultar retailers."))
@@ -1285,89 +1083,6 @@ class LqaRetailersService(models.AbstractModel):
         if not skus:
             raise UserError(_("No encontre SKUs validos en el archivo."))
         return skus
-
-    def _parse_paused_sku_file(self, filename, content_base64, default_paused=True):
-        filename = self._clean(filename)
-        if not filename:
-            raise UserError(_("Selecciona un archivo con SKUs."))
-        try:
-            content = base64.b64decode(content_base64 or "", validate=True)
-        except (TypeError, ValueError) as error:
-            raise UserError(_("El archivo recibido no es valido.")) from error
-        if not content:
-            raise UserError(_("El archivo esta vacio."))
-
-        extension = os.path.splitext(filename.lower())[1]
-        if extension == ".csv":
-            rows = self._read_csv_rows(content)
-        elif extension == ".xlsx":
-            rows = self._read_xlsx_rows(content)
-        else:
-            raise UserError(_("Usa un archivo CSV o Excel XLSX."))
-        return self._paused_items_from_rows(rows, default_paused)
-
-    def _paused_items_from_rows(self, rows, default_paused=True):
-        clean_rows = [
-            [self._clean(cell) for cell in row]
-            for row in rows
-            if any(self._clean(cell) for cell in row)
-        ]
-        if not clean_rows:
-            raise UserError(_("El archivo no contiene SKUs."))
-
-        headers = [self._normalize_header(cell) for cell in clean_rows[0]]
-        sku_index = self._find_header_index(
-            headers,
-            {
-                "sku",
-                "sellersku",
-                "seller_sku",
-                "seller",
-                "asin",
-            },
-        )
-        paused_index = self._find_header_index(
-            headers,
-            {
-                "paused",
-                "pausado",
-                "pausada",
-                "ispaused",
-                "estado",
-                "status",
-            },
-        )
-        data_rows = clean_rows[1:] if sku_index >= 0 else clean_rows
-        if sku_index < 0:
-            sku_index = 0
-
-        items = []
-        seen = set()
-        for row in data_rows:
-            sku = self._cell(row, sku_index)
-            if not sku:
-                continue
-            normalized = sku.upper()
-            if normalized in seen:
-                continue
-            seen.add(normalized)
-            paused = (
-                self._parse_paused_value(self._cell(row, paused_index), default_paused)
-                if paused_index >= 0
-                else self._as_bool(default_paused, True)
-            )
-            items.append({"sku": sku, "paused": paused})
-        if not items:
-            raise UserError(_("No encontre SKUs validos en el archivo."))
-        return items
-
-    def _parse_paused_value(self, value, default=False):
-        clean_value = self._clean(value).lower()
-        if clean_value in ("paused", "pausado", "pausada", "true", "1", "si", "yes", "y"):
-            return True
-        if clean_value in ("active", "activo", "activa", "false", "0", "no", "n"):
-            return False
-        return self._as_bool(default, False)
 
     def _read_csv_rows(self, content):
         try:
@@ -2170,33 +1885,6 @@ class LqaRetailersService(models.AbstractModel):
             "origin": origin or "",
             "images_count": images_count,
             "details": details,
-        }
-
-    def _normalize_paused_sku(self, item, index=0):
-        item = item if isinstance(item, dict) else {"sku": item}
-        sku = self._clean(
-            item.get("sku")
-            or item.get("sellerSku")
-            or item.get("seller_sku")
-            or item.get("sellerSKU")
-            or item.get("asin")
-            or item.get("id")
-        )
-        return {
-            "key": self._clean(item.get("id")) or sku or f"paused-sku-{index}",
-            "id": self._clean(item.get("id")),
-            "sku": sku,
-            "paused": self._as_bool(item.get("paused"), False),
-            "status": self._clean(item.get("status") or item.get("state")),
-            "reason": self._clean(item.get("reason") or item.get("message")),
-            "created_at": self._clean(item.get("createdAt") or item.get("created_at")),
-            "updated_at": self._clean(
-                item.get("updatedAt")
-                or item.get("updated_at")
-                or item.get("lastSeenAt")
-                or item.get("last_seen_at")
-            ),
-            "raw": item,
         }
 
     def _parse_google_product_identity(self, value):
