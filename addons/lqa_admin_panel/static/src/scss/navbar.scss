@@ -697,7 +697,6 @@ body.o_lqa_sidebar_collapsed .o_lqa_sidebar {
     }
 
     .o_lqa_sidebar__home span,
-    .o_lqa_sidebar__group-toggle > span > *:not(i),
     .o_lqa_sidebar__group-toggle > i,
     .o_lqa_sidebar__single span,
     .o_lqa_sidebar__menu-link span,
@@ -714,8 +713,19 @@ body.o_lqa_sidebar_collapsed .o_lqa_sidebar {
         padding: 0;
     }
 
+    // El nombre de la seccion es un nodo de texto suelto dentro del span, al
+    // lado del icono: no hay elemento que ocultar, asi que se apaga por
+    // tipografia y el glifo recupera su tamano.
     .o_lqa_sidebar__group-toggle > span {
         justify-content: center;
+        font-size: 0;
+        letter-spacing: 0;
+
+        > i {
+            font-size: 14px;
+            letter-spacing: normal;
+            margin: 0;
+        }
     }
 
     // Sin texto al lado, la barra del activo pasa a envolver el icono.
