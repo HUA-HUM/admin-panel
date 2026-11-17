@@ -31,7 +31,10 @@ export class LqaRetailersPublisherExecute extends Component {
         this.state = useState({
             folders: [],
             marketplaces: MARKETPLACES,
-            selectedFolderId: "",
+            // Carpetas abre esta vista con la carpeta ya elegida.
+            selectedFolderId: String(
+                this.props.action?.context?.lqa_publisher_folder_id || ""
+            ),
             selectedMarketplaces: {
                 fravega: true,
                 megatone: true,

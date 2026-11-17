@@ -19,7 +19,22 @@ const defaultProductFilters = () => ({
     maxOrders: "",
     sortBy: "",
     sortOrder: "asc",
+    sortKey: "",
 });
+
+// Campos que cuentan como "filtro activo" para el badge del boton Filtros.
+const FILTER_KEYS = [
+    "brand",
+    "categoryId",
+    "minPrice",
+    "maxPrice",
+    "minStock",
+    "maxStock",
+    "minVisits",
+    "maxVisits",
+    "minOrders",
+    "maxOrders",
+];
 
 export class LqaRetailersPublisher extends Component {
     static template = "lqa_admin_panel.RetailersPublisher";
@@ -27,6 +42,7 @@ export class LqaRetailersPublisher extends Component {
     setup() {
         this.notification = useService("notification");
         this.orm = useService("orm");
+        this.action = useService("action");
         this.fileInput = null;
         this.state = useState({
             folders: [],
@@ -45,6 +61,12 @@ export class LqaRetailersPublisher extends Component {
             filtersOpen: false,
             filters: defaultProductFilters(),
             newFolderName: "",
+            folderQuery: "",
+            addOpen: false,
+            copiedId: false,
+            confirmDeleteFolder: false,
+            deletingFolder: false,
+            deleteFolderTyped: "",
             manual: {
                 productId: "",
                 sellerSku: "",
@@ -64,6 +86,49 @@ export class LqaRetailersPublisher extends Component {
         return this.state.folders.find(
             (folder) => String(folder.id) === String(this.state.selectedFolderId)
         );
+    }
+
+    get filteredFolders() {
+        const query = this.state.folderQuery.trim().toLowerCase();
+        if (!query) {
+            return this.state.folders;
+        }
+        return this.state.folders.filter(
+            (folder) =>
+                String(folder.name || "").toLowerCase().includes(query) ||
+                String(folder.id) === query.replace(/^#/, "")
+        );
+    }
+
+    get activeFilterCount() {
+        return FILTER_KEYS.filter((key) => String(this.state.filters[key] ?? "").trim())
+            .length;
+    }
+
+    get rangeLabel() {
+        const { page = 1, limit = 20, total = 0 } = this.state.pagination;
+        if (!total) {
+            return "";
+        }
+        const from = (page - 1) * limit + 1;
+        const to = Math.min(page * limit, total);
+        return `${this.formatNumber(from)}–${this.formatNumber(to)} de ${this.formatNumber(total)}`;
+    }
+
+    // Conteo desconocido (null) tambien pide tipear el nombre: desconocido
+    // puede ser una carpeta de 30.000 productos.
+    get folderNeedsTypedConfirm() {
+        return this.selectedFolder?.product_count !== 0;
+    }
+
+    get canDeleteFolder() {
+        if (!this.selectedFolder) {
+            return false;
+        }
+        if (!this.folderNeedsTypedConfirm) {
+            return true;
+        }
+        return this.state.deleteFolderTyped.trim() === String(this.selectedFolder.name).trim();
     }
 
     get selectedProductIds() {
@@ -118,6 +183,9 @@ export class LqaRetailersPublisher extends Component {
         }
         this.state.selectedFolderId = String(folder.id);
         this.state.filters = defaultProductFilters();
+        this.state.filtersOpen = false;
+        this.state.addOpen = false;
+        this.state.copiedId = false;
         this.clearProductSelection();
         await this.loadFolderProducts();
     }
@@ -138,7 +206,10 @@ export class LqaRetailersPublisher extends Component {
             this.state.products = response.products || [];
             this.state.pagination = response.pagination || {};
             this.state.filters.page = this.state.pagination.page || 1;
-            this.selectedFolder.product_count = this.state.pagination.total || 0;
+            // Con filtros, total es lo que matchea, no lo que tiene la carpeta.
+            if (!this.activeFilterCount) {
+                this.selectedFolder.product_count = this.state.pagination.total || 0;
+            }
         } catch (error) {
             this.state.products = [];
             this.state.pagination = {};
@@ -164,16 +235,12 @@ export class LqaRetailersPublisher extends Component {
                 [name]
             );
             this.state.newFolderName = "";
+            this.state.folderQuery = "";
+            this.state.filters = defaultProductFilters();
             await this.loadFolders(created?.id || "");
-            if (!created?.id) {
-                const matchingFolder = this.state.folders.find(
-                    (folder) => folder.name === name
-                );
-                if (matchingFolder) {
-                    await this.selectFolder(matchingFolder);
-                }
-            }
-            this.notification.add("Carpeta creada en Madre.", { type: "success" });
+            // Una carpeta nueva esta vacia: lo siguiente es cargarle productos.
+            this.state.addOpen = true;
+            this.notification.add(`Carpeta "${name}" creada.`, { type: "success" });
         } catch (error) {
             this.notifyError(error, "No se pudo crear la carpeta.");
         } finally {
@@ -205,7 +272,7 @@ export class LqaRetailersPublisher extends Component {
             this.state.manual.productId = "";
             this.state.manual.sellerSku = "";
             this.state.filters.page = 1;
-            await this.loadFolders(folderId);
+            await this.loadFolderProducts();
             this.notification.add(
                 `${this.formatNumber(result.count)} producto agregado a la carpeta.`,
                 { type: "success" }
@@ -262,7 +329,7 @@ export class LqaRetailersPublisher extends Component {
             );
             this.clearUpload();
             this.state.filters.page = 1;
-            await this.loadFolders(folderId);
+            await this.loadFolderProducts();
             this.notification.add(
                 `${this.formatNumber(result.count)} productos agregados en ${this.formatNumber(result.batches)} lote(s).`,
                 { type: "success" }
@@ -301,9 +368,84 @@ export class LqaRetailersPublisher extends Component {
     }
 
     async clearProductFilters() {
-        this.state.filters = defaultProductFilters();
+        const { sortKey, sortBy, sortOrder, limit } = this.state.filters;
+        this.state.filters = { ...defaultProductFilters(), sortKey, sortBy, sortOrder, limit };
         this.clearProductSelection();
         await this.loadFolderProducts();
+    }
+
+    // El select de orden combina campo y direccion ("price:desc"); madre los
+    // recibe separados y solo acepta price | stock | visits | soldQuantity.
+    async applySort() {
+        const [sortBy = "", sortOrder = "desc"] = String(this.state.filters.sortKey || "").split(":");
+        this.state.filters.sortBy = sortBy;
+        this.state.filters.sortOrder = sortBy ? sortOrder : "asc";
+        await this.applyProductFilters();
+    }
+
+    toggleAdd() {
+        this.state.addOpen = !this.state.addOpen;
+    }
+
+    async copyFolderId() {
+        if (!this.selectedFolder) {
+            return;
+        }
+        try {
+            await navigator.clipboard.writeText(String(this.selectedFolder.id));
+            this.state.copiedId = true;
+            setTimeout(() => {
+                this.state.copiedId = false;
+            }, 1600);
+        } catch {
+            this.notification.add(`ID de la carpeta: ${this.selectedFolder.id}`, {
+                type: "info",
+            });
+        }
+    }
+
+    openPublish() {
+        if (!this.selectedFolder) {
+            return;
+        }
+        this.action.doAction("lqa_admin_panel.action_lqa_retailers_publisher_execute", {
+            additionalContext: { lqa_publisher_folder_id: this.selectedFolder.id },
+        });
+    }
+
+    openDeleteFolder() {
+        this.state.deleteFolderTyped = "";
+        this.state.confirmDeleteFolder = true;
+    }
+
+    closeDeleteFolder() {
+        if (!this.state.deletingFolder) {
+            this.state.confirmDeleteFolder = false;
+        }
+    }
+
+    async confirmDeleteFolder() {
+        if (!this.selectedFolder || !this.canDeleteFolder) {
+            return;
+        }
+        const { id, name } = this.selectedFolder;
+        this.state.deletingFolder = true;
+        try {
+            await this.orm.call(
+                "lqa.retailers.publisher.service",
+                "delete_folder",
+                [id, true]
+            );
+            this.state.confirmDeleteFolder = false;
+            this.state.addOpen = false;
+            this.clearProductSelection();
+            await this.loadFolders("");
+            this.notification.add(`Carpeta "${name}" eliminada.`, { type: "success" });
+        } catch (error) {
+            this.notifyError(error, "No se pudo eliminar la carpeta.");
+        } finally {
+            this.state.deletingFolder = false;
+        }
     }
 
     async previousProductsPage() {
@@ -368,7 +510,7 @@ export class LqaRetailersPublisher extends Component {
             );
             this.state.confirmDelete = false;
             this.clearProductSelection();
-            await this.loadFolders(folderId);
+            await this.loadFolderProducts();
             if (!this.state.products.length && this.state.filters.page > 1) {
                 this.state.filters.page -= 1;
                 await this.loadFolderProducts();
@@ -429,9 +571,18 @@ export class LqaRetailersPublisher extends Component {
     }
 
     productUrl(product) {
-        return product.product_id
-            ? `https://articulo.mercadolibre.com.ar/${product.product_id}`
-            : false;
+        const match = String(product.product_id || "").match(/^MLA-?(\d+)$/i);
+        return match ? `https://articulo.mercadolibre.com.ar/MLA-${match[1]}` : false;
+    }
+
+    // madre guarda las miniaturas como http://; en un panel https el navegador
+    // las bloquea o las marca como contenido mixto.
+    secureImage(url) {
+        return String(url || "").replace(/^http:\/\//i, "https://");
+    }
+
+    formatCount(value) {
+        return value === null || value === undefined ? "—" : this.formatNumber(value);
     }
 
     formatNumber(value) {

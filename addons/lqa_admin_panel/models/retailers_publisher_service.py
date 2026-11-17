@@ -2,16 +2,22 @@ import base64
 import csv
 import io
 import json
+import logging
 import os
 import posixpath
 import re
 import zipfile
+from concurrent.futures import ThreadPoolExecutor, wait
 from urllib.parse import quote
 from xml.etree import ElementTree
 from xml.sax.saxutils import escape
 
+import requests
+
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
+
+_logger = logging.getLogger(__name__)
 
 
 class LqaRetailersPublisherService(models.AbstractModel):
@@ -20,6 +26,11 @@ class LqaRetailersPublisherService(models.AbstractModel):
 
     FOLDERS_PATH = "/api/analytics/marketplace-favorites/marketplaces"
     FOLDER_DELETE_PATH = "/api/analytics/marketplace-favorites/marketplaces/{folder_id}"
+    # madre lista las carpetas con SELECT id, name, status: no manda conteo.
+    # Se pide limit=1 a cada una y se lee pagination.total, en paralelo y con
+    # un tope de tiempo para que una carpeta lenta no frene el listado.
+    FOLDER_COUNT_CONCURRENCY = 6
+    FOLDER_COUNT_DEADLINE = 20
     BULK_PRODUCTS_PATH = "/api/analytics/marketplace-favorites/bulk"
     FAVORITES_PATH = "/api/analytics/marketplace-favorites/{folder_id}/favorites"
     # products-api no tiene prefijo /api: /health responde 200 y /api/health
@@ -72,13 +83,75 @@ class LqaRetailersPublisherService(models.AbstractModel):
             headers=self._madre_headers(),
             timeout=self._timeout(),
         )
-        return [
+        folders = [
             self._normalize_folder(folder)
             for folder in self._extract_list(
                 response,
                 ("marketplaces", "folders", "items", "data", "results"),
             )
         ]
+        self._attach_folder_counts(folders)
+        return folders
+
+    def _attach_folder_counts(self, folders):
+        """Completa product_count con el total real de cada carpeta.
+
+        El listado de madre no trae conteo y el normalizador caia a 0, asi que
+        el panel mostraba "0 productos" en carpetas con 30.000. Si una consulta
+        falla o no llega a tiempo, el conteo queda en None y la UI muestra un
+        guion: preferible a afirmar un numero falso.
+        """
+        targets = [folder for folder in folders if folder.get("id") not in ("", None)]
+        if not targets:
+            return
+        # Lo que toca env se resuelve aca: los hilos no pueden usar el cursor.
+        base_url = self._madre_base_url()
+        headers = {"Accept": "application/json", **self._madre_headers()}
+        timeout = min(self._timeout(), 15)
+        urls = {
+            str(folder["id"]): self._join_url(
+                base_url,
+                self.FAVORITES_PATH.format(folder_id=quote(str(folder["id"]), safe="")),
+            )
+            for folder in targets
+        }
+
+        def fetch_total(url):
+            response = requests.get(
+                url,
+                params={"page": 1, "limit": 1},
+                headers=headers,
+                timeout=timeout,
+            )
+            response.raise_for_status()
+            pagination = self._extract_pagination(response.json())
+            return self._as_int(
+                pagination.get("total") or pagination.get("totalItems"),
+                None,
+            )
+
+        executor = ThreadPoolExecutor(
+            max_workers=min(self.FOLDER_COUNT_CONCURRENCY, len(targets))
+        )
+        try:
+            futures = {
+                executor.submit(fetch_total, urls[str(folder["id"])]): folder
+                for folder in targets
+            }
+            done, _pending = wait(futures, timeout=self.FOLDER_COUNT_DEADLINE)
+            for future, folder in futures.items():
+                folder["product_count"] = None
+                if future in done:
+                    try:
+                        folder["product_count"] = future.result()
+                    except Exception as error:  # noqa: BLE001 - queda sin conteo
+                        _logger.warning(
+                            "No se pudo contar la carpeta %s de madre: %s",
+                            folder.get("id"),
+                            error,
+                        )
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
 
     @api.model
     def create_folder(self, name):
@@ -100,9 +173,19 @@ class LqaRetailersPublisherService(models.AbstractModel):
             response,
             ("marketplace", "folder", "item", "data", "result"),
         )
-        if not folder_payload:
-            folder_payload = {"name": name}
-        return self._normalize_folder(folder_payload)
+        created = self._normalize_folder(folder_payload) if folder_payload else {}
+        if created.get("id"):
+            return created
+        # madre responde {"success": true} sin el id de lo que creo. La carpeta
+        # nueva es la de id mas alto con ese nombre: los ids son autoincrement.
+        matches = [
+            folder
+            for folder in self.get_folders()
+            if folder.get("name") == name and str(folder.get("id") or "").isdigit()
+        ]
+        if matches:
+            return max(matches, key=lambda folder: int(folder["id"]))
+        return {"id": "", "name": name, "product_count": 0, "products": []}
 
     @api.model
     def delete_folder(self, folder_id, confirm=False):
@@ -741,6 +824,7 @@ class LqaRetailersPublisherService(models.AbstractModel):
                 len(normalized_products),
             ),
             "products": normalized_products,
+            "status": self._clean(folder.get("status")).lower() or "active",
             "created_at": self._clean(
                 folder.get("createdAt") or folder.get("created_at")
             ),
@@ -769,9 +853,11 @@ class LqaRetailersPublisherService(models.AbstractModel):
             "_id",
             "id",
         )
+        # En madre el id de cada favorito ES el MLA (mercadolibre_products.id)
+        # y DELETE /favorites borra por ese mismo valor. Antes se descartaba
+        # cuando empezaba con MLA, que es siempre: los checkboxes quedaban
+        # deshabilitados y nunca se pudo sacar un producto desde la UI.
         delete_id = self._clean(delete_id)
-        if delete_id.upper().startswith("MLA"):
-            delete_id = ""
         product_id = self._first(
             product,
             "item_id",
@@ -781,7 +867,9 @@ class LqaRetailersPublisherService(models.AbstractModel):
             "marketplaceId",
         )
         if not product_id:
-            candidate = self._clean(self._first(item, "mla", "externalId", "productId"))
+            candidate = self._clean(
+                self._first(item, "mla", "externalId", "productId", "id")
+            )
             if candidate.upper().startswith("MLA"):
                 product_id = candidate
 
@@ -834,8 +922,16 @@ class LqaRetailersPublisherService(models.AbstractModel):
                 self._first(product, "visits", "totalVisits", "total_visits"),
                 0,
             ),
+            # madre lo manda como soldQuantity (p.sold_quantity).
             "orders": self._as_int(
-                self._first(product, "orders", "ordersCount", "orders_count"),
+                self._first(
+                    product,
+                    "soldQuantity",
+                    "sold_quantity",
+                    "orders",
+                    "ordersCount",
+                    "orders_count",
+                ),
                 0,
             ),
         }
