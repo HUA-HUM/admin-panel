@@ -8,6 +8,8 @@ import requests
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
+from .http_errors import describe_request_exception, log_http_failure
+
 
 class LqaRetailersTeamsNotification(models.Model):
     _name = "lqa.retailers.teams.notification"
@@ -219,7 +221,8 @@ class LqaRetailersTeamsNotification(models.Model):
             )
             response.raise_for_status()
         except requests.RequestException as error:
-            raise UserError(_("No se pudo consultar ordenes de Fravega: %s") % error) from error
+            log_http_failure("GET", url, error=error)
+            raise UserError(describe_request_exception(error, url, timeout=timeout)) from error
         if not response.content:
             return []
         try:
@@ -313,7 +316,8 @@ class LqaRetailersTeamsNotification(models.Model):
             )
             response.raise_for_status()
         except requests.RequestException as error:
-            raise UserError(_("No se pudo consultar el detalle de Fravega: %s") % error) from error
+            log_http_failure("GET", url, error=error)
+            raise UserError(describe_request_exception(error, url, timeout=timeout)) from error
         if not response.content:
             return {}
         try:
@@ -514,7 +518,11 @@ class LqaRetailersTeamsNotification(models.Model):
             )
             response.raise_for_status()
         except requests.RequestException as error:
-            raise UserError(_("No se pudo enviar la notificacion a Teams: %s") % error) from error
+            # La URL del webhook lleva el secreto: no se loguea.
+            log_http_failure("POST", "https://webhook.office.com/[oculto]", error=error)
+            raise UserError(
+                describe_request_exception(error, webhook_url, timeout=timeout)
+            ) from error
 
     def _cleanup_old_notifications(self, retention_days):
         limit_date = fields.Datetime.now() - timedelta(days=retention_days)

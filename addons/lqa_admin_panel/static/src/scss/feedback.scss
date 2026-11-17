@@ -1,0 +1,331 @@
+// Notificaciones (toasts) y dialogos de error.
+//
+// Odoo aplica rounded / shadow-lg / mb-2 / border y bg-* de Bootstrap con
+// !important: para ganarles hace falta !important con mas especificidad.
+// Los tipos llegan como clase (.o_lqa_toast--success, ...) desde feedback.js.
+
+$fb-ink: #1f2937;
+$fb-ink-soft: #3b4658;
+$fb-muted: #6b7a90;
+$fb-chip: #f4f6fa;
+$fb-navy: #2d3277;
+$fb-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+// Mismas duraciones que AUTOCLOSE_MS en feedback.js.
+$fb-types: (
+    // color, fondo del icono, glifo de FontAwesome (sin barra), duracion
+    success: (#15803d, #dcfce7, "f00c", 3.5s),
+    info: ($fb-navy, rgba(45, 50, 119, 0.1), "f129", 5s),
+    warning: (#b45309, #fef3c7, "f071", 6.5s),
+    danger: (#e23a46, #ffe4e6, "f12a", 9s),
+);
+
+// ---------------------------------------------------------------- toasts
+
+// Sin navbar arriba (navbar.scss la oculta), la pila se apoya en la esquina
+// con aire, en vez de pegada al borde tapando los botones de la cabecera.
+.o_notification_manager {
+    top: 16px !important;
+    right: 16px !important;
+    width: 380px !important;
+    max-width: calc(100vw - 32px);
+}
+
+.o_notification.o_lqa_toast {
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 10px !important;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 14px !important;
+    background: #fff;
+    box-shadow:
+        0 18px 40px -18px rgba(15, 23, 42, 0.35),
+        0 2px 6px rgba(15, 23, 42, 0.06) !important;
+    animation: o_lqa_toast_in 0.28s $fb-ease;
+
+    // El contenedor del texto trae borde y padding de Bootstrap.
+    > div {
+        padding: 14px 40px 15px 58px !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        background: transparent;
+    }
+
+    // La barra de color pasa a ser el icono.
+    .o_notification_bar {
+        position: absolute;
+        top: 13px;
+        left: 14px;
+        display: inline-flex;
+        width: 30px;
+        height: 30px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 9px !important;
+
+        &::before {
+            font: normal normal normal 13px/1 FontAwesome;
+            -webkit-font-smoothing: antialiased;
+        }
+    }
+
+    .o_notification_title {
+        margin-bottom: 2px;
+        color: $fb-ink;
+        font-size: 13.5px;
+        font-weight: 700;
+        line-height: 1.35;
+    }
+
+    .o_notification_content {
+        padding-top: 5px;
+        color: $fb-ink;
+        font-size: 13px;
+        font-weight: 550;
+        line-height: 1.45;
+    }
+
+    &.o_lqa_toast--titled .o_notification_content {
+        padding-top: 0;
+        color: $fb-ink-soft;
+        font-weight: 400;
+    }
+
+    .o_notification_close {
+        top: 11px !important;
+        right: 10px !important;
+        width: 26px;
+        height: 26px;
+        margin: 0 !important;
+        padding: 0;
+        border-radius: 7px;
+        background-size: 9px;
+        opacity: 0.38;
+        transition:
+            opacity 0.15s ease,
+            background-color 0.15s ease;
+
+        &:hover {
+            background-color: $fb-chip;
+            opacity: 0.85;
+        }
+
+        &:focus {
+            box-shadow: none;
+        }
+
+        &:focus-visible {
+            box-shadow: 0 0 0 3px rgba(45, 50, 119, 0.18);
+        }
+    }
+
+    .o_notification_buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 10px;
+
+        .btn {
+            min-height: 30px;
+            padding: 0 12px;
+            border: 1px solid #e3e9f1;
+            border-radius: 8px;
+            background: #fff;
+            color: $fb-ink;
+            font-size: 12px;
+            font-weight: 650;
+
+            &:hover {
+                background: $fb-chip;
+            }
+
+            &.btn-primary {
+                border-color: $fb-navy;
+                background: $fb-navy;
+                color: #fff;
+            }
+        }
+    }
+
+    // Barra de tiempo: muestra cuanto le queda al toast. Se pausa con el
+    // mouse encima, igual que el cierre de Odoo; los sticky no la tienen.
+    &::after {
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        height: 2px;
+        content: "";
+        opacity: 0.45;
+        transform-origin: left center;
+    }
+
+    &:hover::after {
+        animation-play-state: paused;
+    }
+
+    &.o_lqa_toast--sticky::after {
+        display: none;
+    }
+}
+
+@each $type, $spec in $fb-types {
+    .o_notification.o_lqa_toast--#{$type} {
+        .o_notification_bar.bg-#{$type},
+        .o_notification_bar {
+            background-color: nth($spec, 2) !important;
+            color: nth($spec, 1);
+
+            // Interpolado para que quede el escape "\f00c" y no el
+            // caracter crudo, que depende de como se sirva la hoja.
+            &::before {
+                content: unquote("\"\\#{nth($spec, 3)}\"");
+            }
+        }
+
+        &::after {
+            background: nth($spec, 1);
+            animation: o_lqa_toast_timer nth($spec, 4) linear forwards;
+        }
+    }
+}
+
+@keyframes o_lqa_toast_in {
+    from {
+        opacity: 0;
+        transform: translateX(16px) scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@keyframes o_lqa_toast_timer {
+    from {
+        transform: scaleX(1);
+    }
+
+    to {
+        transform: scaleX(0);
+    }
+}
+
+// ---------------------------------------------------------------- dialogos de error
+
+.modal-content.o_error_dialog {
+    overflow: hidden;
+    border: 0;
+    border-radius: 16px;
+    box-shadow: 0 24px 60px -18px rgba(15, 23, 42, 0.4);
+
+    .modal-header {
+        align-items: flex-start;
+        padding: 22px 22px 6px 24px;
+        border-bottom: 0;
+    }
+
+    // El icono va dentro del titulo: asi la X de cerrar queda arriba a la
+    // derecha, alineada con el icono y no con el texto.
+    .modal-title {
+        color: $fb-ink;
+        font-size: 17px;
+        font-weight: 750;
+        letter-spacing: -0.01em;
+        line-height: 1.3;
+
+        &::before {
+            display: flex;
+            width: 42px;
+            height: 42px;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 14px;
+            border-radius: 12px;
+            background: #ffe4e6;
+            color: #e23a46;
+            content: "\f12a";
+            font: normal normal normal 18px/1 FontAwesome;
+            -webkit-font-smoothing: antialiased;
+        }
+    }
+
+    .btn-close {
+        margin: 0;
+        padding: 8px;
+        border-radius: 8px;
+        background-size: 10px;
+        opacity: 0.4;
+
+        &:hover {
+            background-color: $fb-chip;
+            opacity: 0.85;
+        }
+    }
+
+    .modal-body {
+        padding: 4px 24px 2px;
+        color: $fb-muted;
+        font-size: 13.5px;
+        line-height: 1.55;
+
+        p:last-child {
+            margin-bottom: 0;
+        }
+    }
+
+    .modal-footer {
+        justify-content: flex-end !important;
+        gap: 8px !important;
+        padding: 20px 24px 22px;
+        border-top: 0;
+
+        .btn {
+            min-height: 38px;
+            padding: 0 16px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 650;
+        }
+
+        .btn-primary {
+            border-color: $fb-navy;
+            background: $fb-navy;
+            color: #fff;
+
+            &:hover {
+                border-color: #23286a;
+                background: #23286a;
+            }
+        }
+
+        .btn-secondary,
+        .btn-link {
+            border: 1px solid #e3e9f1;
+            background: #fff;
+            color: $fb-ink;
+            text-decoration: none;
+
+            &:hover {
+                background: $fb-chip;
+            }
+        }
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .o_notification.o_lqa_toast,
+    .o_notification.o_lqa_toast::after {
+        animation: none !important;
+    }
+}
+
+@media (max-width: 575px) {
+    .o_notification_manager {
+        top: 10px !important;
+        right: 10px !important;
+        left: 10px !important;
+        width: auto !important;
+    }
+}

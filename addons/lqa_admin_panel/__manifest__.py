@@ -1,6 +1,6 @@
 {
     "name": "LQA Admin Panel",
-    "version": "18.0.1.0.125",
+    "version": "18.0.1.0.126",
     "category": "Sales",
     "summary": "Panel interno para areas operativas de Lo Quiero Aca",
     "author": "Lo Quiero Aca",
@@ -24,6 +24,7 @@
     "assets": {
         "web.assets_backend": [
             "lqa_admin_panel/static/src/js/branding.js",
+            "lqa_admin_panel/static/src/js/feedback.js",
             "lqa_admin_panel/static/src/js/navigation.js",
             "lqa_admin_panel/static/src/js/dashboard.js",
             "lqa_admin_panel/static/src/js/mercadolibre_catalog.js",
@@ -59,6 +60,7 @@
             "lqa_admin_panel/static/src/scss/retailers_orders.scss",
             "lqa_admin_panel/static/src/scss/user_management.scss",
             "lqa_admin_panel/static/src/scss/navbar.scss",
+            "lqa_admin_panel/static/src/scss/feedback.scss",
             "lqa_admin_panel/static/src/scss/loading.scss",
             "lqa_admin_panel/static/src/xml/dashboard.xml",
             "lqa_admin_panel/static/src/xml/mercadolibre_catalog.xml",
@@ -77,6 +79,7 @@
             "lqa_admin_panel/static/src/xml/retailers_orders.xml",
             "lqa_admin_panel/static/src/xml/user_management.xml",
             "lqa_admin_panel/static/src/xml/navbar.xml",
+            "lqa_admin_panel/static/src/xml/feedback.xml",
             "lqa_admin_panel/static/src/xml/loading.xml",
         ],
         "web.assets_frontend": [

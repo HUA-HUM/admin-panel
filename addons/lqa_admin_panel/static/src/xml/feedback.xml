@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <!-- Dialogo de UserError / ValidationError: Odoo lo abre a 1140px para una
+         linea de texto y con el boton en ingles. -->
+    <t t-inherit="web.WarningDialog" t-inherit-mode="extension">
+        <xpath expr="//Dialog" position="attributes">
+            <attribute name="size">'md'</attribute>
+        </xpath>
+        <xpath expr="//t[@t-set-slot='footer']/button" position="replace">
+            <button class="btn btn-primary o-default-button" t-on-click="props.close">Entendido</button>
+        </xpath>
+    </t>
+</templates>

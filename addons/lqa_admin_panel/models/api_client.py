@@ -6,6 +6,12 @@ import requests
 from odoo import _, api, models
 from odoo.exceptions import UserError
 
+from .http_errors import (
+    describe_http_error,
+    describe_request_exception,
+    log_http_failure,
+)
+
 
 class LqaApiClient(models.AbstractModel):
     _name = "lqa.api.client"
@@ -103,19 +109,19 @@ class LqaApiClient(models.AbstractModel):
             )
             response.raise_for_status()
         except requests.HTTPError as error:
-            detail = ""
+            log_http_failure(method, url, response=response)
             try:
-                payload_detail = response.json()
-                detail = json.dumps(payload_detail, ensure_ascii=False)
+                body = response.json()
             except ValueError:
-                detail = (response.text or "").strip()
-            detail = detail[:1500]
-            message = _("La API respondio HTTP %s.") % response.status_code
-            if detail:
-                message = _("%s Detalle: %s") % (message, detail)
-            raise UserError(message) from error
+                body = response.text or ""
+            raise UserError(
+                describe_http_error(response.status_code, body, url)
+            ) from error
         except requests.RequestException as error:
-            raise UserError(_("No se pudo conectar con la API interna: %s") % error) from error
+            log_http_failure(method, url, error=error)
+            raise UserError(
+                describe_request_exception(error, url, timeout=timeout)
+            ) from error
 
         if not response.content:
             return {}
@@ -123,7 +129,10 @@ class LqaApiClient(models.AbstractModel):
         try:
             return response.json()
         except ValueError as error:
-            raise UserError(_("La API respondio con JSON invalido.")) from error
+            log_http_failure(method, url, error=error)
+            raise UserError(
+                describe_request_exception(error, url, timeout=timeout)
+            ) from error
 
     @staticmethod
     def _join_url(*parts):

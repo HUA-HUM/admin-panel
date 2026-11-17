@@ -20,6 +20,8 @@ import requests
 
 from odoo import _, api, fields, models, SUPERUSER_ID
 from odoo.exceptions import AccessError, UserError
+
+from .http_errors import describe_request_exception, log_http_failure
 from odoo.modules.registry import Registry
 
 import xlsxwriter
@@ -305,9 +307,15 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
                 last_error = error
                 if attempt < self.CATALOG_QUERY_RETRIES:
                     time.sleep(attempt * 3)
+        log_http_failure("GET", endpoint, error=last_error)
         raise UserError(
-            _("Catalog Sync API no respondio luego de %s intentos: %s")
-            % (self.CATALOG_QUERY_RETRIES, last_error)
+            _("%s Se intentó %s veces.")
+            % (
+                describe_request_exception(
+                    last_error, endpoint, timeout=self.CATALOG_QUERY_TIMEOUT
+                ),
+                self.CATALOG_QUERY_RETRIES,
+            )
         )
 
     @api.model

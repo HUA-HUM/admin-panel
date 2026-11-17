@@ -12,6 +12,8 @@ import xlsxwriter
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError
 
+from .http_errors import describe_request_exception, log_http_failure
+
 
 class LqaAccountingTlqvClientJob(models.Model):
     _name = "lqa.accounting.tlqv.client.job"
@@ -1747,7 +1749,10 @@ class LqaAccountingService(models.AbstractModel):
                 timeout=timeout or self._timeout(),
             )
         except requests.RequestException as error:
-            raise UserError(_("No se pudo conectar con la API interna: %s") % error)
+            log_http_failure(method, url, error=error)
+            raise UserError(
+                describe_request_exception(error, url, timeout=timeout or self._timeout())
+            ) from error
 
         response_text = response.text or ""
         try:
