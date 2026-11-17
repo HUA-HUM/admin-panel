@@ -19,7 +19,6 @@ class LqaRetailersService(models.AbstractModel):
     _description = "Servicio de retailers y marketplaces"
 
     DEFAULT_MADRE_API_URL = "https://api.madre.loquieroaca.com"
-    DEFAULT_PRODUCTS_API_URL = "https://api.products.loquieroaca.com"
     DEFAULT_ORDERS_PROXY_URL = "https://order.api.loquieroaca.com/orders"
     DEFAULT_FRAVEGA_VTEX_ORDERS_URL = (
         "https://api.marketplace.loquieroaca.com/fravega/vtex/orders"
@@ -342,26 +341,6 @@ class LqaRetailersService(models.AbstractModel):
                 "next_offset": offset + limit,
                 "page": (offset // limit) + 1 if limit else 1,
             },
-        }
-
-    @api.model
-    def run_import(self, marketplace_id):
-        if not self.env.user.has_group("lqa_admin_panel.group_lqa_admin"):
-            raise AccessError(_("Solo administradores del panel pueden disparar imports."))
-        marketplace_id = self._validate_marketplace(marketplace_id)
-        response = self.env["lqa.api.client"].request_absolute_json(
-            "POST",
-            self._join_url(
-                self._products_base_url(),
-                f"/api/internal/import/{marketplace_id}/run",
-            ),
-            timeout=self._timeout(),
-        )
-        response = response if isinstance(response, dict) else {}
-        return {
-            "status": self._clean(response.get("status")) or self._clean(response.get("state")) or "QUEUED",
-            "message": self._clean(response.get("message") or response.get("detail")),
-            "raw": response,
         }
 
     @api.model
@@ -967,124 +946,6 @@ class LqaRetailersService(models.AbstractModel):
         return numeric_value / 100 if numeric_value is not None else None
 
     @api.model
-    def refresh_published(self, marketplace_id, note=""):
-        self._check_access()
-        marketplace_id = self._clean(marketplace_id).lower()
-        if marketplace_id not in self.REFRESH_PUBLISHED_MARKETPLACES:
-            raise UserError(_("Marketplace no disponible para actualizacion masiva."))
-
-        response = self.env["lqa.api.client"].request_absolute_json(
-            "POST",
-            self._join_url(
-                self._products_base_url(),
-                f"/api/internal/marketplace-changes/refresh-published/{marketplace_id}",
-            ),
-            payload={},
-            timeout=self._timeout(),
-        )
-        result = self._normalize_refresh_result(
-            marketplace_id,
-            response,
-            action="published",
-        )
-        return self._store_bulk_action_run(result, "published", note)
-
-    @api.model
-    def refresh_published_sku(self, marketplace_id, sku, note=""):
-        self._check_access()
-        marketplace_id = self._validate_refresh_marketplace(marketplace_id)
-        sku = self._clean(sku)
-        if not sku:
-            raise UserError(_("Ingresa un SKU para actualizar."))
-
-        response = self.env["lqa.api.client"].request_absolute_json(
-            "POST",
-            self._join_url(
-                self._products_base_url(),
-                (
-                    "/api/internal/marketplace-changes/refresh-published/"
-                    f"{marketplace_id}/{quote(sku, safe='')}"
-                ),
-            ),
-            timeout=self._timeout(),
-        )
-        result = self._normalize_refresh_result(
-            marketplace_id,
-            response,
-            action="sku",
-            extra={"sku": sku, "sku_count": 1},
-        )
-        return self._store_bulk_action_run(result, "sku", note)
-
-    @api.model
-    def refresh_published_bulk(self, marketplace_id, filename, content_base64, run_id="", note=""):
-        self._check_access()
-        marketplace_id = self._validate_refresh_marketplace(marketplace_id)
-        skus = self._parse_refresh_sku_file(filename, content_base64)
-        run_id = self._clean(run_id) or self._default_refresh_run_id(marketplace_id)
-        chunks = list(self._iter_chunks(skus, self.REFRESH_BULK_CHUNK_SIZE))
-        endpoint = self._join_url(
-            self._products_base_url(),
-            f"/api/internal/marketplace-changes/refresh-published/{marketplace_id}/bulk",
-        )
-
-        chunk_results = []
-        queued = 0
-        skipped_duplicates = 0
-        for index, chunk in enumerate(chunks, start=1):
-            response = self.env["lqa.api.client"].request_absolute_json(
-                "POST",
-                endpoint,
-                payload={"runId": run_id, "skus": chunk},
-                timeout=self._timeout(),
-            )
-            payload = response if isinstance(response, dict) else {}
-            chunk_queued = self._as_int(payload.get("queued"), len(chunk))
-            chunk_skipped = self._as_int(payload.get("skippedDuplicates"), 0)
-            queued += chunk_queued
-            skipped_duplicates += chunk_skipped
-            chunk_results.append(
-                {
-                    "index": index,
-                    "skuCount": len(chunk),
-                    "queued": chunk_queued,
-                    "skippedDuplicates": chunk_skipped,
-                    "response": self._summarize_refresh_bulk_response(payload),
-                }
-            )
-
-        chunk_count = len(chunk_results)
-        response = {
-            "status": "QUEUED",
-            "runId": run_id,
-            "marketplace": marketplace_id,
-            "skuCount": len(skus),
-            "queued": queued,
-            "skippedDuplicates": skipped_duplicates,
-            "chunkSize": self.REFRESH_BULK_CHUNK_SIZE,
-            "chunkCount": chunk_count,
-            "message": (
-                f"Se enviaron {len(skus)} SKUs en {chunk_count} "
-                f"lote{'s' if chunk_count != 1 else ''}."
-            ),
-            "chunks": chunk_results,
-        }
-        result = self._normalize_refresh_result(
-            marketplace_id,
-            response,
-            action="bulk",
-            extra={
-                "run_id": run_id,
-                "sku_count": len(skus),
-                "filename": self._clean(filename),
-                "chunk_count": chunk_count,
-                "chunk_size": self.REFRESH_BULK_CHUNK_SIZE,
-                "job_id": f"{chunk_count} lote{'s' if chunk_count != 1 else ''}",
-            },
-        )
-        return self._store_bulk_action_run(result, "bulk", note)
-
-    @api.model
     def get_bulk_action_runs(self, limit=20):
         self._check_access()
         limit = min(max(self._as_int(limit, 20), 1), 100)
@@ -1628,17 +1489,6 @@ class LqaRetailersService(models.AbstractModel):
         if not token:
             raise UserError(_("Configura el token interno de Madre para Retailers."))
         return {"x-internal-api-key": token}
-
-    def _products_base_url(self):
-        params = self.env["ir.config_parameter"].sudo()
-        return (
-            params.get_param(
-                "lqa_admin_panel.retailers_products_api_url",
-                "",
-            )
-            or os.environ.get("NEXT_PUBLIC_PRODUCTS_API_URL")
-            or self.DEFAULT_PRODUCTS_API_URL
-        ).strip()
 
     def _orders_base_url(self):
         params = self.env["ir.config_parameter"].sudo()

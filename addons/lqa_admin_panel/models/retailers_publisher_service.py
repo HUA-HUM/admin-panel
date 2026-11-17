@@ -21,10 +21,15 @@ class LqaRetailersPublisherService(models.AbstractModel):
     FOLDERS_PATH = "/api/analytics/marketplace-favorites/marketplaces"
     BULK_PRODUCTS_PATH = "/api/analytics/marketplace-favorites/bulk"
     FAVORITES_PATH = "/api/analytics/marketplace-favorites/{folder_id}/favorites"
-    EXECUTE_PUBLICATION_PATH = "/api/publications/execute/run"
+    # products-api no tiene prefijo /api: /health responde 200 y /api/health
+    # da 404. El path con /api venia devolviendo 404 en cada publicacion.
+    EXECUTE_PUBLICATION_PATH = "/publications/execute/run"
+    PUBLICATION_RUN_PATH = "/api/publication-runs/{run_id}"
     PUBLICATION_RUN_JOBS_PATH = "/api/publication-jobs/{run_id}/jobs"
     PENDING_PUBLICATIONS_PATH = "/api/publication-jobs/pending"
-    PUBLICATION_MARKETPLACES = ("fravega", "megatone", "oncity")
+    # Unico canal soportado por products-api. Enviar otro devuelve 400 y no
+    # crea nada, asi que conviene no ofrecerlo.
+    PUBLICATION_MARKETPLACES = ("fravega",)
     MAX_IMPORT_ROWS = 10000
     MAX_UPLOAD_BYTES = 20 * 1024 * 1024
     MAX_XLSX_XML_BYTES = 40 * 1024 * 1024
@@ -248,7 +253,8 @@ class LqaRetailersPublisherService(models.AbstractModel):
                     "marketplaces": normalized_marketplaces,
                     "folderId": folder_id,
                 },
-                timeout=self._timeout(),
+                headers=self._products_headers(),
+                timeout=self._publication_timeout(),
             )
         except UserError as error:
             history = self.env["lqa.retailers.publication.run"].sudo().create(
@@ -350,6 +356,53 @@ class LqaRetailersPublisherService(models.AbstractModel):
             limit=limit,
         )
         return [execution.to_panel_dict() for execution in history]
+
+    @api.model
+    def get_publication_run(self, run_id):
+        """Contadores de una corrida, desde madre.
+
+        products-api responde cuando los jobs quedan encolados, no cuando se
+        publicaron: el avance lo escribe el worker en madre.
+        """
+        self._check_access()
+        run_id = self._clean(run_id)
+        if not run_id:
+            raise UserError(_("Ingresa el run ID para seguir la publicacion."))
+        response = self.env["lqa.api.client"].request_absolute_json(
+            "GET",
+            self._join_url(
+                self._madre_base_url(),
+                self.PUBLICATION_RUN_PATH.format(run_id=quote(run_id, safe="")),
+            ),
+            headers=self._madre_headers(),
+            timeout=self._timeout(),
+        )
+        payload = response if isinstance(response, dict) else {}
+        # madre devuelve los contadores como string.
+        total = self._as_int(payload.get("total_jobs"), 0)
+        pending = self._as_int(payload.get("pending_jobs"), 0)
+        processing = self._as_int(payload.get("processing_jobs"), 0)
+        # success_jobs/failed_jobs no se actualizan: los buenos son actual_*.
+        success = self._as_int(payload.get("actual_success_jobs"), 0)
+        failed = self._as_int(payload.get("actual_failed_jobs"), 0)
+        skipped = self._as_int(payload.get("skipped_jobs"), 0)
+        done = success + failed + skipped
+        return {
+            "runId": self._clean(payload.get("id")) or run_id,
+            "marketplaces": payload.get("marketplaces") or [],
+            "totalJobs": total,
+            "pending": pending,
+            "processing": processing,
+            "success": success,
+            "failed": failed,
+            "skipped": skipped,
+            "done": done,
+            # status queda en "created" para siempre: no sirve para saber si
+            # termino. El corte real es que no quede nada en vuelo.
+            "finished": (pending + processing) == 0,
+            "progress": min(round(done * 100 / total), 100) if total else 0,
+            "createdAt": self._clean(payload.get("created_at")),
+        }
 
     @api.model
     def get_publication_run_jobs(self, run_id, limit=50, offset=0):
@@ -971,6 +1024,24 @@ class LqaRetailersPublisherService(models.AbstractModel):
             or os.environ.get("NEXT_PUBLIC_MADRE_API_URL")
             or "https://api.madre.loquieroaca.com"
         ).strip()
+
+    def _products_headers(self):
+        key = (
+            self.env["ir.config_parameter"]
+            .sudo()
+            .get_param("lqa_admin_panel.retailers_products_api_key", "")
+            or os.environ.get("LQA_PRODUCTS_API_KEY", "")
+        ).strip()
+        if not key:
+            raise UserError(
+                _("Configura la API key de Products API para poder publicar.")
+            )
+        return {"x-api-key": key}
+
+    def _publication_timeout(self):
+        # Crear el run lee la carpeta entera y encola los jobs de a 500: con
+        # miles de SKUs la respuesta tarda decenas de segundos.
+        return max(self._timeout(), 180)
 
     def _products_base_url(self):
         params = self.env["ir.config_parameter"].sudo()

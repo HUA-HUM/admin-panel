@@ -15,15 +15,7 @@
             </header>
 
             <nav class="o_lqa_google_actions_tabs" aria-label="Secciones Google Merchant">
-                <button
-                    type="button"
-                    t-att-class="isPanel('publisher') ? 'is-active' : ''"
-                    t-on-click="() => this.setPanel('publisher')"
-                >
-                    <i class="fa fa-cloud-upload"/>
-                    Publicador
-                </button>
-                <button
+<button
                     type="button"
                     t-att-class="isPanel('deleter') ? 'is-active' : ''"
                     t-on-click="() => this.setPanel('deleter')"
@@ -41,61 +33,7 @@
                 </button>
             </nav>
 
-            <section t-if="isPanel('publisher')" class="o_lqa_google_actions_publish">
-                <div class="o_lqa_google_actions_publish__icon">
-                    <i class="fa fa-cloud-upload"/>
-                </div>
-                <div class="o_lqa_google_actions_publish__content">
-                    <div class="o_lqa_google_actions_publish__head">
-                        <div>
-                            <small>Carga masiva</small>
-                            <h2>Publicar productos</h2>
-                        </div>
-                        <span>Products API</span>
-                    </div>
-                    <p>
-                        Dispara la publicación de todo el catálogo en Products API y deja el proceso corriendo en backend.
-                        El backend continúa iterando páginas desde el offset indicado hasta que no haya más resultados.
-                    </p>
-                    <div class="o_lqa_google_actions_publish__form">
-                        <label>
-                            <span>Limit</span>
-                            <input
-                                type="number"
-                                min="1"
-                                class="form-control"
-                                t-model="state.publishForm.limit"
-                                t-att-disabled="state.publishing"
-                            />
-                        </label>
-                        <label>
-                            <span>Offset</span>
-                            <input
-                                type="number"
-                                min="0"
-                                class="form-control"
-                                t-model="state.publishForm.offset"
-                                t-att-disabled="state.publishing"
-                            />
-                        </label>
-                        <button
-                            type="button"
-                            class="btn btn-primary"
-                            t-att-disabled="!canPublish"
-                            t-on-click="executePublishAll"
-                        >
-                            <i
-                                t-att-class="state.publishing
-                                    ? 'fa fa-spinner fa-spin'
-                                    : 'fa fa-cloud-upload'"
-                            />
-                            <t t-esc="state.publishing ? 'Iniciando...' : 'Iniciar carga masiva'"/>
-                        </button>
-                    </div>
-                </div>
-            </section>
-
-            <section t-if="isPanel('deleter')" class="o_lqa_google_actions_danger">
+<section t-if="isPanel('deleter')" class="o_lqa_google_actions_danger">
                 <div class="o_lqa_google_actions_danger__icon">
                     <i class="fa fa-trash-o"/>
                 </div>
@@ -219,45 +157,7 @@
                             </div>
                         </article>
 
-                        <article class="o_lqa_google_actions_delete_card is-critical">
-                            <div>
-                                <small>Zona crítica</small>
-                                <h3>Eliminar todo el catálogo</h3>
-                                <p>
-                                    Esta acción solicita la eliminación de todos los productos
-                                    publicados en Google Merchant.
-                                </p>
-                            </div>
-                            <label for="lqa-google-delete-confirmation">
-                                Escribí <strong>ELIMINAR TODO</strong> para confirmar
-                            </label>
-                            <div class="o_lqa_google_actions_danger__form">
-                                <input
-                                    id="lqa-google-delete-confirmation"
-                                    type="text"
-                                    class="form-control"
-                                    autocomplete="off"
-                                    placeholder="ELIMINAR TODO"
-                                    t-model="state.confirmation"
-                                    t-att-disabled="state.executing"
-                                    t-on-keydown="onConfirmationKeydown"
-                                />
-                                <button
-                                    type="button"
-                                    class="btn btn-danger"
-                                    t-att-disabled="!canExecute"
-                                    t-on-click="executeDeleteAll"
-                                >
-                                    <i
-                                        t-att-class="state.executing
-                                            ? 'fa fa-spinner fa-spin'
-                                            : 'fa fa-trash-o'"
-                                    />
-                                    <t t-esc="state.executing ? 'Eliminando...' : 'Eliminar catálogo'"/>
-                                </button>
-                            </div>
-                        </article>
-                    </div>
+</div>
                 </div>
             </section>
 

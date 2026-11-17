@@ -87,46 +87,6 @@ export class LqaGoogleMerchantActions extends Component {
         );
     }
 
-    async executePublishAll() {
-        if (!this.canPublish) {
-            this.notification.add("Revisa limit y offset.", {
-                type: "warning",
-            });
-            return;
-        }
-        this.state.publishing = true;
-        try {
-            const result = await this.orm.call(
-                "lqa.google.merchant.actions.service",
-                "publish_all_products",
-                [
-                    {
-                        limit: this.state.publishForm.limit,
-                        offset: this.state.publishForm.offset,
-                    },
-                ]
-            );
-            this.notification.add(
-                result.message ||
-                    result.error_message ||
-                    "La carga masiva fue enviada.",
-                {
-                    type:
-                        result.status === "failed"
-                            ? "danger"
-                            : result.status === "partial"
-                            ? "warning"
-                            : "success",
-                }
-            );
-        } catch (error) {
-            this.notifyError(error, "No se pudo iniciar la carga masiva.");
-        } finally {
-            await this.loadHistory();
-            this.state.publishing = false;
-        }
-    }
-
     async executeDeleteOne() {
         if (!this.canDeleteOne) {
             this.notification.add("Completá SKU, idioma y etiqueta de feed.", {
@@ -217,36 +177,6 @@ export class LqaGoogleMerchantActions extends Component {
             this.notifyError(error, "No se pudo descargar el catálogo.");
         } finally {
             this.state.downloadingCatalog = false;
-        }
-    }
-
-    async executeDeleteAll() {
-        if (!this.canExecute) {
-            this.notification.add(
-                `Escribí ${CONFIRMATION_TEXT} para confirmar.`,
-                { type: "warning" }
-            );
-            return;
-        }
-        this.state.executing = true;
-        try {
-            const result = await this.orm.call(
-                "lqa.google.merchant.actions.service",
-                "delete_all_products",
-                [this.state.confirmation]
-            );
-            this.state.confirmation = "";
-            this.notification.add(
-                result.status === "completed"
-                    ? result.message || "La eliminación fue enviada correctamente."
-                    : result.error_message || "La eliminación no pudo completarse.",
-                { type: result.status === "completed" ? "success" : "danger" }
-            );
-        } catch (error) {
-            this.notifyError(error, "No se pudo eliminar el catálogo.");
-        } finally {
-            await this.loadHistory();
-            this.state.executing = false;
         }
     }
 

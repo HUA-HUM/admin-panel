@@ -43,8 +43,6 @@ const ACTION_MARKETPLACES = MARKETPLACES.filter((marketplace) =>
     ["fravega", "megatone", "oncity"].includes(marketplace.id)
 );
 
-const GOOGLE_MERCHANT_DELETE_CONFIRMATION = "ELIMINAR TODO";
-
 const emptyOrdersOverview = () => ({
     mode: "last24",
     range: { from: "", to: "" },
@@ -91,40 +89,15 @@ export class LqaRetailers extends Component {
             loadingPausedSkuRuns: false,
             loadingPausedSkus: false,
             downloadingMarketplaceSkus: false,
-            runningImport: false,
-            refreshingPublished: false,
-            refreshingSku: false,
-            refreshingBulk: false,
             upsertingPausedSku: false,
             upsertingPausedSkus: false,
             deletingPausedSku: "",
-            confirmImport: false,
-            confirmRefresh: false,
-            confirmDeleteGoogleMerchant: false,
-            deletingGoogleMerchantProducts: false,
             deletingGoogleMerchantProductKey: "",
             googleMerchantProductToDelete: null,
-            googleMerchantDeleteConfirmation: "",
             productDetail: null,
             dashboardOrders: emptyOrdersOverview(),
             dashboardError: "",
             bulkActionTab: "auto",
-            refreshForm: {
-                marketplace: "fravega",
-                note: "",
-            },
-            refreshSkuForm: {
-                marketplace: "fravega",
-                sku: "",
-                note: "",
-            },
-            refreshBulkForm: {
-                marketplace: "fravega",
-                runId: "",
-                filename: "",
-                content: "",
-                note: "",
-            },
             pausedSkuFilters: {
                 sku: "",
                 paused: "",
@@ -142,9 +115,6 @@ export class LqaRetailers extends Component {
                 defaultPaused: "true",
                 note: "",
             },
-            refreshResult: null,
-            refreshSkuResult: null,
-            refreshBulkResult: null,
             pausedSingleResult: null,
             pausedBulkResult: null,
             bulkActionRuns: [],
@@ -174,12 +144,6 @@ export class LqaRetailers extends Component {
 
     get selectedMarketplace() {
         return this.state.marketplaces.find((item) => item.id === this.state.marketplaceId);
-    }
-
-    get selectedRefreshMarketplace() {
-        return this.state.actionMarketplaces.find(
-            (item) => item.id === this.state.refreshForm.marketplace
-        );
     }
 
     get activeImportRun() {
@@ -242,14 +206,6 @@ export class LqaRetailers extends Component {
         return (this.state.bulkActionRuns || []).filter((run) => run.action_type !== "published");
     }
 
-    get canDeleteGoogleMerchantCatalog() {
-        return (
-            this.state.googleMerchantDeleteConfirmation.trim().toUpperCase() ===
-                GOOGLE_MERCHANT_DELETE_CONFIRMATION &&
-            !this.state.deletingGoogleMerchantProducts
-        );
-    }
-
     get statusOptions() {
         const summary = this.state.products.summary || {};
         const statuses = Array.isArray(summary.statuses) ? summary.statuses : [];
@@ -281,10 +237,6 @@ export class LqaRetailers extends Component {
         }
         this.state.marketplaceId = marketplaceId;
         this.state.viewMode = viewMode;
-        this.state.confirmImport = false;
-        this.state.confirmRefresh = false;
-        this.state.confirmDeleteGoogleMerchant = false;
-        this.state.googleMerchantDeleteConfirmation = "";
         if (marketplaceId) {
             this.resetMarketplaceDetail();
         }
@@ -344,9 +296,6 @@ export class LqaRetailers extends Component {
     backToMarketplaces() {
         this.state.viewMode = "marketplaces";
         this.state.marketplaceId = "";
-        this.state.confirmImport = false;
-        this.state.confirmDeleteGoogleMerchant = false;
-        this.state.googleMerchantDeleteConfirmation = "";
         if (this.importPollingTimer) {
             clearTimeout(this.importPollingTimer);
         }
@@ -513,71 +462,6 @@ export class LqaRetailers extends Component {
         await this.loadImports();
     }
 
-    openImportConfirmation() {
-        this.state.confirmImport = true;
-    }
-
-    closeImportConfirmation() {
-        if (!this.state.runningImport) {
-            this.state.confirmImport = false;
-        }
-    }
-
-    async confirmRunImport() {
-        this.state.runningImport = true;
-        try {
-            const result = await this.orm.call(
-                "lqa.retailers.service",
-                "run_import",
-                [this.state.marketplaceId]
-            );
-            this.notification.add(
-                `Import enviado: ${this.importStatusLabel(result.status)}`,
-                { type: "success" }
-            );
-            this.state.confirmImport = false;
-            this.state.activeTab = "imports";
-            await this.loadImports();
-        } catch (error) {
-            this.notifyError(error, "No se pudo disparar el import.");
-        } finally {
-            this.state.runningImport = false;
-        }
-    }
-
-    openRefreshConfirmation() {
-        this.state.confirmRefresh = true;
-    }
-
-    closeRefreshConfirmation() {
-        if (!this.state.refreshingPublished) {
-            this.state.confirmRefresh = false;
-        }
-    }
-
-    async confirmRefreshPublished() {
-        this.state.refreshingPublished = true;
-        try {
-            const result = await this.orm.call(
-                "lqa.retailers.service",
-                "refresh_published",
-                [this.state.refreshForm.marketplace, this.state.refreshForm.note]
-            );
-            this.state.refreshResult = result;
-            this.state.refreshForm.note = "";
-            this.state.confirmRefresh = false;
-            await this.loadBulkActionRuns();
-            this.notification.add(
-                `Actualizacion enviada para ${result.marketplace_name || this.marketplaceName(result.marketplace)}.`,
-                { type: "success" }
-            );
-        } catch (error) {
-            this.notifyError(error, "No se pudo disparar la actualizacion.");
-        } finally {
-            this.state.refreshingPublished = false;
-        }
-    }
-
     async setBulkActionTab(tab) {
         this.state.bulkActionTab = tab;
         if (tab === "paused_list") {
@@ -616,100 +500,6 @@ export class LqaRetailers extends Component {
             this.notifyError(error, "No se pudieron cargar los registros de SKUs pausados.");
         } finally {
             this.state.loadingPausedSkuRuns = false;
-        }
-    }
-
-    async submitRefreshSku() {
-        if (!this.state.refreshSkuForm.sku.trim()) {
-            this.notification.add("Ingresa un SKU para actualizar.", {
-                type: "warning",
-            });
-            return;
-        }
-        this.state.refreshingSku = true;
-        try {
-            const result = await this.orm.call(
-                "lqa.retailers.service",
-                "refresh_published_sku",
-                [
-                    this.state.refreshSkuForm.marketplace,
-                    this.state.refreshSkuForm.sku,
-                    this.state.refreshSkuForm.note,
-                ]
-            );
-            this.state.refreshSkuResult = result;
-            this.state.refreshSkuForm.note = "";
-            await this.loadBulkActionRuns();
-            this.notification.add(
-                `Actualizacion enviada para ${result.sku} en ${result.marketplace_name}.`,
-                { type: "success" }
-            );
-        } catch (error) {
-            this.notifyError(error, "No se pudo actualizar el SKU.");
-        } finally {
-            this.state.refreshingSku = false;
-        }
-    }
-
-    async onRefreshBulkFileChange(event) {
-        this.refreshBulkFileInput = event.target;
-        const file = event.target.files?.[0];
-        if (!file) {
-            this.clearRefreshBulkFile();
-            return;
-        }
-        try {
-            const dataUrl = await this.readFileAsDataUrl(file);
-            this.state.refreshBulkForm.filename = file.name;
-            this.state.refreshBulkForm.content = dataUrl.split(",", 2)[1] || "";
-        } catch (error) {
-            this.clearRefreshBulkFile();
-            this.notification.add("No se pudo leer el archivo seleccionado.", {
-                type: "danger",
-            });
-        }
-    }
-
-    clearRefreshBulkFile() {
-        this.state.refreshBulkForm.filename = "";
-        this.state.refreshBulkForm.content = "";
-        if (this.refreshBulkFileInput) {
-            this.refreshBulkFileInput.value = "";
-        }
-    }
-
-    async submitRefreshBulk() {
-        if (!this.state.refreshBulkForm.content) {
-            this.notification.add("Selecciona un CSV o Excel con SKUs.", {
-                type: "warning",
-            });
-            return;
-        }
-        this.state.refreshingBulk = true;
-        try {
-            const result = await this.orm.call(
-                "lqa.retailers.service",
-                "refresh_published_bulk",
-                [
-                    this.state.refreshBulkForm.marketplace,
-                    this.state.refreshBulkForm.filename,
-                    this.state.refreshBulkForm.content,
-                    this.state.refreshBulkForm.runId,
-                    this.state.refreshBulkForm.note,
-                ]
-            );
-            this.state.refreshBulkResult = result;
-            this.state.refreshBulkForm.note = "";
-            this.clearRefreshBulkFile();
-            await this.loadBulkActionRuns();
-            this.notification.add(
-                `Bulk enviado: ${this.formatNumber(result.sku_count)} SKUs para ${result.marketplace_name}.`,
-                { type: "success" }
-            );
-        } catch (error) {
-            this.notifyError(error, "No se pudo enviar el bulk de SKUs.");
-        } finally {
-            this.state.refreshingBulk = false;
         }
     }
 
@@ -874,62 +664,6 @@ export class LqaRetailers extends Component {
             this.notifyError(error, "No se pudo enviar el bulk de SKUs pausados.");
         } finally {
             this.state.upsertingPausedSkus = false;
-        }
-    }
-
-    openGoogleMerchantDeleteConfirmation() {
-        this.state.googleMerchantDeleteConfirmation = "";
-        this.state.confirmDeleteGoogleMerchant = true;
-    }
-
-    closeGoogleMerchantDeleteConfirmation() {
-        if (!this.state.deletingGoogleMerchantProducts) {
-            this.state.confirmDeleteGoogleMerchant = false;
-            this.state.googleMerchantDeleteConfirmation = "";
-        }
-    }
-
-    onGoogleMerchantDeleteKeydown(event) {
-        if (event.key === "Enter") {
-            this.confirmDeleteGoogleMerchantCatalog();
-        }
-    }
-
-    async confirmDeleteGoogleMerchantCatalog() {
-        if (!this.canDeleteGoogleMerchantCatalog) {
-            this.notification.add(
-                `Escribi ${GOOGLE_MERCHANT_DELETE_CONFIRMATION} para confirmar.`,
-                { type: "warning" }
-            );
-            return;
-        }
-        this.state.deletingGoogleMerchantProducts = true;
-        try {
-            const result = await this.orm.call(
-                "lqa.google.merchant.actions.service",
-                "delete_all_products",
-                [this.state.googleMerchantDeleteConfirmation]
-            );
-            this.state.confirmDeleteGoogleMerchant = false;
-            this.state.googleMerchantDeleteConfirmation = "";
-            await this.loadProducts();
-            this.notification.add(
-                result.message ||
-                    result.error_message ||
-                    "La eliminacion total finalizo.",
-                {
-                    type:
-                        result.status === "completed"
-                            ? "success"
-                            : result.status === "partial"
-                            ? "warning"
-                            : "danger",
-                }
-            );
-        } catch (error) {
-            this.notifyError(error, "No se pudo eliminar el catalogo.");
-        } finally {
-            this.state.deletingGoogleMerchantProducts = false;
         }
     }
 

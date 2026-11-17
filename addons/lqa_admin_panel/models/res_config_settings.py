@@ -64,6 +64,10 @@ class ResConfigSettings(models.TransientModel):
         default=300,
         config_parameter="lqa_admin_panel.mercadolibre_pricing_timeout_seconds",
     )
+    lqa_retailers_products_api_key = fields.Char(
+        string="API key Products API",
+        config_parameter="lqa_admin_panel.retailers_products_api_key",
+    )
     lqa_mercadolibre_promotions_api_key = fields.Char(
         string="API key promociones (CPE)",
         config_parameter="lqa_admin_panel.mercadolibre_promotions_api_key",
