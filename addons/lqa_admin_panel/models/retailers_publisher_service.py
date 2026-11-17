@@ -75,7 +75,7 @@ class LqaRetailersPublisherService(models.AbstractModel):
     }
 
     @api.model
-    def get_folders(self):
+    def get_folders(self, with_counts=True):
         self._check_access()
         response = self.env["lqa.api.client"].request_absolute_json(
             "GET",
@@ -90,7 +90,8 @@ class LqaRetailersPublisherService(models.AbstractModel):
                 ("marketplaces", "folders", "items", "data", "results"),
             )
         ]
-        self._attach_folder_counts(folders)
+        if with_counts:
+            self._attach_folder_counts(folders)
         return folders
 
     def _attach_folder_counts(self, folders):
@@ -513,8 +514,10 @@ class LqaRetailersPublisherService(models.AbstractModel):
             "createdAt": self._clean(payload.get("created_at")),
         }
 
+    PUBLICATION_JOB_STATUSES = ("pending", "processing", "success", "skipped", "failed")
+
     @api.model
-    def get_publication_run_jobs(self, run_id, limit=50, offset=0):
+    def get_publication_run_jobs(self, run_id, limit=50, offset=0, status=None):
         self._check_access()
         run_id = self._clean(run_id)
         if not run_id:
@@ -529,7 +532,7 @@ class LqaRetailersPublisherService(models.AbstractModel):
                     run_id=quote(run_id, safe="")
                 ),
             ),
-            params={"limit": limit, "offset": offset},
+            params=self._run_jobs_params(limit, offset, status),
             headers=self._madre_headers(),
             timeout=self._timeout(),
         )
@@ -936,6 +939,15 @@ class LqaRetailersPublisherService(models.AbstractModel):
             ),
         }
 
+    def _run_jobs_params(self, limit, offset, status):
+        # madre filtra por estado del lado del servidor; filtrar en el panel
+        # sobre una pagina suelta mostraria "0 fallidos" con fallidos en otra.
+        params = {"limit": limit, "offset": offset}
+        status = self._clean(status).lower()
+        if status in self.PUBLICATION_JOB_STATUSES:
+            params["status"] = status
+        return params
+
     def _normalize_publication_jobs_response(
         self,
         response,
@@ -991,7 +1003,16 @@ class LqaRetailersPublisherService(models.AbstractModel):
             if isinstance(item.get("job"), dict)
             else item
         )
+        request_payload = payload.get("request_payload")
+        if isinstance(request_payload, str):
+            try:
+                request_payload = json.loads(request_payload)
+            except ValueError:
+                request_payload = {}
+        request_payload = request_payload if isinstance(request_payload, dict) else {}
         return {
+            # En que paso se corto un skipped/failed de validacion.
+            "stage": self._clean(request_payload.get("stage")),
             "id": self._clean(
                 self._first(payload, "_id", "id", "jobId")
             ),

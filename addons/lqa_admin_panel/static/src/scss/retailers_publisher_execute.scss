@@ -1,399 +1,430 @@
-.o_lqa_retailers_publish {
-    height: 100%;
-    min-height: 0;
-    overflow-x: hidden;
-    overflow-y: auto;
-    padding: 24px;
-    background: #f5f7fa;
-    color: #202a37;
+// Publicador · Publicar
+//
+// La base (botones, tarjetas, tabla, modal, inputs) sale de .o_lqa_pubf en
+// retailers_publisher.scss: aca solo va lo propio de esta vista.
 
-    * {
-        box-sizing: border-box;
-    }
+$pubx-ink: #1f2937;
+$pubx-muted: #6b7a90;
+$pubx-muted-soft: #8d9bb0;
+$pubx-border: #e3e9f1;
+$pubx-border-soft: #eef2f7;
+$pubx-chip: #f4f6fa;
+$pubx-red: #ff4f5a;
+$pubx-red-dark: #e23a46;
+$pubx-navy: #2d3277;
+
+.o_lqa_pubx__layout {
+    display: grid;
+    max-width: 1500px;
+    align-items: start;
+    gap: 18px;
+    margin: 0 auto 18px;
+    grid-template-columns: minmax(0, 1fr) 340px;
 }
 
-.o_lqa_retailers_publish__header,
-.o_lqa_retailers_publish_form,
-.o_lqa_retailers_publish_history {
-    max-width: 1180px;
-    margin-right: auto;
-    margin-left: auto;
-}
-
-.o_lqa_retailers_publish__header {
+.o_lqa_pubx__main {
     display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 16px;
+    min-width: 0;
+    flex-direction: column;
+    gap: 14px;
+}
 
-    p {
-        margin: 0 0 6px;
-        color: #ff4f5a;
-        font-size: 12px;
-        font-weight: 800;
-        text-transform: uppercase;
-    }
+.o_lqa_pubx__step {
+    padding: 18px 20px 20px;
+}
 
-    h1 {
+.o_lqa_pubx__step_head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+
+    h2 {
         margin: 0;
-        color: #1f2937;
-        font-size: 34px;
-        font-weight: 800;
-        letter-spacing: 0;
-        line-height: 1.15;
+        font-size: 15px;
+        font-weight: 750;
     }
 
     span {
-        display: block;
-        margin-top: 6px;
-        color: #607086;
+        color: $pubx-muted;
+        font-size: 12px;
     }
 
-    .btn {
-        min-height: 38px;
-        border-color: #d4dce8;
-        background: #fff;
-        color: #314158;
-        font-weight: 700;
-    }
-
-    i {
-        margin-right: 6px;
+    > div {
+        flex: 1 1 auto;
     }
 }
 
-.o_lqa_retailers_publish_form,
-.o_lqa_retailers_publish_result {
-    border: 1px solid #d9e1ec;
-    border-radius: 8px;
-    background: #fff;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
-}
-
-.o_lqa_retailers_publish_step {
-    display: grid;
-    grid-template-columns: 42px minmax(0, 1fr);
-    gap: 14px;
-    padding: 18px;
-    border-bottom: 1px solid #e2e8f0;
-}
-
-.o_lqa_retailers_publish_step__number {
-    display: flex;
-    width: 34px;
-    height: 34px;
+.o_lqa_pubx__step_num {
+    display: inline-flex;
+    width: 28px;
+    height: 28px;
+    flex: 0 0 auto;
     align-items: center;
     justify-content: center;
-    border-radius: 50%;
-    background: #ff4f5a;
-    color: #fff;
-    font-weight: 900;
+    border-radius: 9px;
+    background: rgba($pubx-navy, 0.08);
+    color: $pubx-navy !important;
+    font-size: 13px !important;
+    font-weight: 800;
 }
 
-.o_lqa_retailers_publish_step__content {
-    min-width: 0;
-
-    > label {
-        display: block;
-        margin: 0 0 9px;
-        color: #405064;
-        font-size: 12px;
-        font-weight: 800;
-        text-transform: uppercase;
-    }
-
-    > .form-select {
-        width: 100%;
-        max-width: 560px;
-        min-height: 42px;
-        border-color: #d6dee8;
-        border-radius: 8px;
-        color: #253348;
-        font-weight: 700;
-    }
+.o_lqa_pubx__search {
+    width: 240px;
+    margin: 0 !important;
 }
 
-.o_lqa_retailers_publish_marketplaces {
+.o_lqa_pubx__folders {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    max-height: 340px;
+    overflow-y: auto;
+    padding: 2px;
+}
+
+.o_lqa_pubx__folder {
+    display: flex;
+    min-height: 58px;
+    align-items: center;
+    gap: 11px;
+    padding: 10px 12px;
+    border: 1px solid $pubx-border;
+    border-radius: 11px;
+    background: #fff;
+    color: $pubx-ink;
+    text-align: left;
+    cursor: pointer;
+    transition:
+        border-color 0.14s ease,
+        background-color 0.14s ease,
+        box-shadow 0.14s ease;
+
+    &:hover:not(:disabled) {
+        border-color: #cfd8e5;
+        background: #fafbfd;
+    }
+
+    &:focus {
+        outline: none;
+    }
+
+    &:focus-visible {
+        box-shadow: 0 0 0 3px rgba($pubx-navy, 0.15);
+    }
+
+    &:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+    }
+
+    &.is-active {
+        border-color: $pubx-navy;
+        background: rgba($pubx-navy, 0.04);
+        box-shadow: 0 0 0 1px $pubx-navy;
+
+        .o_lqa_pubx__radio {
+            border-color: $pubx-navy;
+
+            &::after {
+                transform: scale(1);
+            }
+        }
+    }
+
+    &.is-skeleton span {
+        display: block;
+        width: 60%;
+        height: 10px;
+        border-radius: 4px;
+        background: $pubx-chip;
+        animation: o_lqa_pubf_pulse 1.2s ease-in-out infinite;
+    }
+}
+
+.o_lqa_pubx__radio {
+    position: relative;
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+    border: 1.5px solid #c7d0dd;
+    border-radius: 50%;
+    transition: border-color 0.14s ease;
+
+    &::after {
+        position: absolute;
+        inset: 3px;
+        border-radius: 50%;
+        background: $pubx-navy;
+        content: "";
+        transform: scale(0);
+        transition: transform 0.16s cubic-bezier(0.2, 0.7, 0.2, 1);
+    }
+}
+
+.o_lqa_pubx__folder_text {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 1px;
+
+    strong {
+        overflow: hidden;
+        font-size: 13px;
+        font-weight: 650;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    small {
+        color: $pubx-muted;
+        font-size: 12px;
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+.o_lqa_pubx__empty {
+    display: flex;
+    align-items: center;
     gap: 10px;
+    padding: 16px;
+    border: 1px dashed #d5dde8;
+    border-radius: 11px;
+    color: $pubx-muted;
+    font-size: 13px;
 
-    button {
-        position: relative;
-        display: flex;
-        min-height: 118px;
-        min-width: 0;
-        align-items: center;
-        justify-content: center;
-        flex-direction: column;
-        gap: 10px;
-        padding: 14px;
-        border: 1px solid #d9e1ec;
-        border-radius: 8px;
-        background: #fff;
-        color: #314158;
+    i {
+        color: #c7d0dd;
+        font-size: 18px;
     }
+}
 
-    button:hover,
-    button.is-selected {
-        border-color: #ff7f88;
-        background: #fff7f7;
-    }
+.o_lqa_pubx__marketplaces {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.o_lqa_pubx__marketplace {
+    position: relative;
+    display: inline-flex;
+    width: 180px;
+    height: 72px;
+    align-items: center;
+    justify-content: center;
+    padding: 14px 22px;
+    border: 1px solid $pubx-border;
+    border-radius: 12px;
+    background: #fff;
+    cursor: pointer;
+    transition:
+        border-color 0.14s ease,
+        box-shadow 0.14s ease;
 
     img {
-        display: block;
-        width: 100%;
-        max-width: 170px;
-        height: 44px;
+        max-width: 100%;
+        max-height: 30px;
         object-fit: contain;
+        filter: grayscale(1);
+        opacity: 0.55;
+        transition:
+            filter 0.16s ease,
+            opacity 0.16s ease;
     }
 
-    strong {
-        font-size: 14px;
+    &:focus {
+        outline: none;
+    }
+
+    &:focus-visible {
+        box-shadow: 0 0 0 3px rgba($pubx-navy, 0.15);
+    }
+
+    &.is-active {
+        border-color: $pubx-navy;
+        box-shadow: 0 0 0 1px $pubx-navy;
+
+        img {
+            filter: none;
+            opacity: 1;
+        }
+
+        .o_lqa_pubx__check {
+            transform: scale(1);
+        }
     }
 }
 
-.o_lqa_retailers_publish_marketplace__check {
+.o_lqa_pubx__check {
     position: absolute;
-    top: 10px;
-    right: 10px;
-    display: flex;
-    width: 22px;
-    height: 22px;
+    top: -7px;
+    right: -7px;
+    display: inline-flex;
+    width: 20px;
+    height: 20px;
     align-items: center;
     justify-content: center;
+    border: 2px solid #fff;
     border-radius: 50%;
-    color: #ff4f5a;
+    background: $pubx-navy;
+    color: #fff;
+    font-size: 9px;
+    transform: scale(0);
+    transition: transform 0.18s cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
-.o_lqa_retailers_publish_submit {
+.o_lqa_pubx__summary {
+    position: sticky;
+    top: 0;
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 16px 18px;
-
-    small,
-    strong {
-        display: block;
-    }
-
-    small {
-        color: #7a8899;
-        font-size: 10px;
-        font-weight: 800;
-        text-transform: uppercase;
-    }
-
-    strong {
-        margin-top: 4px;
-        color: #314158;
-    }
-
-    .btn-primary {
-        min-height: 42px;
-        border-color: #ff4f5a;
-        background: #ff4f5a;
-        font-weight: 800;
-    }
-
-    i {
-        margin-right: 6px;
-    }
-}
-
-.o_lqa_retailers_publish_history {
-    margin-top: 14px;
-}
-
-.o_lqa_retailers_publish_history__head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 14px 16px;
-    border: 1px solid #d9e1ec;
-    border-radius: 8px;
-    background: #fff;
+    flex-direction: column;
+    padding: 20px;
 
     h2 {
-        margin: 0;
-        color: #1f2937;
+        margin: 0 0 14px;
+        overflow: hidden;
         font-size: 18px;
-        font-weight: 800;
+        font-weight: 750;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
-    span {
-        display: block;
-        margin-top: 4px;
-        color: #607086;
-    }
-
-    .btn {
-        min-height: 38px;
-        border-color: #d4dce8;
-        background: #fff;
-        color: #314158;
-        font-weight: 700;
-    }
-
-    i {
-        margin-right: 6px;
-    }
-}
-
-.o_lqa_retailers_publish_history__list {
-    display: grid;
-    gap: 10px;
-    margin-top: 10px;
-}
-
-.o_lqa_retailers_publish_history__empty {
-    margin-top: 10px;
-    padding: 36px 18px;
-    border: 1px solid #d9e1ec;
-    border-radius: 8px;
-    background: #fff;
-    color: #607086;
-    text-align: center;
-}
-
-.o_lqa_retailers_publish_result {
-    padding: 16px;
-    border: 1px solid #d9e1ec;
-    border-radius: 8px;
-    background: #fff;
-}
-
-.o_lqa_retailers_publish_result__head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
-    padding-bottom: 14px;
-    border-bottom: 1px solid #e2e8f0;
-
-    small {
-        color: #607086;
-        font-size: 10px;
-        font-weight: 800;
-        text-transform: uppercase;
-    }
-
-    h2 {
-        margin: 4px 0 0;
-        color: #1f2937;
-        font-size: 21px;
-        font-weight: 800;
-    }
-
-    > strong {
-        padding: 7px 10px;
-        border: 1px solid #bfdbfe;
-        border-radius: 8px;
-        background: #eff6ff;
-        color: #1d4ed8;
-        font-size: 12px;
-    }
-}
-
-.o_lqa_retailers_publish_result {
     dl {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 12px;
-        margin: 14px 0 0;
+        display: flex;
+        flex-direction: column;
+        margin: 0 0 14px;
+        border-top: 1px solid $pubx-border-soft;
+
+        > div {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid $pubx-border-soft;
+        }
     }
 
     dt {
-        color: #7a8899;
-        font-size: 10px;
-        font-weight: 800;
-        text-transform: uppercase;
+        color: $pubx-muted;
+        font-size: 12px;
+        font-weight: 600;
     }
 
     dd {
-        margin: 5px 0 0;
-        color: #263243;
-        font-weight: 800;
-        overflow-wrap: anywhere;
-    }
-
-    dd span {
-        display: inline-block;
-        margin: 0 5px 4px 0;
-        padding: 4px 7px;
-        border: 1px solid #d9e1ec;
-        border-radius: 6px;
-        background: #f8fafc;
-        font-size: 12px;
-    }
-
-    > p {
-        margin: 14px 0 0;
-        color: #607086;
-    }
-}
-
-.o_lqa_retailers_publish_modal {
-    width: 100%;
-    max-width: 500px;
-    padding: 20px;
-    border-radius: 8px;
-    background: #fff;
-    box-shadow: 0 22px 60px rgba(15, 23, 42, 0.22);
-
-    h2 {
         margin: 0;
-        color: #1f2937;
-        font-size: 22px;
-        font-weight: 800;
-    }
-
-    p {
-        margin: 12px 0 0;
-        color: #607086;
+        color: $pubx-ink;
+        font-size: 13px;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        text-align: right;
     }
 }
 
-.o_lqa_retailers_publish_modal__actions {
+.o_lqa_pubx__note {
     display: flex;
-    justify-content: flex-end;
     gap: 8px;
-    margin-top: 18px;
+    margin: 0 0 16px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: $pubx-chip;
+    color: $pubx-muted;
+    font-size: 12px;
+    line-height: 1.5;
 
-    .btn {
-        min-height: 40px;
-        font-weight: 800;
-    }
-
-    .btn-primary {
-        border-color: #ff4f5a;
-        background: #ff4f5a;
+    i {
+        margin-top: 2px;
+        color: $pubx-muted-soft;
     }
 }
 
-@media (max-width: 760px) {
-    .o_lqa_retailers_publish {
-        padding: 16px;
-    }
+.o_lqa_pubx__summary_empty {
+    margin: 0 0 16px;
+    color: $pubx-muted;
+    font-size: 13px;
+}
 
-    .o_lqa_retailers_publish__header,
-    .o_lqa_retailers_publish_submit,
-    .o_lqa_retailers_publish_result__head,
-    .o_lqa_retailers_publish_history__head {
-        align-items: stretch;
-        flex-direction: column;
-    }
+.o_lqa_pubx__go {
+    width: 100%;
+    min-height: 44px !important;
+    font-size: 14px !important;
+}
 
-    .o_lqa_retailers_publish__header h1 {
-        font-size: 28px;
-    }
+.o_lqa_pubx__history {
+    max-width: 1500px;
+    margin: 0 auto;
+    overflow: hidden;
+}
 
-    .o_lqa_retailers_publish_marketplaces,
-    .o_lqa_retailers_publish_result dl {
+.o_lqa_pubx__table {
+    min-width: 820px !important;
+}
+
+.o_lqa_pubx__run {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: $pubx-ink;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+
+    &.is-error {
+        color: $pubx-red-dark;
+        font-weight: 650;
+        cursor: help;
+    }
+}
+
+.o_lqa_pubx__tag {
+    display: inline-flex;
+    height: 22px;
+    align-items: center;
+    margin-right: 4px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: $pubx-chip;
+    color: $pubx-muted;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.o_lqa_pubx__gone {
+    color: $pubx-muted-soft;
+    font-style: italic;
+}
+
+.o_lqa_pubx__muted {
+    color: $pubx-muted;
+    white-space: nowrap;
+}
+
+.o_lqa_pubx__row_action {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.o_lqa_pubx__modal_hint {
+    margin-top: 10px !important;
+    font-size: 12px !important;
+}
+
+@media (max-width: 1180px) {
+    .o_lqa_pubx__layout {
         grid-template-columns: 1fr;
     }
 
+    .o_lqa_pubx__summary {
+        position: static;
+    }
+}
+
+@media (max-width: 860px) {
+    .o_lqa_pubx__step_head {
+        flex-wrap: wrap;
+    }
+
+    .o_lqa_pubx__search {
+        width: 100%;
+    }
 }

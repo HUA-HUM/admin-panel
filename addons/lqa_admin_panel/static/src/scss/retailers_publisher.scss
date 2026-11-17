@@ -727,7 +727,8 @@ $pubf-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
         gap: 5px;
         margin: 0;
 
-        > span {
+        // El selector de archivo tambien es un label: su texto no es rotulo.
+        &:not(.o_lqa_pubf__drop) > span {
             color: $pubf-muted;
             font-size: 11px;
             font-weight: 700;

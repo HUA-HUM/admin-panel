@@ -1,208 +1,341 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
     <t t-name="lqa_admin_panel.RetailersPublisherTracking">
-        <div class="o_lqa_publication_tracking">
-            <header class="o_lqa_publication_tracking__header">
+        <div class="o_lqa_pubf o_lqa_pubt">
+            <header class="o_lqa_pubf__header">
                 <div>
-                    <p>Retailers / Publicador</p>
+                    <p class="o_lqa_pubf__eyebrow">Retailers · Publicador</p>
                     <h1>Seguimiento</h1>
-                    <span>Estado de los jobs de publicación por run y pendientes globales.</span>
+                    <span>Cómo va cada publicación, SKU por SKU.</span>
+                </div>
+                <div class="o_lqa_pubt__modes" role="tablist">
+                    <button
+                        type="button"
+                        role="tab"
+                        t-att-aria-selected="state.mode === 'run'"
+                        t-att-class="state.mode === 'run' ? 'is-active' : ''"
+                        t-on-click="() => this.setMode('run')"
+                    >
+                        Por publicación
+                    </button>
+                    <button
+                        type="button"
+                        role="tab"
+                        t-att-aria-selected="state.mode === 'pending'"
+                        t-att-class="state.mode === 'pending' ? 'is-active' : ''"
+                        t-on-click="() => this.setMode('pending')"
+                    >
+                        Cola global
+                    </button>
                 </div>
             </header>
 
-            <nav class="o_lqa_publication_tracking__tabs">
-                <button
-                    type="button"
-                    t-att-class="state.mode === 'run' ? 'is-active' : ''"
-                    t-on-click="() => this.setMode('run')"
-                >
-                    <i class="fa fa-list-alt"/>
-                    Por run
-                </button>
-                <button
-                    type="button"
-                    t-att-class="state.mode === 'pending' ? 'is-active' : ''"
-                    t-on-click="() => this.setMode('pending')"
-                >
-                    <i class="fa fa-clock-o"/>
-                    Pendientes globales
-                </button>
-            </nav>
-
-            <section t-if="state.mode === 'run'" class="o_lqa_publication_tracking_panel">
-                <form
-                    class="o_lqa_publication_tracking_search"
-                    t-on-submit.prevent="searchRunJobs"
-                >
-                    <label>
-                        <span>Run ID</span>
-                        <input
-                            type="text"
-                            placeholder="Ingresar publication run ID"
-                            t-model="state.runId"
-                        />
-                    </label>
-                    <select
-                        class="form-select"
-                        t-model="state.runLimit"
-                        t-on-change="changeRunLimit"
-                    >
-                        <option value="20">20 por página</option>
-                        <option value="50">50 por página</option>
-                        <option value="100">100 por página</option>
-                    </select>
-                    <button
-                        type="submit"
-                        class="btn btn-primary"
-                        t-att-disabled="state.loadingRun"
-                    >
-                        <i class="fa fa-search"/>
-                        Consultar
-                    </button>
-                </form>
-
-                <div class="o_lqa_publication_tracking_table_head">
-                    <div>
-                        <h2>Jobs del run</h2>
-                        <span>
-                            <t t-esc="formatNumber(state.runPagination.total || 0)"/>
-                            resultados
-                        </span>
-                    </div>
-                    <div class="o_lqa_publication_tracking_pager">
-                        <button
-                            type="button"
-                            class="btn btn-secondary"
-                            t-att-disabled="!state.runPagination.has_previous || state.loadingRun"
-                            t-on-click="previousRunPage"
-                        >
-                            Anterior
-                        </button>
-                        <span>
-                            Página
-                            <t t-esc="state.runPagination.page || 1"/>
-                        </span>
-                        <button
-                            type="button"
-                            class="btn btn-secondary"
-                            t-att-disabled="!state.runPagination.has_next || state.loadingRun"
-                            t-on-click="nextRunPage"
-                        >
-                            Siguiente
+            <!-- ===================== Por publicacion ===================== -->
+            <t t-if="state.mode === 'run'">
+                <div t-if="!state.runId and !runOptions.length" class="o_lqa_pubt__container">
+                    <div class="o_lqa_pubf__placeholder">
+                        <div class="o_lqa_pubf__placeholder_icon"><i class="fa fa-line-chart"/></div>
+                        <h2>Todavía no hay publicaciones para seguir</h2>
+                        <p>Cuando lances una desde <strong>Publicar</strong>, el avance aparece acá en vivo.</p>
+                        <button type="button" class="o_lqa_pubf__primary o_lqa_pubt__cta" t-on-click="openPublish">
+                            <i class="fa fa-paper-plane"/>
+                            Ir a Publicar
                         </button>
                     </div>
                 </div>
 
-                <div t-if="state.loadingRun" class="o_lqa_publication_tracking_empty">
-                    Consultando jobs...
-                </div>
-                <div
-                    t-elif="state.runLoaded &amp;&amp; !state.runJobs.length"
-                    class="o_lqa_publication_tracking_empty"
-                >
-                    No se encontraron jobs para este run.
-                </div>
-                <div
-                    t-elif="!state.runLoaded"
-                    class="o_lqa_publication_tracking_empty"
-                >
-                    Ingresá un run ID para consultar sus publicaciones.
-                </div>
-                <div t-else="" class="o_lqa_publication_tracking_table_wrap">
-                    <t t-call="lqa_admin_panel.PublicationJobsTable">
-                        <t t-set="jobs" t-value="state.runJobs"/>
-                        <t t-set="showRun" t-value="false"/>
-                    </t>
-                </div>
-            </section>
-
-            <section t-else="" class="o_lqa_publication_tracking_panel">
-                <div class="o_lqa_publication_tracking_pending_head">
-                    <div>
-                        <h2>Publicaciones pendientes</h2>
-                        <span>Jobs pendientes de todos los publication runs.</span>
-                    </div>
-                    <div>
+                <div t-else="" class="o_lqa_pubt__container">
+                    <!-- Selector de run -->
+                    <div class="o_lqa_pubt__picker">
                         <select
-                            class="form-select"
-                            t-model="state.pendingLimit"
-                            t-on-change="loadPendingJobs"
+                            class="o_lqa_pubf__select o_lqa_pubt__run_select"
+                            aria-label="Publicación"
+                            t-on-change="onRunSelectChange"
                         >
-                            <option value="20">20 resultados</option>
-                            <option value="50">50 resultados</option>
-                            <option value="100">100 resultados</option>
+                            <option t-if="state.runId and !currentExecution" t-att-value="state.runId" selected="selected">
+                                #<t t-esc="state.runId"/>
+                            </option>
+                            <option
+                                t-foreach="runOptions"
+                                t-as="execution"
+                                t-key="execution.id"
+                                t-att-value="execution.run_id"
+                                t-att-selected="isCurrentRun(execution)"
+                                t-esc="runOptionLabel(execution)"
+                            />
                         </select>
+                        <form class="o_lqa_pubt__manual" t-on-submit.prevent="searchManualRun">
+                            <input
+                                type="text"
+                                inputmode="numeric"
+                                placeholder="Otro run ID"
+                                aria-label="Buscar otro run por ID"
+                                t-model="state.manualRunId"
+                            />
+                            <button type="submit" class="o_lqa_pubf__icon_btn" aria-label="Buscar run" t-att-disabled="!state.manualRunId.trim()">
+                                <i class="fa fa-search"/>
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Resumen del run -->
+                    <div class="o_lqa_pubf__card o_lqa_pubt__run">
+                        <div t-if="state.loadingRun and !state.run" class="o_lqa_pubt__run_loading">
+                            <span/><span/><span/>
+                        </div>
+                        <t t-elif="state.run">
+                            <div class="o_lqa_pubt__run_head">
+                                <div class="o_lqa_pubt__run_title">
+                                    <h2>
+                                        Publicación #<t t-esc="state.run.runId"/>
+                                        <span t-if="runFolderName" class="o_lqa_pubt__run_folder" t-esc="runFolderName"/>
+                                    </h2>
+                                    <div class="o_lqa_pubt__run_meta">
+                                        <span t-if="isLive" class="o_lqa_pubt__live">
+                                            <i/>
+                                            En vivo
+                                        </span>
+                                        <span t-else="" class="o_lqa_pubt__done">
+                                            <i class="fa fa-check"/>
+                                            Terminó
+                                        </span>
+                                        <span t-foreach="state.run.marketplaces" t-as="marketplace" t-key="marketplace" class="o_lqa_pubt__tag" t-esc="marketplaceLabel(marketplace)"/>
+                                        <span t-if="updatedLabel" class="o_lqa_pubt__updated">
+                                            Actualizado <t t-esc="updatedLabel"/>
+                                        </span>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    class="o_lqa_pubf__icon_btn"
+                                    title="Actualizar ahora"
+                                    aria-label="Actualizar ahora"
+                                    t-att-disabled="state.loadingRun"
+                                    t-on-click="manualRefresh"
+                                >
+                                    <i t-att-class="state.loadingRun ? 'fa fa-refresh fa-spin' : 'fa fa-refresh'"/>
+                                </button>
+                            </div>
+
+                            <div class="o_lqa_pubt__progress_row">
+                                <strong class="o_lqa_pubt__percent" t-esc="formatPercent(state.run.progress)"/>
+                                <div class="o_lqa_pubt__progress_text">
+                                    <span>
+                                        <strong t-esc="formatNumber(state.run.done)"/>
+                                        de
+                                        <strong t-esc="formatNumber(state.run.totalJobs)"/>
+                                        procesados
+                                    </span>
+                                    <span t-if="remainingLabel" class="o_lqa_pubt__eta">
+                                        Faltan <t t-esc="formatNumber(inFlight)"/> · <t t-esc="remainingLabel"/>
+                                    </span>
+                                </div>
+                            </div>
+                            <div
+                                class="o_lqa_pubt__bar"
+                                role="progressbar"
+                                aria-valuemin="0"
+                                aria-valuemax="100"
+                                t-att-aria-valuenow="state.run.progress"
+                            >
+                                <span class="is-success" t-att-style="'width:' + segments.success + '%'"/>
+                                <span class="is-skipped" t-att-style="'width:' + segments.skipped + '%'"/>
+                                <span class="is-error" t-att-style="'width:' + segments.failed + '%'"/>
+                                <span t-if="isLive" class="o_lqa_pubt__bar_shimmer"/>
+                            </div>
+
+                            <div class="o_lqa_pubt__stats">
+                                <button type="button" class="o_lqa_pubt__stat is-success" t-on-click="() => this.setJobsStatus('success')">
+                                    <small>Publicados</small>
+                                    <strong t-esc="formatNumber(state.run.success)"/>
+                                </button>
+                                <button type="button" class="o_lqa_pubt__stat is-skipped" t-on-click="() => this.setJobsStatus('skipped')">
+                                    <small>Omitidos</small>
+                                    <strong t-esc="formatNumber(state.run.skipped)"/>
+                                </button>
+                                <button type="button" class="o_lqa_pubt__stat is-error" t-on-click="() => this.setJobsStatus('failed')">
+                                    <small>Fallidos</small>
+                                    <strong t-esc="formatNumber(state.run.failed)"/>
+                                </button>
+                                <button type="button" class="o_lqa_pubt__stat is-pending" t-on-click="() => this.setJobsStatus(state.run.processing ? 'processing' : 'pending')">
+                                    <small>En curso</small>
+                                    <strong t-esc="formatNumber(inFlight)"/>
+                                </button>
+                            </div>
+                        </t>
+                        <div t-else="" class="o_lqa_pubt__run_missing">
+                            <i class="fa fa-question-circle-o"/>
+                            No se encontró la publicación #<t t-esc="state.runId"/>.
+                        </div>
+                    </div>
+
+                    <!-- Detalle por SKU -->
+                    <div t-if="state.run" class="o_lqa_pubf__card o_lqa_pubf__products">
+                        <div class="o_lqa_pubf__toolbar">
+                            <div class="o_lqa_pubt__filters" role="tablist" aria-label="Filtrar por estado">
+                                <button
+                                    type="button"
+                                    role="tab"
+                                    t-foreach="statusFilters"
+                                    t-as="filter"
+                                    t-key="filter.id"
+                                    t-att-aria-selected="state.jobsStatus === filter.id"
+                                    t-att-class="state.jobsStatus === filter.id ? 'is-active' : ''"
+                                    t-att-disabled="filter.id !== '' and !filter.count"
+                                    t-on-click="() => this.setJobsStatus(filter.id)"
+                                >
+                                    <t t-esc="filter.label"/>
+                                    <span t-esc="formatNumber(filter.count)"/>
+                                </button>
+                            </div>
+                            <span class="o_lqa_pubt__range" t-esc="jobsRangeLabel"/>
+                        </div>
+
+                        <div class="o_lqa_pubf__table_wrap">
+                            <table class="o_lqa_pubf__table o_lqa_pubt__table">
+                                <thead>
+                                    <tr>
+                                        <th>SKU</th>
+                                        <th>Estado</th>
+                                        <th>Detalle</th>
+                                        <th>ID en Fravega</th>
+                                        <th class="is-num">Actualizado</th>
+                                    </tr>
+                                </thead>
+                                <tbody t-if="state.loadingJobs">
+                                    <tr t-foreach="[1, 2, 3, 4, 5]" t-as="row" t-key="row" class="is-skeleton">
+                                        <td><span/></td>
+                                        <td><span/></td>
+                                        <td><span style="width:220px"/></td>
+                                        <td><span/></td>
+                                        <td class="is-num"><span/></td>
+                                    </tr>
+                                </tbody>
+                                <tbody t-elif="state.jobs.length">
+                                    <t t-call="lqa_admin_panel.PublicationJobRows">
+                                        <t t-set="jobs" t-value="state.jobs"/>
+                                        <t t-set="showRun" t-value="false"/>
+                                    </t>
+                                </tbody>
+                            </table>
+                            <div t-if="!state.loadingJobs and !state.jobs.length" class="o_lqa_pubf__table_empty">
+                                <i class="fa fa-inbox"/>
+                                <strong>No hay SKU en este estado</strong>
+                            </div>
+                        </div>
+
+                        <footer t-if="state.jobsPagination.total > state.jobsLimit" class="o_lqa_pubf__pager">
+                            <span/>
+                            <div class="o_lqa_pubf__pager_nav">
+                                <button
+                                    type="button"
+                                    class="o_lqa_pubf__icon_btn"
+                                    aria-label="Página anterior"
+                                    t-att-disabled="!state.jobsOffset or state.loadingJobs"
+                                    t-on-click="previousJobsPage"
+                                >
+                                    <i class="fa fa-chevron-left"/>
+                                </button>
+                                <button
+                                    type="button"
+                                    class="o_lqa_pubf__icon_btn"
+                                    aria-label="Página siguiente"
+                                    t-att-disabled="!state.jobsPagination.has_next or state.loadingJobs"
+                                    t-on-click="nextJobsPage"
+                                >
+                                    <i class="fa fa-chevron-right"/>
+                                </button>
+                            </div>
+                        </footer>
+                    </div>
+                </div>
+            </t>
+
+            <!-- ===================== Cola global ===================== -->
+            <div t-else="" class="o_lqa_pubt__container">
+                <div class="o_lqa_pubf__card o_lqa_pubf__products">
+                    <div class="o_lqa_pubf__toolbar">
+                        <div class="o_lqa_pubf__toolbar_title">
+                            <h3>En cola</h3>
+                            <span>SKU esperando al worker, de todas las publicaciones.</span>
+                        </div>
                         <button
                             type="button"
-                            class="btn btn-secondary"
+                            class="o_lqa_pubf__icon_btn"
+                            title="Actualizar"
+                            aria-label="Actualizar cola"
                             t-att-disabled="state.loadingPending"
                             t-on-click="loadPendingJobs"
                         >
-                            <i class="fa fa-refresh"/>
-                            Actualizar
+                            <i t-att-class="state.loadingPending ? 'fa fa-refresh fa-spin' : 'fa fa-refresh'"/>
                         </button>
                     </div>
+                    <div class="o_lqa_pubf__table_wrap">
+                        <table class="o_lqa_pubf__table o_lqa_pubt__table">
+                            <thead>
+                                <tr>
+                                    <th>SKU</th>
+                                    <th>Publicación</th>
+                                    <th>Estado</th>
+                                    <th>Detalle</th>
+                                    <th>ID en Fravega</th>
+                                    <th class="is-num">Actualizado</th>
+                                </tr>
+                            </thead>
+                            <tbody t-if="state.pendingJobs.length">
+                                <t t-call="lqa_admin_panel.PublicationJobRows">
+                                    <t t-set="jobs" t-value="state.pendingJobs"/>
+                                    <t t-set="showRun" t-value="true"/>
+                                </t>
+                            </tbody>
+                        </table>
+                        <div t-if="state.loadingPending and !state.pendingJobs.length" class="o_lqa_pubf__table_empty">
+                            <i class="fa fa-circle-o-notch fa-spin"/>
+                        </div>
+                        <div t-elif="!state.pendingJobs.length" class="o_lqa_pubf__table_empty">
+                            <i class="fa fa-check-circle-o"/>
+                            <strong>La cola está vacía</strong>
+                            <span>No hay SKU esperando para publicarse.</span>
+                        </div>
+                    </div>
                 </div>
-
-                <div t-if="state.loadingPending" class="o_lqa_publication_tracking_empty">
-                    Consultando publicaciones pendientes...
-                </div>
-                <div
-                    t-elif="!state.pendingJobs.length"
-                    class="o_lqa_publication_tracking_empty"
-                >
-                    No hay publicaciones pendientes.
-                </div>
-                <div t-else="" class="o_lqa_publication_tracking_table_wrap">
-                    <t t-call="lqa_admin_panel.PublicationJobsTable">
-                        <t t-set="jobs" t-value="state.pendingJobs"/>
-                        <t t-set="showRun" t-value="true"/>
-                    </t>
-                </div>
-            </section>
+            </div>
         </div>
     </t>
 
-    <t t-name="lqa_admin_panel.PublicationJobsTable">
-        <table class="o_lqa_publication_tracking_table">
-            <thead>
-                <tr>
-                    <th t-if="showRun">Run ID</th>
-                    <th>SKU</th>
-                    <th>Marketplace</th>
-                    <th>Estado</th>
-                    <th>Intentos</th>
-                    <th>ID publicado</th>
-                    <th>Error</th>
-                    <th>Actualizado</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr t-foreach="jobs" t-as="job" t-key="job.id || job.run_id + '-' + job.sku + '-' + job.marketplace">
-                    <td t-if="showRun">
-                        <strong t-esc="job.run_id || '-'"/>
-                    </td>
-                    <td>
-                        <strong t-esc="job.sku || '-'"/>
-                    </td>
-                    <td t-esc="marketplaceLabel(job.marketplace)"/>
-                    <td>
-                        <span
-                            t-att-class="'o_lqa_publication_status ' + statusClass(job.status)"
-                            t-esc="statusLabel(job.status)"
-                        />
-                    </td>
-                    <td t-esc="formatNumber(job.attempts)"/>
-                    <td t-esc="job.marketplace_item_id || '-'"/>
-                    <td>
-                        <span
-                            t-att-class="job.error_message ? 'o_lqa_publication_error' : ''"
-                            t-esc="job.error_message || '-'"
-                        />
-                    </td>
-                    <td t-esc="formatDateTime(job.updated_at || job.created_at)"/>
-                </tr>
-            </tbody>
-        </table>
+    <t t-name="lqa_admin_panel.PublicationJobRows">
+        <tr t-foreach="jobs" t-as="job" t-key="job.id || job.sku">
+            <td><code class="o_lqa_pubt__sku" t-esc="job.sku || '—'"/></td>
+            <td t-if="showRun">
+                <button type="button" class="o_lqa_pubf__link" t-on-click="() => this.selectRunFromQueue(job.run_id)">
+                    #<t t-esc="job.run_id"/>
+                </button>
+            </td>
+            <td>
+                <span t-att-class="'o_lqa_pubt__status ' + statusTone(job.status)">
+                    <i/>
+                    <t t-esc="statusLabel(job.status)"/>
+                </span>
+            </td>
+            <td class="o_lqa_pubt__reason">
+                <t t-if="reasonLabel(job)">
+                    <span t-esc="reasonLabel(job)"/>
+                    <small t-if="reasonCode(job) or job.stage">
+                        <t t-esc="reasonCode(job)"/>
+                        <t t-if="reasonCode(job) and job.stage"> · </t>
+                        <t t-if="job.stage">paso: <t t-esc="stageLabel(job.stage)"/></t>
+                    </small>
+                </t>
+                <span t-elif="job.attempts > 1" class="o_lqa_pubt__muted">
+                    Intento <t t-esc="job.attempts"/> de 3
+                </span>
+                <span t-else="" class="o_lqa_pubt__muted">—</span>
+            </td>
+            <td>
+                <code t-if="job.marketplace_item_id" class="o_lqa_pubt__sku" t-esc="job.marketplace_item_id"/>
+                <span t-else="" class="o_lqa_pubt__muted">—</span>
+            </td>
+            <td class="is-num o_lqa_pubt__muted" t-esc="formatTime(job.updated_at)"/>
+        </tr>
     </t>
 </templates>

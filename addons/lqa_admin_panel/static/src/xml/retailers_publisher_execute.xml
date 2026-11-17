@@ -1,185 +1,240 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
     <t t-name="lqa_admin_panel.RetailersPublisherExecute">
-        <div class="o_lqa_retailers_publish">
-            <header class="o_lqa_retailers_publish__header">
+        <div class="o_lqa_pubf o_lqa_pubx">
+            <header class="o_lqa_pubf__header">
                 <div>
-                    <p>Retailers / Publicador</p>
+                    <p class="o_lqa_pubf__eyebrow">Retailers · Publicador</p>
                     <h1>Publicar</h1>
-                    <span>Crear un publication run desde una carpeta de Madre.</span>
+                    <span>Elegí una carpeta y mandala a publicar. El avance se sigue en vivo.</span>
                 </div>
                 <button
                     type="button"
-                    class="btn btn-secondary"
+                    class="o_lqa_pubf__ghost"
                     t-att-disabled="state.loadingFolders"
-                    t-on-click="loadFolders"
+                    t-on-click="() => this.loadFolders()"
                 >
-                    <i class="fa fa-refresh"/>
-                    Actualizar carpetas
+                    <i t-att-class="state.loadingFolders ? 'fa fa-refresh fa-spin' : 'fa fa-refresh'"/>
+                    Actualizar
                 </button>
             </header>
 
-            <section class="o_lqa_retailers_publish_form">
-                <div class="o_lqa_retailers_publish_step">
-                    <div class="o_lqa_retailers_publish_step__number">1</div>
-                    <div class="o_lqa_retailers_publish_step__content">
-                        <label for="lqa-publication-folder">Carpeta de productos</label>
-                        <select
-                            id="lqa-publication-folder"
-                            class="form-select"
-                            t-model="state.selectedFolderId"
-                            t-att-disabled="state.loadingFolders || !state.folders.length"
-                        >
-                            <option value="">Seleccionar carpeta</option>
-                            <option
-                                t-foreach="state.folders"
+            <div class="o_lqa_pubx__layout">
+                <section class="o_lqa_pubx__main">
+                    <!-- 1. Carpeta -->
+                    <div class="o_lqa_pubf__card o_lqa_pubx__step">
+                        <div class="o_lqa_pubx__step_head">
+                            <span class="o_lqa_pubx__step_num">1</span>
+                            <div>
+                                <h2>Carpeta</h2>
+                                <span>Los productos que se van a publicar.</span>
+                            </div>
+                            <label t-if="state.folders.length > 6" class="o_lqa_pubf__search o_lqa_pubx__search">
+                                <i class="fa fa-search"/>
+                                <input type="search" placeholder="Buscar carpeta" t-model="state.folderQuery"/>
+                            </label>
+                        </div>
+
+                        <div t-if="state.loadingFolders and !state.folders.length" class="o_lqa_pubx__folders">
+                            <div t-foreach="[1, 2, 3]" t-as="row" t-key="row" class="o_lqa_pubx__folder is-skeleton">
+                                <span/>
+                            </div>
+                        </div>
+                        <div t-elif="!state.folders.length" class="o_lqa_pubx__empty">
+                            <i class="fa fa-folder-o"/>
+                            <span>No hay carpetas. Creá una en <strong>Carpetas</strong> y cargale productos.</span>
+                        </div>
+                        <div t-elif="!filteredFolders.length" class="o_lqa_pubx__empty">
+                            <span>Ninguna carpeta coincide con la búsqueda.</span>
+                        </div>
+                        <div t-else="" class="o_lqa_pubx__folders" role="radiogroup" aria-label="Carpeta">
+                            <button
+                                type="button"
+                                role="radio"
+                                t-foreach="filteredFolders"
                                 t-as="folder"
                                 t-key="folder.id"
-                                t-att-value="folder.id"
+                                t-att-aria-checked="isSelectedFolder(folder)"
+                                t-att-disabled="folder.product_count === 0"
+                                t-att-class="isSelectedFolder(folder) ? 'o_lqa_pubx__folder is-active' : 'o_lqa_pubx__folder'"
+                                t-on-click="() => this.selectFolder(folder)"
                             >
-                                <t t-esc="folder.name"/>
-                            </option>
-                        </select>
+                                <span class="o_lqa_pubx__radio"/>
+                                <span class="o_lqa_pubx__folder_text">
+                                    <strong t-esc="folder.name"/>
+                                    <small t-if="folder.product_count === 0">Vacía</small>
+                                    <small t-else="">
+                                        <t t-esc="formatCount(folder.product_count)"/>
+                                        <t t-if="folder.product_count === 1"> producto</t>
+                                        <t t-else=""> productos</t>
+                                    </small>
+                                </span>
+                                <span class="o_lqa_pubf__folder_id">#<t t-esc="folder.id"/></span>
+                            </button>
+                        </div>
                     </div>
-                </div>
 
-                <div class="o_lqa_retailers_publish_step">
-                    <div class="o_lqa_retailers_publish_step__number">2</div>
-                    <div class="o_lqa_retailers_publish_step__content">
-                        <label>Marketplaces</label>
-                        <div class="o_lqa_retailers_publish_marketplaces">
+                    <!-- 2. Destino -->
+                    <div class="o_lqa_pubf__card o_lqa_pubx__step">
+                        <div class="o_lqa_pubx__step_head">
+                            <span class="o_lqa_pubx__step_num">2</span>
+                            <div>
+                                <h2>Destino</h2>
+                                <span>Hoy products-api publica solo en Fravega.</span>
+                            </div>
+                        </div>
+                        <div class="o_lqa_pubx__marketplaces">
                             <button
                                 type="button"
                                 t-foreach="state.marketplaces"
                                 t-as="marketplace"
                                 t-key="marketplace.id"
-                                t-att-class="isMarketplaceSelected(marketplace) ? 'is-selected' : ''"
+                                t-att-aria-pressed="isMarketplaceSelected(marketplace)"
+                                t-att-class="isMarketplaceSelected(marketplace) ? 'o_lqa_pubx__marketplace is-active' : 'o_lqa_pubx__marketplace'"
                                 t-on-click="() => this.toggleMarketplace(marketplace)"
                             >
-                                <span class="o_lqa_retailers_publish_marketplace__check">
-                                    <i
-                                        t-att-class="isMarketplaceSelected(marketplace)
-                                            ? 'fa fa-check'
-                                            : 'fa fa-circle-o'"
-                                    />
+                                <img t-att-src="marketplace.logo" t-att-alt="marketplace.name"/>
+                                <span class="o_lqa_pubx__check">
+                                    <i class="fa fa-check"/>
                                 </span>
-                                <img
-                                    t-att-src="marketplace.logo"
-                                    t-att-alt="marketplace.name"
-                                />
-                                <strong t-esc="marketplace.name"/>
                             </button>
                         </div>
                     </div>
-                </div>
+                </section>
 
-                <div class="o_lqa_retailers_publish_submit">
-                    <div>
-                        <small>Seleccionados</small>
-                        <strong t-esc="selectedMarketplaceNames || 'Ninguno'"/>
-                    </div>
-                    <button
-                        type="button"
-                        class="btn btn-primary"
-                        t-att-disabled="!selectedFolder || !selectedMarketplaceIds.length || state.executing"
-                        t-on-click="openExecutionConfirmation"
-                    >
-                        <i class="fa fa-cloud-upload"/>
-                        Ejecutar publicacion
-                    </button>
-                </div>
-            </section>
-
-            <section class="o_lqa_retailers_publish_history">
-                <div class="o_lqa_retailers_publish_history__head">
-                    <div>
-                        <h2>Respuestas guardadas</h2>
-                        <span>Historial persistente de ejecuciones de publicación.</span>
-                    </div>
-                    <button
-                        type="button"
-                        class="btn btn-secondary"
-                        t-att-disabled="state.loadingHistory"
-                        t-on-click="loadPublicationHistory"
-                    >
-                        <i class="fa fa-refresh"/>
-                        Actualizar
-                    </button>
-                </div>
-
-                <div
-                    t-if="state.loadingHistory"
-                    class="o_lqa_retailers_publish_history__empty"
-                >
-                    Cargando respuestas...
-                </div>
-                <div
-                    t-elif="!state.history.length"
-                    class="o_lqa_retailers_publish_history__empty"
-                >
-                    Todavía no hay ejecuciones guardadas.
-                </div>
-                <div t-else="" class="o_lqa_retailers_publish_history__list">
-                    <article
-                        class="o_lqa_retailers_publish_result"
-                        t-foreach="state.history"
-                        t-as="execution"
-                        t-key="execution.id"
-                    >
-                        <div class="o_lqa_retailers_publish_result__head">
-                            <div>
-                                <small t-esc="execution.user_name || 'Usuario'"/>
-                                <h2>
-                                    Run
-                                    <t t-esc="execution.run_id || 'sin ID'"/>
-                                </h2>
-                            </div>
-                            <strong t-esc="statusLabel(execution.status)"/>
-                        </div>
+                <!-- 3. Resumen -->
+                <aside class="o_lqa_pubf__card o_lqa_pubx__summary">
+                    <p class="o_lqa_pubf__eyebrow">Resumen</p>
+                    <t t-if="selectedFolder">
+                        <h2 t-esc="selectedFolder.name"/>
                         <dl>
                             <div>
-                                <dt>Carpeta</dt>
-                                <dd t-esc="execution.folder_id"/>
+                                <dt>Productos</dt>
+                                <dd t-esc="formatCount(selectedFolder.product_count)"/>
                             </div>
                             <div>
-                                <dt>Marketplaces</dt>
-                                <dd>
-                                    <t
-                                        t-foreach="execution.marketplaces"
-                                        t-as="marketplaceId"
-                                        t-key="marketplaceId"
-                                    >
-                                        <span t-esc="marketplaceName(marketplaceId)"/>
-                                    </t>
-                                </dd>
+                                <dt>Destino</dt>
+                                <dd t-esc="selectedMarketplaceNames || '—'"/>
                             </div>
                             <div>
-                                <dt>Jobs</dt>
-                                <dd t-esc="formatNumber(execution.jobs_count)"/>
+                                <dt>Publicaciones a crear</dt>
+                                <dd t-esc="formatCount(estimatedJobs)"/>
                             </div>
-                            <div>
-                                <dt>Fecha</dt>
-                                <dd t-esc="formatDateTime(execution.triggered_at)"/>
+                            <div t-if="estimatedDuration">
+                                <dt>Duración estimada</dt>
+                                <dd t-esc="estimatedDuration"/>
                             </div>
                         </dl>
-                        <p t-if="execution.message" t-esc="execution.message"/>
-                    </article>
+                        <p class="o_lqa_pubx__note">
+                            <i class="fa fa-info-circle"/>
+                            Fravega procesa hasta 30 SKU por minuto. Los que ya están publicados o
+                            no tienen stock se omiten; no son errores.
+                        </p>
+                    </t>
+                    <p t-else="" class="o_lqa_pubx__summary_empty">Elegí una carpeta con productos.</p>
+                    <button
+                        type="button"
+                        class="o_lqa_pubf__primary o_lqa_pubx__go"
+                        t-att-disabled="!canPublish"
+                        t-on-click="openExecutionConfirmation"
+                    >
+                        <i t-att-class="state.executing ? 'fa fa-circle-o-notch fa-spin' : 'fa fa-paper-plane'"/>
+                        <t t-if="state.executing">Creando publicación…</t>
+                        <t t-else="">Publicar</t>
+                    </button>
+                </aside>
+            </div>
+
+            <!-- Historial -->
+            <section class="o_lqa_pubf__card o_lqa_pubx__history">
+                <div class="o_lqa_pubf__toolbar">
+                    <div class="o_lqa_pubf__toolbar_title">
+                        <h3>Publicaciones recientes</h3>
+                    </div>
+                    <button
+                        type="button"
+                        class="o_lqa_pubf__icon_btn"
+                        title="Actualizar"
+                        aria-label="Actualizar historial"
+                        t-att-disabled="state.loadingHistory"
+                        t-on-click="() => this.loadPublicationHistory()"
+                    >
+                        <i t-att-class="state.loadingHistory ? 'fa fa-refresh fa-spin' : 'fa fa-refresh'"/>
+                    </button>
+                </div>
+                <div t-if="!state.loadingHistory and !state.history.length" class="o_lqa_pubf__table_empty">
+                    <i class="fa fa-paper-plane-o"/>
+                    <strong>Todavía no se publicó nada desde el panel</strong>
+                </div>
+                <div t-else="" class="o_lqa_pubf__table_wrap">
+                    <table class="o_lqa_pubf__table o_lqa_pubx__table">
+                        <thead>
+                            <tr>
+                                <th>Run</th>
+                                <th>Carpeta</th>
+                                <th>Destino</th>
+                                <th class="is-num">SKU</th>
+                                <th>Lanzada</th>
+                                <th>Por</th>
+                                <th/>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="state.history" t-as="execution" t-key="execution.id">
+                                <td>
+                                    <span t-if="isHistoryError(execution)" class="o_lqa_pubx__run is-error" t-att-title="execution.message">
+                                        <i class="fa fa-exclamation-circle"/>
+                                        No se creó
+                                    </span>
+                                    <span t-else="" class="o_lqa_pubx__run">#<t t-esc="execution.run_id || '—'"/></span>
+                                </td>
+                                <td>
+                                    <span t-esc="folderName(execution.folder_id)"
+                                          t-att-class="folderExists(execution.folder_id) ? '' : 'o_lqa_pubx__gone'"/>
+                                </td>
+                                <td>
+                                    <t t-foreach="execution.marketplaces" t-as="marketplaceId" t-key="marketplaceId">
+                                        <span class="o_lqa_pubx__tag" t-esc="marketplaceName(marketplaceId)"/>
+                                    </t>
+                                </td>
+                                <td class="is-num" t-esc="isHistoryError(execution) ? '—' : formatNumber(execution.jobs_count)"/>
+                                <td class="o_lqa_pubx__muted" t-esc="formatDateTime(execution.triggered_at)"/>
+                                <td class="o_lqa_pubx__muted" t-esc="execution.user_name || '—'"/>
+                                <td class="o_lqa_pubx__row_action">
+                                    <button
+                                        t-if="execution.run_id and !isHistoryError(execution)"
+                                        type="button"
+                                        class="o_lqa_pubf__link"
+                                        t-on-click="() => this.openTracking(execution.run_id)"
+                                    >
+                                        Ver avance
+                                        <i class="fa fa-angle-right"/>
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </section>
 
-            <div class="o_lqa_modal_backdrop" t-if="state.confirmExecution">
-                <div class="o_lqa_retailers_publish_modal">
-                    <h2>Confirmar publicacion</h2>
+            <div t-if="state.confirmExecution" class="o_lqa_pubf__backdrop" t-on-click.self="closeExecutionConfirmation">
+                <div class="o_lqa_pubf__modal" role="dialog" aria-modal="true">
+                    <div class="o_lqa_pubf__modal_icon"><i class="fa fa-paper-plane"/></div>
+                    <h2>Publicar <t t-esc="selectedFolder.name"/></h2>
                     <p>
-                        Vas a publicar los productos de
-                        <strong t-esc="selectedFolder.name"/>
-                        en
-                        <strong t-esc="selectedMarketplaceNames"/>.
+                        Se van a encolar
+                        <strong t-esc="formatCount(estimatedJobs)"/>
+                        publicaciones en <strong t-esc="selectedMarketplaceNames"/>.
+                        <t t-if="estimatedDuration">Va a tardar <t t-esc="estimatedDuration"/>.</t>
                     </p>
-                    <div class="o_lqa_retailers_publish_modal__actions">
+                    <p class="o_lqa_pubx__modal_hint">
+                        Con carpetas grandes, crear la publicación puede tardar unos segundos.
+                        No cierres esta pantalla mientras tanto.
+                    </p>
+                    <div class="o_lqa_pubf__modal_actions">
                         <button
                             type="button"
-                            class="btn btn-secondary"
+                            class="o_lqa_pubf__ghost"
                             t-att-disabled="state.executing"
                             t-on-click="closeExecutionConfirmation"
                         >
@@ -187,11 +242,13 @@
                         </button>
                         <button
                             type="button"
-                            class="btn btn-primary"
+                            class="o_lqa_pubf__primary"
                             t-att-disabled="state.executing"
                             t-on-click="confirmExecutePublication"
                         >
-                            Crear publication run
+                            <i t-if="state.executing" class="fa fa-circle-o-notch fa-spin"/>
+                            <t t-if="state.executing">Creando…</t>
+                            <t t-else="">Publicar ahora</t>
                         </button>
                     </div>
                 </div>

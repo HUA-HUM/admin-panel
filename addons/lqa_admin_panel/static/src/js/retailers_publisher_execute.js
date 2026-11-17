@@ -4,23 +4,19 @@ import { Component, onWillStart, useState } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 
+// products-api hoy acepta solo "fravega": cualquier otro canal responde 400 y
+// el backend del panel ya los descartaba en silencio. Mostrar Megatone y
+// OnCity tildados hacia creer que se publicaba en tres lugares.
 const MARKETPLACES = [
     {
         id: "fravega",
         name: "Fravega",
         logo: "/lqa_admin_panel/static/src/img/marketplace/fravega.png?v=1",
     },
-    {
-        id: "megatone",
-        name: "Megatone",
-        logo: "/lqa_admin_panel/static/src/img/marketplace/megatone.svg?v=1",
-    },
-    {
-        id: "oncity",
-        name: "OnCity",
-        logo: "/lqa_admin_panel/static/src/img/marketplace/oncity.png?v=1",
-    },
 ];
+
+// Fravega procesa como maximo 30 SKUs por minuto (guia de products-api).
+const FRAVEGA_SKUS_PER_MINUTE = 30;
 
 export class LqaRetailersPublisherExecute extends Component {
     static template = "lqa_admin_panel.RetailersPublisherExecute";
@@ -28,6 +24,7 @@ export class LqaRetailersPublisherExecute extends Component {
     setup() {
         this.notification = useService("notification");
         this.orm = useService("orm");
+        this.action = useService("action");
         this.state = useState({
             folders: [],
             marketplaces: MARKETPLACES,
@@ -35,11 +32,8 @@ export class LqaRetailersPublisherExecute extends Component {
             selectedFolderId: String(
                 this.props.action?.context?.lqa_publisher_folder_id || ""
             ),
-            selectedMarketplaces: {
-                fravega: true,
-                megatone: true,
-                oncity: true,
-            },
+            selectedMarketplaces: { fravega: true },
+            folderQuery: "",
             loadingFolders: true,
             loadingHistory: true,
             executing: false,
@@ -48,16 +42,25 @@ export class LqaRetailersPublisherExecute extends Component {
         });
 
         onWillStart(async () => {
-            await Promise.all([
-                this.loadFolders(),
-                this.loadPublicationHistory(),
-            ]);
+            await Promise.all([this.loadFolders(), this.loadPublicationHistory()]);
         });
     }
 
     get selectedFolder() {
         return this.state.folders.find(
             (folder) => String(folder.id) === String(this.state.selectedFolderId)
+        );
+    }
+
+    get filteredFolders() {
+        const query = this.state.folderQuery.trim().toLowerCase();
+        if (!query) {
+            return this.state.folders;
+        }
+        return this.state.folders.filter(
+            (folder) =>
+                String(folder.name || "").toLowerCase().includes(query) ||
+                String(folder.id) === query.replace(/^#/, "")
         );
     }
 
@@ -74,6 +77,39 @@ export class LqaRetailersPublisherExecute extends Component {
             .join(", ");
     }
 
+    get estimatedJobs() {
+        const count = this.selectedFolder?.product_count;
+        if (count === null || count === undefined) {
+            return null;
+        }
+        return count * this.selectedMarketplaceIds.length;
+    }
+
+    get canPublish() {
+        return Boolean(
+            this.selectedFolder &&
+                this.selectedFolder.product_count !== 0 &&
+                this.selectedMarketplaceIds.length &&
+                !this.state.executing
+        );
+    }
+
+    // Piso, no promesa: cada SKU consulta a OpenAI y procesa imagenes, asi que
+    // en la practica tarda mas.
+    get estimatedDuration() {
+        const skus = this.selectedFolder?.product_count;
+        if (!skus) {
+            return "";
+        }
+        const minutes = Math.ceil(skus / FRAVEGA_SKUS_PER_MINUTE);
+        if (minutes < 60) {
+            return `al menos ${minutes} min`;
+        }
+        const hours = Math.floor(minutes / 60);
+        const rest = minutes % 60;
+        return rest ? `al menos ${hours} h ${rest} min` : `al menos ${hours} h`;
+    }
+
     async loadFolders() {
         this.state.loadingFolders = true;
         try {
@@ -83,14 +119,12 @@ export class LqaRetailersPublisherExecute extends Component {
                 []
             );
             this.state.folders = folders || [];
-            if (
-                !this.state.folders.some(
-                    (folder) =>
-                        String(folder.id) === String(this.state.selectedFolderId)
-                )
-            ) {
-                this.state.selectedFolderId = this.state.folders.length
-                    ? String(this.state.folders[0].id)
+            if (!this.selectedFolder) {
+                const firstWithProducts = this.state.folders.find(
+                    (folder) => folder.product_count
+                );
+                this.state.selectedFolderId = firstWithProducts
+                    ? String(firstWithProducts.id)
                     : "";
             }
         } catch (error) {
@@ -106,7 +140,7 @@ export class LqaRetailersPublisherExecute extends Component {
             this.state.history = await this.orm.call(
                 "lqa.retailers.publisher.service",
                 "get_publication_history",
-                [30]
+                [20]
             );
         } catch (error) {
             this.notifyError(error, "No se pudo cargar el historial de publicaciones.");
@@ -115,23 +149,27 @@ export class LqaRetailersPublisherExecute extends Component {
         }
     }
 
+    selectFolder(folder) {
+        this.state.selectedFolderId = String(folder.id);
+    }
+
+    isSelectedFolder(folder) {
+        return String(folder.id) === String(this.state.selectedFolderId);
+    }
+
     toggleMarketplace(marketplace) {
         this.state.selectedMarketplaces[marketplace.id] =
             !this.state.selectedMarketplaces[marketplace.id];
     }
 
+    isMarketplaceSelected(marketplace) {
+        return Boolean(this.state.selectedMarketplaces[marketplace.id]);
+    }
+
     openExecutionConfirmation() {
-        if (!this.selectedFolder) {
-            this.notification.add("Selecciona una carpeta.", { type: "warning" });
-            return;
+        if (this.canPublish) {
+            this.state.confirmExecution = true;
         }
-        if (!this.selectedMarketplaceIds.length) {
-            this.notification.add("Selecciona al menos un marketplace.", {
-                type: "warning",
-            });
-            return;
-        }
-        this.state.confirmExecution = true;
     }
 
     closeExecutionConfirmation() {
@@ -141,59 +179,82 @@ export class LqaRetailersPublisherExecute extends Component {
     }
 
     async confirmExecutePublication() {
-        if (!this.selectedFolder || !this.selectedMarketplaceIds.length) {
+        if (!this.canPublish) {
             return;
         }
+        // products-api tarda mas cuanto mas grande es la carpeta (lee todo y
+        // crea los jobs de a 500): el boton queda bloqueado para no lanzar dos.
         this.state.executing = true;
+        let result = null;
         try {
-            const result = await this.orm.call(
+            result = await this.orm.call(
                 "lqa.retailers.publisher.service",
                 "execute_publication",
                 [this.selectedFolder.id, this.selectedMarketplaceIds]
             );
-            if (result.run_id) {
-                window.sessionStorage.setItem("lqaPublisherRunId", result.run_id);
-            }
-            this.state.confirmExecution = false;
-            this.notification.add(
-                result.ok
-                    ? "Publication run creado correctamente."
-                    : result.message || "La publicacion no pudo ejecutarse.",
-                { type: result.ok ? "success" : "danger" }
-            );
         } catch (error) {
-            this.notifyError(error, "No se pudo ejecutar la publicacion.");
+            this.notifyError(error, "No se pudo ejecutar la publicación.");
         } finally {
-            await this.loadPublicationHistory();
             this.state.executing = false;
+            this.state.confirmExecution = false;
         }
+        if (!result) {
+            return;
+        }
+        if (!result.ok || !result.run_id) {
+            // Un 500 puede dejar el run a medias: no se reintenta solo porque
+            // se duplicarian los jobs.
+            this.notification.add(
+                result.message ||
+                    "La publicación no pudo crearse. Revisá el historial antes de reintentar.",
+                { type: "danger", sticky: true }
+            );
+            await this.loadPublicationHistory();
+            return;
+        }
+        this.notification.add(
+            `Publicación #${result.run_id} en marcha: ${this.formatNumber(result.jobs_count)} SKU encolados.`,
+            { type: "success" }
+        );
+        this.openTracking(result.run_id);
     }
 
-    isMarketplaceSelected(marketplace) {
-        return Boolean(this.state.selectedMarketplaces[marketplace.id]);
+    openTracking(runId) {
+        if (!runId) {
+            return;
+        }
+        this.action.doAction("lqa_admin_panel.action_lqa_retailers_publisher_tracking", {
+            additionalContext: { lqa_publisher_run_id: String(runId) },
+        });
+    }
+
+    folderName(folderId) {
+        const folder = this.state.folders.find(
+            (item) => String(item.id) === String(folderId)
+        );
+        return folder ? folder.name : `Carpeta #${folderId}`;
+    }
+
+    folderExists(folderId) {
+        return this.state.folders.some((item) => String(item.id) === String(folderId));
     }
 
     marketplaceName(marketplaceId) {
         return (
-            this.state.marketplaces.find(
-                (marketplace) => marketplace.id === marketplaceId
-            )?.name || marketplaceId
+            {
+                fravega: "Fravega",
+                megatone: "Megatone",
+                oncity: "OnCity",
+            }[String(marketplaceId || "").toLowerCase()] || marketplaceId
         );
     }
 
-    statusLabel(value) {
-        return (
-            {
-                QUEUED: "En cola",
-                PENDING: "Pendiente",
-                STARTED: "Iniciado",
-                PROCESSING: "Procesando",
-                SUCCESS: "Correcto",
-                COMPLETED: "Completado",
-                FAILED: "Fallido",
-                ERROR: "Error",
-            }[String(value || "").toUpperCase()] || value || "En cola"
-        );
+    isHistoryError(execution) {
+        return ["ERROR", "FAILED"].includes(String(execution.status || "").toUpperCase());
+    }
+
+    formatCount(value) {
+        return value === null || value === undefined ? "—" : this.formatNumber(value);
     }
 
     formatNumber(value) {
@@ -205,16 +266,20 @@ export class LqaRetailersPublisherExecute extends Component {
 
     formatDateTime(value) {
         if (!value) {
-            return "-";
+            return "—";
         }
-        const date = new Date(value);
+        // Odoo guarda UTC sin zona ("2026-11-17 18:19:26"): sin la Z, el
+        // navegador lo leeria como hora local y quedaria corrido tres horas.
+        const iso = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value)
+            ? `${value.replace(" ", "T")}Z`
+            : value;
+        const date = new Date(iso);
         if (Number.isNaN(date.getTime())) {
             return value;
         }
         return new Intl.DateTimeFormat("es-AR", {
             day: "2-digit",
             month: "2-digit",
-            year: "numeric",
             hour: "2-digit",
             minute: "2-digit",
         }).format(date);
@@ -229,7 +294,4 @@ export class LqaRetailersPublisherExecute extends Component {
 
 registry
     .category("actions")
-    .add(
-        "lqa_admin_panel.retailers_publisher_execute",
-        LqaRetailersPublisherExecute
-    );
+    .add("lqa_admin_panel.retailers_publisher_execute", LqaRetailersPublisherExecute);

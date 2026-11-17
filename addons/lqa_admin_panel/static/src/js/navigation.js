@@ -263,13 +263,12 @@ patch(NavBar.prototype, {
         }
     },
 
+    // Gana el item mas profundo: un grupo puede abrir la misma accion que su
+    // primer hijo (Publicador y Carpetas abren las dos Carpetas), y marcar el
+    // grupo dejaba sin resaltar la pantalla en la que el usuario esta parado.
     lqaFindMenuByAction(menu, actionId) {
         if (!menu || !actionId) {
             return null;
-        }
-        const menuActionId = this.lqaActionIdValue(menu.actionID || menu.actionId);
-        if (menuActionId && menuActionId === Number(actionId)) {
-            return menu;
         }
         for (const child of menu.childrenTree || []) {
             const found = this.lqaFindMenuByAction(child, actionId);
@@ -277,7 +276,8 @@ patch(NavBar.prototype, {
                 return found;
             }
         }
-        return null;
+        const menuActionId = this.lqaActionIdValue(menu.actionID || menu.actionId);
+        return menuActionId && menuActionId === Number(actionId) ? menu : null;
     },
 
     lqaCurrentAction() {
