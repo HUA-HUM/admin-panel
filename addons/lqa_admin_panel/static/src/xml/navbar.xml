@@ -69,6 +69,7 @@
                         >
                             <button
                                 type="button"
+                                t-att-title="section.name"
                                 t-att-class="lqaItemClass(section, 'o_lqa_sidebar__group-toggle')"
                                 t-on-click="() => this.lqaToggleSection(section)"
                             >
@@ -131,7 +132,8 @@
                                 >
                                     <button
                                         type="button"
-                                        t-att-class="lqaItemClass(child, 'o_lqa_sidebar__child-toggle')"
+                                        t-att-title="child.name"
+                                t-att-class="lqaItemClass(child, 'o_lqa_sidebar__child-toggle')"
                                         t-on-click="() => this.lqaToggleSection(child)"
                                     >
                                         <span>
@@ -196,7 +198,8 @@
                                             <button
                                                 t-if="grandchild.childrenTree.length"
                                                 type="button"
-                                                t-att-class="lqaItemClass(grandchild, 'o_lqa_sidebar__grandchild-toggle')"
+                                                t-att-title="grandchild.name"
+                                t-att-class="lqaItemClass(grandchild, 'o_lqa_sidebar__grandchild-toggle')"
                                                 t-on-click="() => this.lqaToggleSection(grandchild)"
                                             >
                                                 <span>
@@ -216,7 +219,8 @@
                                             <button
                                                 t-if="!grandchild.childrenTree.length"
                                                 type="button"
-                                                t-att-class="lqaItemClass(grandchild, 'o_lqa_sidebar__menu-link')"
+                                                t-att-title="grandchild.name"
+                                t-att-class="lqaItemClass(grandchild, 'o_lqa_sidebar__menu-link')"
                                                 t-on-click="() => this.lqaSelectMenu(grandchild)"
                                             >
                                                 <span t-esc="grandchild.name"/>
@@ -251,7 +255,8 @@
                                             >
                                                 <button
                                                     type="button"
-                                                    t-att-class="lqaItemClass(greatgrandchild, 'o_lqa_sidebar__menu-link')"
+                                                    t-att-title="greatgrandchild.name"
+                                t-att-class="lqaItemClass(greatgrandchild, 'o_lqa_sidebar__menu-link')"
                                                     t-on-click="() => this.lqaSelectMenu(greatgrandchild)"
                                                 >
                                                     <span t-esc="greatgrandchild.name"/>
@@ -283,7 +288,8 @@
                                 >
                                     <button
                                         type="button"
-                                        t-att-class="lqaItemClass(child, 'o_lqa_sidebar__menu-link')"
+                                        t-att-title="child.name"
+                                t-att-class="lqaItemClass(child, 'o_lqa_sidebar__menu-link')"
                                         t-on-click="() => this.lqaSelectMenu(child)"
                                     >
                                         <span t-esc="child.name"/>
@@ -315,6 +321,7 @@
                         >
                             <button
                                 type="button"
+                                t-att-title="section.name"
                                 t-att-class="lqaItemClass(section, 'o_lqa_sidebar__single')"
                                 t-on-click="() => this.lqaSelectMenu(section)"
                             >
@@ -361,6 +368,16 @@
                             <strong t-esc="lqaUserName"/>
                             <small t-esc="lqaCompanyName"/>
                         </div>
+                        <button
+                            type="button"
+                            class="o_lqa_sidebar__collapse"
+                            t-att-title="lqaNavigation.collapsed ? 'Expandir menu' : 'Contraer menu'"
+                            t-att-aria-label="lqaNavigation.collapsed ? 'Expandir menu' : 'Contraer menu'"
+                            t-att-aria-expanded="!lqaNavigation.collapsed"
+                            t-on-click="lqaToggleCollapsed"
+                        >
+                            <i t-att-class="lqaNavigation.collapsed ? 'fa fa-angle-double-right' : 'fa fa-angle-double-left'"/>
+                        </button>
                         <a
                             class="o_lqa_sidebar__logout"
                             href="/web/session/logout"

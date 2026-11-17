@@ -155,8 +155,13 @@ $lqa-sidebar-line: rgba(255, 255, 255, 0.08);
     }
 
     // La pantalla en la que estas parado.
+    // Superficie propia con hairline: se despega del fondo en vez de ser una
+    // mancha de color mas.
     &.is-current {
-        background: $lqa-sidebar-red-soft;
+        background: rgba(255, 255, 255, 0.09);
+        box-shadow:
+            inset 0 0 0 1px rgba(255, 255, 255, 0.07),
+            0 1px 2px rgba(0, 0, 0, 0.28);
         color: #fff;
         font-weight: 650;
 
@@ -643,4 +648,148 @@ $lqa-sidebar-line: rgba(255, 255, 255, 0.08);
 // El pie no se despega del fondo al hacer scroll.
 .o_lqa_sidebar__footer {
     box-shadow: 0 -8px 16px -12px rgba(0, 0, 0, 0.6);
+}
+
+// --- Rail colapsado -----------------------------------------------------
+//
+// Idea tomada del shell de dashboard que pasaste: el menu se reduce a una
+// columna de iconos y devuelve ~180px de ancho util al contenido.
+
+$lqa-sidebar-rail: 64px;
+
+body.o_lqa_sidebar_collapsed {
+    .o_lqa_sidebar {
+        width: $lqa-sidebar-rail;
+    }
+
+    .o_web_client > .o_action_manager {
+        margin-left: $lqa-sidebar-rail;
+    }
+
+    .o_loading_indicator {
+        left: $lqa-sidebar-rail;
+    }
+
+    .o_blockUI:not(.o_blockUI_invisible) {
+        left: $lqa-sidebar-rail !important;
+    }
+}
+
+.o_lqa_sidebar {
+    transition: width 220ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.o_web_client > .o_action_manager {
+    transition: margin-left 220ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .o_lqa_sidebar,
+    .o_web_client > .o_action_manager {
+        transition: none;
+    }
+}
+
+body.o_lqa_sidebar_collapsed .o_lqa_sidebar {
+    // Todo lo que es texto desaparece; quedan los glifos centrados.
+    .o_lqa_sidebar__nav {
+        padding-inline: 8px;
+    }
+
+    .o_lqa_sidebar__home span,
+    .o_lqa_sidebar__group-toggle > span > *:not(i),
+    .o_lqa_sidebar__group-toggle > i,
+    .o_lqa_sidebar__single span,
+    .o_lqa_sidebar__menu-link span,
+    .o_lqa_sidebar__favorite,
+    .o_lqa_sidebar__children,
+    .o_lqa_sidebar__user-id {
+        display: none;
+    }
+
+    .o_lqa_sidebar__home,
+    .o_lqa_sidebar__group-toggle,
+    .o_lqa_sidebar__single {
+        justify-content: center;
+        padding: 0;
+    }
+
+    .o_lqa_sidebar__group-toggle > span {
+        justify-content: center;
+    }
+
+    // Sin texto al lado, la barra del activo pasa a envolver el icono.
+    .is-current::before {
+        display: none;
+    }
+
+    .o_lqa_sidebar__brand {
+        justify-content: center;
+        padding-inline: 8px;
+    }
+
+    .o_lqa_sidebar__brand-logo img {
+        max-width: 40px;
+    }
+
+    .o_lqa_sidebar__footer {
+        padding-inline: 8px;
+    }
+
+    // El pie se apila: avatar, salir y el toggle, todo centrado. El logout
+    // sigue visible, que es lo unico irreemplazable de esa fila.
+    .o_lqa_sidebar__user {
+        flex-direction: column;
+        padding: 8px 4px;
+        gap: 6px;
+    }
+
+    .o_lqa_sidebar__collapse {
+        margin-top: 2px;
+    }
+}
+
+.o_lqa_sidebar__collapse {
+    display: grid;
+    width: 30px;
+    height: 30px;
+    flex: 0 0 auto;
+    place-items: center;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: $lqa-sidebar-icon;
+    cursor: pointer;
+    font-size: 12px;
+    transition:
+        background-color 0.14s ease,
+        color 0.14s ease;
+
+    &:hover {
+        background: $lqa-sidebar-hover;
+        color: $lqa-sidebar-text-strong;
+    }
+
+    &:focus { outline: none; }
+
+    &:focus-visible {
+        outline: 2px solid rgba(255, 79, 90, 0.7);
+        outline-offset: -2px;
+    }
+}
+
+// En mobile el sidebar es un panel deslizante: el colapso no aplica.
+@media (max-width: 991px) {
+    body.o_lqa_sidebar_collapsed .o_lqa_sidebar {
+        width: 84vw;
+        max-width: 286px;
+    }
+
+    body.o_lqa_sidebar_collapsed .o_web_client > .o_action_manager {
+        margin-left: 0;
+    }
+
+    .o_lqa_sidebar__collapse {
+        display: none;
+    }
 }

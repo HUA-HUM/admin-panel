@@ -1,6 +1,6 @@
 /** @odoo-module **/
 
-import { onWillStart, useState } from "@odoo/owl";
+import { onMounted, onWillStart, useState } from "@odoo/owl";
 import { patch } from "@web/core/utils/patch";
 import { useBus, useService } from "@web/core/utils/hooks";
 import { NavBar } from "@web/webclient/navbar/navbar";
@@ -13,6 +13,7 @@ patch(NavBar.prototype, {
         this.lqaNotification = useService("notification");
         this.lqaNavigation = useState({
             mobileOpen: false,
+            collapsed: this.lqaReadCollapsed(),
             expanded: {},
             panelRootMenuId: false,
             favoriteMenuIds: {},
@@ -28,6 +29,12 @@ patch(NavBar.prototype, {
         });
         onWillStart(async () => {
             await this.lqaLoadFavorites();
+        });
+        onMounted(() => {
+            document.body.classList.toggle(
+                "o_lqa_sidebar_collapsed",
+                this.lqaNavigation.collapsed
+            );
         });
     },
 
@@ -380,7 +387,36 @@ patch(NavBar.prototype, {
     },
 
     lqaToggleSection(section) {
+        // Colapsado los hijos no se ven, asi que tocar un grupo expande el
+        // rail en vez de plegar algo invisible.
+        if (this.lqaNavigation.collapsed) {
+            this.lqaToggleCollapsed();
+            this.lqaNavigation.expanded[section.id] = true;
+            return;
+        }
         this.lqaNavigation.expanded[section.id] = !this.lqaIsExpanded(section);
+    },
+
+    // --- Rail colapsable ---------------------------------------------
+    // La preferencia es por navegador: el ancho util depende de la pantalla
+    // de cada uno, no de la cuenta.
+    lqaReadCollapsed() {
+        try {
+            return window.localStorage.getItem("lqa_sidebar_collapsed") === "1";
+        } catch {
+            return false;
+        }
+    },
+
+    lqaToggleCollapsed() {
+        const next = !this.lqaNavigation.collapsed;
+        this.lqaNavigation.collapsed = next;
+        document.body.classList.toggle("o_lqa_sidebar_collapsed", next);
+        try {
+            window.localStorage.setItem("lqa_sidebar_collapsed", next ? "1" : "0");
+        } catch {
+            // Modo privado: el colapso igual funciona, solo no se recuerda.
+        }
     },
 
     lqaOpenMobileSidebar() {
