@@ -21,6 +21,13 @@ patch(NavBar.prototype, {
             activeAreaCode: false,
             activeAreaMenuId: false,
             isRootDashboard: false,
+            routeTick: 0,
+        });
+        // El item marcado se deduce de la accion abierta, que no es estado
+        // reactivo: sin esto el sidebar solo se redibujaba si lo arrastraba el
+        // webclient, y al navegar quedaba marcada la pantalla anterior.
+        useBus(this.env.bus, "ACTION_MANAGER:UI-UPDATED", () => {
+            this.lqaNavigation.routeTick += 1;
         });
         useBus(this.env.bus, "lqa-dashboard-context-changed", ({ detail }) => {
             this.lqaNavigation.activeAreaCode = detail?.areaCode || false;
@@ -229,26 +236,31 @@ patch(NavBar.prototype, {
         return classes.join(" ");
     },
 
-    // getCurrentMenu solo devuelve algo cuando se llego por un click en el
-    // menu. Entrando por URL -- /odoo/action-103, un favorito, un F5 -- queda
-    // en null y el sidebar no marcaba nada. En ese caso ubicamos el item por
-    // la accion que esta abierta, que es lo que el usuario realmente ve.
+    // Manda la accion que esta abierta, no getCurrentMenu(): el servicio se
+    // queda con el ultimo menu que se seteo y no se entera de las otras formas
+    // de navegar -- URL directa, favorito, F5, atras/adelante, breadcrumb --,
+    // asi que creerle dejaba marcada la pantalla anterior (parado en Ordenes
+    // seguia iluminado Fravega). La accion abierta es lo que el usuario ve.
     lqaCurrentMenu() {
-        try {
-            const fromService = this.menuService?.getCurrentMenu?.();
-            if (fromService) {
-                return fromService;
-            }
-        } catch {
-            // getCurrentMenu puede explotar si el registro todavia no cargo.
-        }
+        // Leer el contador ata este calculo al render: cuando cambia la
+        // accion, Owl vuelve a dibujar el sidebar.
+        void this.lqaNavigation.routeTick;
         const actionId =
             this.lqaActionIdValue(this.lqaCurrentAction()?.id) ||
             this.lqaCurrentRouteActionId();
-        if (!actionId) {
+        const fromAction = actionId
+            ? this.lqaFindMenuByAction(this.lqaPanelRootMenu(), actionId)
+            : null;
+        if (fromAction) {
+            return fromAction;
+        }
+        // Sin accion resoluble -- un menu que solo agrupa, una vista que no
+        // cuelga del sidebar -- el servicio sigue siendo la mejor pista.
+        try {
+            return this.menuService?.getCurrentMenu?.() || null;
+        } catch {
             return null;
         }
-        return this.lqaFindMenuByAction(this.lqaPanelRootMenu(), actionId);
     },
 
     lqaFindMenuByAction(menu, actionId) {
