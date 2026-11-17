@@ -21,7 +21,7 @@ import requests
 from odoo import _, api, fields, models, SUPERUSER_ID
 from odoo.exceptions import AccessError, UserError
 
-from .http_errors import describe_request_exception, log_http_failure
+from .http_errors import describe_request_exception, log_http_failure, http_timeout
 from odoo.modules.registry import Registry
 
 import xlsxwriter
@@ -299,7 +299,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
                     endpoint,
                     headers={"Accept": "application/json"},
                     params=params,
-                    timeout=self.CATALOG_QUERY_TIMEOUT,
+                    timeout=http_timeout(self.CATALOG_QUERY_TIMEOUT),
                 )
                 response.raise_for_status()
                 return response.json()
@@ -1189,7 +1189,7 @@ class LqaMercadolibreCatalogService(models.AbstractModel):
                     endpoint,
                     headers={"Accept": "application/json"},
                     params=params,
-                    timeout=timeout,
+                    timeout=http_timeout(timeout),
                 )
                 response.raise_for_status()
                 return response.json()

@@ -33,6 +33,24 @@ SERVICE_NAMES = (
 
 MAX_API_MESSAGE = 240
 
+# Si en 5 s no hay conexion TCP, el servicio esta caido: no tiene sentido
+# esperar el timeout de lectura entero (hasta 120-300 s en algunos ajustes).
+# Con Odoo en 2 workers, cada espera asi ocupaba uno y frenaba el panel para
+# todos mientras alguien tenia abierta la vista del servicio caido.
+CONNECT_TIMEOUT = 5
+
+
+def http_timeout(read_seconds):
+    """Timeout para requests: (conexion, lectura)."""
+    if isinstance(read_seconds, (tuple, list)):
+        return tuple(read_seconds)
+    try:
+        read = float(read_seconds)
+    except (TypeError, ValueError):
+        read = 20.0
+    read = max(read, 1.0)
+    return (min(CONNECT_TIMEOUT, read), read)
+
 
 def service_name(url):
     host = (urlparse(str(url or "")).hostname or "").lower()
@@ -125,14 +143,21 @@ def describe_http_error(status_code, payload, url):
 
 def describe_request_exception(error, url, timeout=None):
     service = service_name(url)
+    if isinstance(timeout, (tuple, list)):
+        timeout = timeout[-1]
+    # ConnectTimeout es a la vez ConnectionError y Timeout: va primero, asi un
+    # servidor apagado no aparece como "no respondio a tiempo".
+    if isinstance(error, (requests.ConnectionError, requests.exceptions.SSLError)):
+        return (
+            f"No se pudo conectar con {service}: parece estar caído. "
+            "Probá de nuevo en unos minutos."
+        )
     if isinstance(error, requests.Timeout):
         wait = f" ({int(timeout)} s)" if timeout else ""
         return (
             f"{_capitalize(service)} no respondió a tiempo{wait}. "
             "Probá de nuevo en unos minutos."
         )
-    if isinstance(error, (requests.ConnectionError, requests.exceptions.SSLError)):
-        return f"No se pudo conectar con {service}. Probá de nuevo en unos minutos."
     if isinstance(error, requests.HTTPError) and error.response is not None:
         return describe_http_error(
             error.response.status_code, _response_body(error.response), url

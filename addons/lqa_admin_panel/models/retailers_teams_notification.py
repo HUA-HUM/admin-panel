@@ -8,7 +8,7 @@ import requests
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
-from .http_errors import describe_request_exception, log_http_failure
+from .http_errors import describe_request_exception, log_http_failure, http_timeout
 
 
 class LqaRetailersTeamsNotification(models.Model):
@@ -217,7 +217,7 @@ class LqaRetailersTeamsNotification(models.Model):
             response = requests.get(
                 url,
                 headers={"Accept": "application/json"},
-                timeout=timeout,
+                timeout=http_timeout(timeout),
             )
             response.raise_for_status()
         except requests.RequestException as error:
@@ -312,7 +312,7 @@ class LqaRetailersTeamsNotification(models.Model):
             response = requests.get(
                 url,
                 headers={"Accept": "application/json"},
-                timeout=timeout,
+                timeout=http_timeout(timeout),
             )
             response.raise_for_status()
         except requests.RequestException as error:
@@ -513,7 +513,7 @@ class LqaRetailersTeamsNotification(models.Model):
             response = requests.post(
                 webhook_url,
                 json=payload,
-                timeout=timeout,
+                timeout=http_timeout(timeout),
                 headers={"Content-Type": "application/json"},
             )
             response.raise_for_status()

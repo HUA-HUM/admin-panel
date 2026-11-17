@@ -17,6 +17,8 @@ import requests
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
+from .http_errors import http_timeout
+
 _logger = logging.getLogger(__name__)
 
 
@@ -144,7 +146,7 @@ class LqaRetailersPublisherService(models.AbstractModel):
                 url,
                 params={"page": 1, "limit": 1},
                 headers=headers,
-                timeout=timeout,
+                timeout=http_timeout(timeout),
             )
             response.raise_for_status()
             pagination = self._extract_pagination(response.json())

@@ -12,7 +12,7 @@ import xlsxwriter
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError
 
-from .http_errors import describe_request_exception, log_http_failure
+from .http_errors import describe_request_exception, log_http_failure, http_timeout
 
 
 class LqaAccountingTlqvClientJob(models.Model):
@@ -1746,7 +1746,7 @@ class LqaAccountingService(models.AbstractModel):
                 headers=request_headers,
                 json=payload,
                 params=params,
-                timeout=timeout or self._timeout(),
+                timeout=http_timeout(timeout or self._timeout()),
             )
         except requests.RequestException as error:
             log_http_failure(method, url, error=error)

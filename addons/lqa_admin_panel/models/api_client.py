@@ -7,6 +7,7 @@ from odoo import _, api, models
 from odoo.exceptions import UserError
 
 from .http_errors import (
+    http_timeout,
     describe_http_error,
     describe_request_exception,
     log_http_failure,
@@ -105,7 +106,7 @@ class LqaApiClient(models.AbstractModel):
                 headers=headers,
                 params=params,
                 data=json.dumps(payload) if payload is not None else None,
-                timeout=timeout,
+                timeout=http_timeout(timeout),
             )
             response.raise_for_status()
         except requests.HTTPError as error:

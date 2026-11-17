@@ -10,6 +10,8 @@ import xlsxwriter
 
 from odoo import _, api, fields, models, SUPERUSER_ID
 from odoo.exceptions import AccessError, UserError
+
+from .http_errors import http_timeout
 from odoo.modules.registry import Registry
 
 
@@ -448,7 +450,7 @@ class LqaMercadolibrePromotionsService(models.AbstractModel):
                     endpoint,
                     json=payload,
                     headers=headers or {"Accept": "application/json"},
-                    timeout=timeout,
+                    timeout=http_timeout(timeout),
                 )
                 response.raise_for_status()
                 try:
