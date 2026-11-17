@@ -92,7 +92,29 @@ class LqaRetailersPublisherService(models.AbstractModel):
         ]
         if with_counts:
             self._attach_folder_counts(folders)
+        else:
+            # Sin conteo no es "0 productos": None es "todavia no se sabe" y la
+            # UI muestra un guion hasta que llega get_folder_counts.
+            for folder in folders:
+                folder["product_count"] = None
         return folders
+
+    @api.model
+    def get_folder_counts(self, folder_ids):
+        """Conteo real de cada carpeta, aparte del listado.
+
+        La lista sale en ~200 ms y los conteos (una consulta a madre por
+        carpeta) tardan bastante mas: pedirlos por separado deja dibujar la
+        vista enseguida y completar los numeros cuando llegan.
+        """
+        self._check_access()
+        folders = [
+            {"id": folder_id}
+            for folder_id in (folder_ids or [])
+            if str(folder_id or "").strip()
+        ]
+        self._attach_folder_counts(folders)
+        return {str(folder["id"]): folder.get("product_count") for folder in folders}
 
     def _attach_folder_counts(self, folders):
         """Completa product_count con el total real de cada carpeta.

@@ -39,12 +39,17 @@ export class LqaMercadolibrePricing extends Component {
             jobLineLimit: 200,
         });
 
-        onWillStart(async () => {
-            await Promise.all([
-                this.loadJobs(),
-                this.loadSelectionFolders(),
-                this.loadFolderImport(),
-            ]);
+        // Sin await: la vista se dibuja al instante con su estado de carga y los
+        // datos llegan despues. Esperarlos dejaba congelada la pantalla anterior
+        // (con el overlay de carga) hasta que respondia el servidor.
+        onWillStart(() => {
+            this.lqaInitialLoad = (async () => {
+                await Promise.all([
+                    this.loadJobs(),
+                    this.loadSelectionFolders(),
+                    this.loadFolderImport(),
+                ]);
+            })();
         });
 
         onMounted(() => {

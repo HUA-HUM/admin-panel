@@ -200,10 +200,15 @@ export class LqaAccounting extends Component {
 
         this.queueTimer = null;
 
-        onWillStart(async () => {
-            if (this.isWorkspace) {
-                await this.loadArcaData();
-            }
+        // Sin await: la vista se dibuja al instante con su estado de carga y los
+        // datos llegan despues. Esperarlos dejaba congelada la pantalla anterior
+        // (con el overlay de carga) hasta que respondia el servidor.
+        onWillStart(() => {
+            this.lqaInitialLoad = (async () => {
+                if (this.isWorkspace) {
+                    await this.loadArcaData();
+                }
+            })();
         });
         onWillUnmount(() => {
             this.stopQueuePolling();

@@ -84,14 +84,19 @@ export class LqaRetailersPublisherTracking extends Component {
         this.pollTimer = null;
         this.polling = false;
 
-        onWillStart(async () => {
-            await this.loadContext();
-            if (!this.state.runId && this.state.history.length) {
-                this.state.runId = String(this.state.history[0].run_id || "");
-            }
-            if (this.state.runId) {
-                await this.refreshRun({ withJobs: true });
-            }
+        // Sin await: la vista se dibuja al instante con su estado de carga y los
+        // datos llegan despues. Esperarlos dejaba congelada la pantalla anterior
+        // (con el overlay de carga) hasta que respondia el servidor.
+        onWillStart(() => {
+            this.lqaInitialLoad = (async () => {
+                await this.loadContext();
+                if (!this.state.runId && this.state.history.length) {
+                    this.state.runId = String(this.state.history[0].run_id || "");
+                }
+                if (this.state.runId) {
+                    await this.refreshRun({ withJobs: true });
+                }
+            })();
         });
 
         onMounted(() => {
@@ -223,8 +228,10 @@ export class LqaRetailersPublisherTracking extends Component {
             this.state.loadingRun = true;
         }
         try {
+            // El refresco de fondo va en silencio: sin indicador de carga cada 4 s.
+            const orm = quiet ? this.orm.silent : this.orm;
             const [run] = await Promise.all([
-                this.orm.call("lqa.retailers.publisher.service", "get_publication_run", [runId]),
+                orm.call("lqa.retailers.publisher.service", "get_publication_run", [runId]),
                 withJobs ? this.loadJobs({ quiet }) : Promise.resolve(),
             ]);
             this.state.run = run;
@@ -254,7 +261,8 @@ export class LqaRetailersPublisherTracking extends Component {
             this.state.loadingJobs = true;
         }
         try {
-            const response = await this.orm.call(
+            const orm = quiet ? this.orm.silent : this.orm;
+            const response = await orm.call(
                 "lqa.retailers.publisher.service",
                 "get_publication_run_jobs",
                 [runId, this.state.jobsLimit, this.state.jobsOffset, this.state.jobsStatus || null]

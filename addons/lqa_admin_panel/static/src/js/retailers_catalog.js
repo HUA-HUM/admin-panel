@@ -25,8 +25,13 @@ export class LqaRetailersCatalog extends Component {
             searching: false,
         });
 
-        onWillStart(async () => {
-            await this.loadCatalog();
+        // Sin await: la vista se dibuja al instante con su estado de carga y los
+        // datos llegan despues. Esperarlos dejaba congelada la pantalla anterior
+        // (con el overlay de carga) hasta que respondia el servidor.
+        onWillStart(() => {
+            this.lqaInitialLoad = (async () => {
+                await this.loadCatalog();
+            })();
         });
     }
 

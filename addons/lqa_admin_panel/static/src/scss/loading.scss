@@ -1,33 +1,45 @@
 $lqa-sidebar-width: 248px;
 
+// Linea de progreso arriba del contenido. No tapa ni bloquea: la vista
+// sigue usable mientras responde el servidor. Odoo la muestra recien cuando
+// una llamada tarda (~250 ms), asi que lo rapido no parpadea.
 .o_loading_indicator {
     position: fixed;
     z-index: 1055;
-    inset: 0 0 0 $lqa-sidebar-width;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    gap: 10px;
+    top: 0;
+    right: 0;
+    left: $lqa-sidebar-width;
+    height: 2px;
+    overflow: hidden;
     padding: 0;
-    background: rgba(246, 248, 251, 0.72);
-    color: #334155;
-    backdrop-filter: blur(2px);
-    font-size: 13px;
-    transition: opacity 180ms ease;
+    background: rgba(45, 50, 119, 0.08);
+    pointer-events: none;
+    transition: opacity 200ms ease;
 
-    strong {
-        letter-spacing: 0;
-    }
-
-    small {
-        color: #64748b;
-        font-size: 11px;
+    &::before {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        width: 35%;
+        background: linear-gradient(90deg, rgba(255, 79, 90, 0), #ff4f5a 45%, #ff4f5a 55%, rgba(255, 79, 90, 0));
+        content: "";
+        animation: o_lqa_progress_slide 1.1s cubic-bezier(0.45, 0, 0.25, 1) infinite;
     }
 
     &.o-fade-leave,
     &.o-fade-enter {
         opacity: 0;
+    }
+}
+
+@keyframes o_lqa_progress_slide {
+    from {
+        transform: translateX(-100%);
+    }
+
+    to {
+        transform: translateX(300%);
     }
 }
 
@@ -95,6 +107,12 @@ $lqa-sidebar-width: 248px;
 }
 
 @media (prefers-reduced-motion: reduce) {
+    .o_loading_indicator::before {
+        width: 100%;
+        animation: none;
+        opacity: 0.6;
+    }
+
     .o_lqa_global_spinner,
     .o_lqa_inline_spinner,
     .o_blockUI:not(.o_blockUI_invisible) .o_spinner {

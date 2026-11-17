@@ -99,11 +99,21 @@ export class LqaMercadolibreCatalog extends Component {
             CSV_COLUMNS.map((column) => [column.key, DEFAULT_EXPORT_COLUMNS.includes(column.key)])
         );
 
-        onWillStart(async () => {
-            await this.loadFolders();
-            await this.loadActiveSelectionJob();
-            await this.loadActiveExport();
-            await this.loadProducts();
+        // Sin await: la vista se dibuja al instante con su estado de carga y los
+        // datos llegan despues. Esperarlos dejaba congelada la pantalla anterior
+        // (con el overlay de carga) hasta que respondia el servidor.
+        onWillStart(() => {
+            this.lqaInitialLoad = (async () => {
+                await Promise.all([
+                    // El job activo depende de la carpeta que elige loadFolders.
+                    (async () => {
+                        await this.loadFolders();
+                        await this.loadActiveSelectionJob();
+                    })(),
+                    this.loadActiveExport(),
+                    this.loadProducts(),
+                ]);
+            })();
         });
 
         onWillUnmount(() => {

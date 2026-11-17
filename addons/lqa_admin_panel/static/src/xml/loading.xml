@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
+    <!-- Antes: overlay a pantalla completa con blur y "Cargando", que tapaba
+         la vista con cualquier llamada al servidor (filtrar, paginar, el
+         polling de Seguimiento). Ahora una linea fina arriba que no bloquea. -->
     <t
         t-name="lqa_admin_panel.LoadingIndicator"
         t-inherit="web.LoadingIndicator"
@@ -15,9 +18,7 @@
                 role="status"
                 aria-live="polite"
             >
-                <span class="o_lqa_global_spinner" aria-hidden="true"/>
-                <strong>Cargando</strong>
-                <small t-if="env.debug" t-esc="state.count + ' solicitudes'"/>
+                <span class="visually-hidden">Cargando</span>
             </span>
         </xpath>
     </t>

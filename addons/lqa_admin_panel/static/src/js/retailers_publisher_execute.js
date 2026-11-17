@@ -41,8 +41,13 @@ export class LqaRetailersPublisherExecute extends Component {
             history: [],
         });
 
-        onWillStart(async () => {
-            await Promise.all([this.loadFolders(), this.loadPublicationHistory()]);
+        // Sin await: la vista se dibuja al instante con su estado de carga y los
+        // datos llegan despues. Esperarlos dejaba congelada la pantalla anterior
+        // (con el overlay de carga) hasta que respondia el servidor.
+        onWillStart(() => {
+            this.lqaInitialLoad = (async () => {
+                await Promise.all([this.loadFolders(), this.loadPublicationHistory()]);
+            })();
         });
     }
 
@@ -113,24 +118,51 @@ export class LqaRetailersPublisherExecute extends Component {
     async loadFolders() {
         this.state.loadingFolders = true;
         try {
+            // Sin conteos: las carpetas se ven enseguida y los numeros llegan
+            // aparte (una consulta a madre por carpeta).
             const folders = await this.orm.call(
                 "lqa.retailers.publisher.service",
                 "get_folders",
-                []
+                [false]
             );
             this.state.folders = folders || [];
-            if (!this.selectedFolder) {
-                const firstWithProducts = this.state.folders.find(
-                    (folder) => folder.product_count
-                );
-                this.state.selectedFolderId = firstWithProducts
-                    ? String(firstWithProducts.id)
-                    : "";
+            if (!this.selectedFolder && this.state.folders.length) {
+                this.state.selectedFolderId = String(this.state.folders[0].id);
             }
+            this.loadFolderCounts();
         } catch (error) {
             this.notifyError(error, "No se pudieron cargar las carpetas de Madre.");
         } finally {
             this.state.loadingFolders = false;
+        }
+    }
+
+    async loadFolderCounts() {
+        const ids = this.state.folders.map((folder) => folder.id);
+        if (!ids.length) {
+            return;
+        }
+        try {
+            const counts = await this.orm.silent.call(
+                "lqa.retailers.publisher.service",
+                "get_folder_counts",
+                [ids]
+            );
+            for (const folder of this.state.folders) {
+                const count = counts?.[String(folder.id)];
+                if (count !== undefined) {
+                    folder.product_count = count;
+                }
+            }
+            // Si la elegida por defecto resulto vacia, pasar a una con productos.
+            if (this.selectedFolder?.product_count === 0) {
+                const withProducts = this.state.folders.find((folder) => folder.product_count);
+                if (withProducts) {
+                    this.state.selectedFolderId = String(withProducts.id);
+                }
+            }
+        } catch {
+            // Sin conteos se puede elegir igual: el resumen muestra un guion.
         }
     }
 

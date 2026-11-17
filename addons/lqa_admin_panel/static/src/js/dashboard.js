@@ -41,8 +41,13 @@ export class LqaAdminDashboard extends Component {
             document.body.classList.remove("o_lqa_root_dashboard");
         });
 
-        onWillStart(async () => {
-            await this.loadDashboard();
+        // Sin await: la vista se dibuja al instante con su estado de carga y los
+        // datos llegan despues. Esperarlos dejaba congelada la pantalla anterior
+        // (con el overlay de carga) hasta que respondia el servidor.
+        onWillStart(() => {
+            this.lqaInitialLoad = (async () => {
+                await this.loadDashboard();
+            })();
         });
     }
 

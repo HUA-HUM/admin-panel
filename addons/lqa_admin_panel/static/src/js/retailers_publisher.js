@@ -77,8 +77,13 @@ export class LqaRetailersPublisher extends Component {
             },
         });
 
-        onWillStart(async () => {
-            await this.loadFolders();
+        // Sin await: la vista se dibuja al instante con su estado de carga y los
+        // datos llegan despues. Esperarlos dejaba congelada la pantalla anterior
+        // (con el overlay de carga) hasta que respondia el servidor.
+        onWillStart(() => {
+            this.lqaInitialLoad = (async () => {
+                await this.loadFolders();
+            })();
         });
     }
 
@@ -153,12 +158,14 @@ export class LqaRetailersPublisher extends Component {
     async loadFolders(preferredFolderId = this.state.selectedFolderId) {
         this.state.loadingFolders = true;
         try {
+            // Sin conteos: la lista sale enseguida y los numeros llegan aparte.
             const folders = await this.orm.call(
                 "lqa.retailers.publisher.service",
                 "get_folders",
-                []
+                [false]
             );
             this.state.folders = folders || [];
+            this.loadFolderCounts();
             const preferredExists = this.state.folders.some(
                 (folder) => String(folder.id) === String(preferredFolderId)
             );
@@ -174,6 +181,30 @@ export class LqaRetailersPublisher extends Component {
             this.notifyError(error, "No se pudieron cargar las carpetas de Madre.");
         } finally {
             this.state.loadingFolders = false;
+        }
+    }
+
+    // En silencio (sin indicador de carga): completa numeros, no bloquea nada.
+    async loadFolderCounts() {
+        const ids = this.state.folders.map((folder) => folder.id);
+        if (!ids.length) {
+            return;
+        }
+        try {
+            const counts = await this.orm.silent.call(
+                "lqa.retailers.publisher.service",
+                "get_folder_counts",
+                [ids]
+            );
+            for (const folder of this.state.folders) {
+                const count = counts?.[String(folder.id)];
+                // La seleccionada ya trae el total exacto de su paginacion.
+                if (count !== undefined && !(this.isSelectedFolder(folder) && folder.product_count !== null)) {
+                    folder.product_count = count;
+                }
+            }
+        } catch {
+            // Sin conteos la lista sigue usable: muestra un guion.
         }
     }
 

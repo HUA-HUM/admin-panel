@@ -4,7 +4,36 @@ import { onMounted, onWillStart, useState } from "@odoo/owl";
 import { patch } from "@web/core/utils/patch";
 import { useBus, useService } from "@web/core/utils/hooks";
 import { NavBar } from "@web/webclient/navbar/navbar";
+import { LoadingIndicator } from "@web/webclient/loading_indicator/loading_indicator";
 import { user } from "@web/core/user";
+
+// ---------------------------------------------------------------- precarga
+//
+// La primera vez que se abre cada seccion, Odoo pide su definicion a
+// /web/action/load (~200 ms) antes de dibujar nada; despues la cachea. Al
+// abrir el panel se precargan todas las del sidebar en un momento ocioso, asi
+// el primer click ya no espera. Esas llamadas no prenden el indicador de
+// carga: el usuario no pidio nada.
+let lqaPrefetching = false;
+const lqaPrefetchRequestIds = new Set();
+
+patch(LoadingIndicator.prototype, {
+    requestCall(ev) {
+        const detail = ev?.detail;
+        if (lqaPrefetching && detail?.url === "/web/action/load") {
+            lqaPrefetchRequestIds.add(detail.data?.id);
+            return;
+        }
+        return super.requestCall(...arguments);
+    },
+    responseCall(ev) {
+        const id = ev?.detail?.data?.id;
+        if (lqaPrefetchRequestIds.delete(id)) {
+            return;
+        }
+        return super.responseCall(...arguments);
+    },
+});
 
 patch(NavBar.prototype, {
     setup() {
@@ -42,6 +71,7 @@ patch(NavBar.prototype, {
                 "o_lqa_sidebar_collapsed",
                 this.lqaNavigation.collapsed
             );
+            this.lqaSchedulePrefetch();
         });
     },
 
@@ -443,6 +473,44 @@ patch(NavBar.prototype, {
     // --- Rail colapsable ---------------------------------------------
     // La preferencia es por navegador: el ancho util depende de la pantalla
     // de cada uno, no de la cuenta.
+    lqaSchedulePrefetch() {
+        const whenIdle =
+            window.requestIdleCallback ||
+            ((callback) => window.setTimeout(callback, 1500));
+        whenIdle(() => this.lqaPrefetchActions(), { timeout: 5000 });
+    },
+
+    async lqaPrefetchActions() {
+        const actionService = this.actionService || this.env?.services?.action;
+        const root = this.lqaPanelRootMenu();
+        if (!actionService?.loadAction || !root) {
+            return;
+        }
+        const current = this.lqaActionIdValue(this.lqaCurrentAction()?.id);
+        const actionIds = new Set();
+        const collect = (menu) => {
+            const actionId = this.lqaActionIdValue(menu?.actionID || menu?.actionId);
+            if (actionId && actionId !== current) {
+                actionIds.add(actionId);
+            }
+            (menu?.childrenTree || []).forEach(collect);
+        };
+        collect(root);
+        // De a una y con pausa: Odoo corre con dos workers y no tiene sentido
+        // ocuparlos mientras el usuario esta usando el panel.
+        for (const actionId of actionIds) {
+            lqaPrefetching = true;
+            try {
+                await actionService.loadAction(actionId);
+            } catch {
+                // Si una falla, esa seccion se carga como siempre al abrirla.
+            } finally {
+                lqaPrefetching = false;
+            }
+            await new Promise((resolve) => window.setTimeout(resolve, 60));
+        }
+    },
+
     lqaReadCollapsed() {
         try {
             return window.localStorage.getItem("lqa_sidebar_collapsed") === "1";
