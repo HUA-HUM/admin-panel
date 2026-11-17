@@ -19,6 +19,7 @@ class LqaRetailersPublisherService(models.AbstractModel):
     _description = "Servicio del publicador de retailers"
 
     FOLDERS_PATH = "/api/analytics/marketplace-favorites/marketplaces"
+    FOLDER_DELETE_PATH = "/api/analytics/marketplace-favorites/marketplaces/{folder_id}"
     BULK_PRODUCTS_PATH = "/api/analytics/marketplace-favorites/bulk"
     FAVORITES_PATH = "/api/analytics/marketplace-favorites/{folder_id}/favorites"
     # products-api no tiene prefijo /api: /health responde 200 y /api/health
@@ -102,6 +103,31 @@ class LqaRetailersPublisherService(models.AbstractModel):
         if not folder_payload:
             folder_payload = {"name": name}
         return self._normalize_folder(folder_payload)
+
+    @api.model
+    def delete_folder(self, folder_id, confirm=False):
+        """Borra una carpeta entera en madre, con todo lo que tiene adentro.
+
+        Pide confirm explicito: el listado de carpetas devuelve product_count 0
+        aunque la carpeta tenga decenas de miles de productos, asi que quien
+        llame no puede apoyarse en ese numero para saber que esta borrando.
+        """
+        self._check_access()
+        if confirm is not True:
+            raise UserError(
+                _("Confirma el borrado de la carpeta: es permanente.")
+            )
+        folder_id = self._normalize_folder_id(folder_id)
+        self.env["lqa.api.client"].request_absolute_json(
+            "DELETE",
+            self._join_url(
+                self._madre_base_url(),
+                self.FOLDER_DELETE_PATH.format(folder_id=quote(str(folder_id), safe="")),
+            ),
+            headers=self._madre_headers(),
+            timeout=self._timeout(),
+        )
+        return {"folder_id": folder_id, "deleted": True}
 
     @api.model
     def get_folder_products(self, folder_id, filters=None):
