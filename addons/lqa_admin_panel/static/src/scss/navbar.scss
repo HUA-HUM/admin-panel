@@ -96,7 +96,7 @@ $lqa-sidebar-line: rgba(255, 255, 255, 0.08);
 .o_lqa_sidebar__nav {
     flex: 1 1 auto;
     overflow-y: auto;
-    padding: 18px 10px 14px;
+    padding: 14px 12px 14px;
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
 
@@ -124,22 +124,57 @@ $lqa-sidebar-line: rgba(255, 255, 255, 0.08);
 .o_lqa_sidebar__grandchild-toggle,
 .o_lqa_sidebar__single,
 .o_lqa_sidebar__menu-link {
+    position: relative;
     display: flex;
     align-items: center;
     width: 100%;
-    min-height: 40px;
+    min-height: 36px;
     border: 0;
-    border-radius: 9px;
+    border-radius: 8px;
     background: transparent;
     color: inherit;
-    font-weight: 600;
+    font-size: 13px;
+    font-weight: 500;
     text-align: left;
     transition:
-        background-color 0.15s ease,
-        color 0.15s ease;
+        background-color 0.14s ease,
+        color 0.14s ease;
 
     &:hover {
         background: $lqa-sidebar-hover;
+        color: $lqa-sidebar-text-strong;
+    }
+
+    // El navegador dibujaba su outline sobre el ultimo boton clickeado y
+    // parecia el estado activo. Lo dejamos solo para navegacion por teclado.
+    &:focus { outline: none; }
+
+    &:focus-visible {
+        outline: 2px solid rgba(255, 79, 90, 0.7);
+        outline-offset: -2px;
+    }
+
+    // La pantalla en la que estas parado.
+    &.is-current {
+        background: $lqa-sidebar-red-soft;
+        color: #fff;
+        font-weight: 650;
+
+        &::before {
+            position: absolute;
+            top: 50%;
+            left: -10px;
+            width: 3px;
+            height: 18px;
+            border-radius: 0 3px 3px 0;
+            background: $lqa-sidebar-red;
+            content: "";
+            transform: translateY(-50%);
+        }
+    }
+
+    // Un grupo que contiene la pantalla actual: se marca sin competir con ella.
+    &.has-current {
         color: $lqa-sidebar-text-strong;
     }
 }
@@ -214,40 +249,41 @@ $lqa-sidebar-line: rgba(255, 255, 255, 0.08);
     }
 }
 
+// Antes venia con fondo rojo fijo y parecia el item activo aunque estuvieras
+// en otra pantalla.
 .o_lqa_sidebar__home {
-    gap: 11px;
-    margin-bottom: 18px;
-    padding: 0 11px;
-    background: $lqa-sidebar-red-soft;
-    color: #fff;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding: 0 10px;
+    color: $lqa-sidebar-text;
 
     i {
-        display: inline-flex;
-        width: 26px;
-        height: 26px;
-        align-items: center;
-        justify-content: center;
-        border-radius: 7px;
-        background: rgba(255, 255, 255, 0.14);
-        color: #ff9aa1;
+        width: 18px;
+        color: $lqa-sidebar-icon;
         font-size: 12.5px;
         text-align: center;
+        transition: color 0.14s ease;
     }
 
-    &:hover {
-        background: rgba(255, 79, 90, 0.24);
-        color: #fff;
+    &:hover i {
+        color: $lqa-sidebar-red;
     }
 }
 
 .o_lqa_sidebar__group {
-    margin-bottom: 8px;
+    margin-bottom: 2px;
 }
 
+// Los iconos venian como chips de 26px con fondo propio: tres niveles de caja
+// anidada por fila. Pasan a ser glifos sueltos, alineados en una columna.
 .o_lqa_sidebar__group-toggle {
     justify-content: space-between;
-    padding: 0 9px;
-    color: #eef2f8;
+    padding: 0 10px;
+    color: #dde5f0;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
 
     > span {
         display: flex;
@@ -257,38 +293,32 @@ $lqa-sidebar-line: rgba(255, 255, 255, 0.08);
     }
 
     > span i {
-        display: inline-flex;
-        width: 26px;
-        height: 26px;
+        width: 18px;
         flex-shrink: 0;
-        align-items: center;
-        justify-content: center;
-        border-radius: 7px;
-        background: rgba(255, 255, 255, 0.05);
         color: $lqa-sidebar-icon;
         font-size: 12px;
         text-align: center;
-        transition:
-            background-color 0.15s ease,
-            color 0.15s ease;
+        transition: color 0.14s ease;
     }
 
     > i {
         flex-shrink: 0;
-        color: #64738c;
-        font-size: 10px;
+        color: #5a6880;
+        font-size: 9px;
+        transition: transform 0.18s ease;
     }
 
-    &:hover > span i {
-        background: rgba(255, 255, 255, 0.1);
-        color: #dbe4f0;
+    &:hover > span i,
+    &.has-current > span i,
+    &.is-current > span i {
+        color: $lqa-sidebar-red;
     }
 }
 
 .o_lqa_sidebar__children {
     position: relative;
-    margin: 3px 0 10px 21px;
-    padding-left: 13px;
+    margin: 1px 0 6px 18px;
+    padding-left: 12px;
 
     &::before {
         position: absolute;
@@ -303,11 +333,17 @@ $lqa-sidebar-line: rgba(255, 255, 255, 0.08);
     .o_lqa_sidebar__menu-link,
     .o_lqa_sidebar__child-toggle {
         gap: 10px;
-        min-height: 35px;
+        min-height: 32px;
         padding: 0 10px;
-        color: #a7b3c8;
+        color: #9fadc4;
         font-size: 12.5px;
         font-weight: 500;
+
+        // El item actual vuelve a blanco pleno: dentro del rail la jerarquia
+        // ya baja el contraste y el estado se perdia.
+        &.is-current {
+            color: #fff;
+        }
     }
 
     .o_lqa_sidebar__menu-link > i,
@@ -589,4 +625,22 @@ $lqa-sidebar-line: rgba(255, 255, 255, 0.08);
     .o_web_client > .o_action_manager {
         margin-left: 0;
     }
+}
+
+// --- Remates ------------------------------------------------------------
+
+// El sidebar es la unica navegacion del panel: su scroll no deberia arrastrar
+// la pagina de atras cuando llega al final.
+.o_lqa_sidebar__nav {
+    overscroll-behavior: contain;
+}
+
+// Separador suave entre grupos de primer nivel, sin linea dura.
+.o_lqa_sidebar__group + .o_lqa_sidebar__group {
+    margin-top: 2px;
+}
+
+// El pie no se despega del fondo al hacer scroll.
+.o_lqa_sidebar__footer {
+    box-shadow: 0 -8px 16px -12px rgba(0, 0, 0, 0.6);
 }

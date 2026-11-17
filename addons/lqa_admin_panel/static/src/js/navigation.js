@@ -187,7 +187,39 @@ patch(NavBar.prototype, {
     },
 
     lqaIsExpanded(section) {
-        return this.lqaNavigation.expanded[section.id] !== false;
+        const explicit = this.lqaNavigation.expanded[section.id];
+        if (explicit !== undefined) {
+            return explicit;
+        }
+        // Sin decision previa los grupos arrancan abiertos: el menu es corto
+        // y el estado activo ya indica donde estas.
+        return true;
+    },
+
+    // El sidebar no marcaba la pantalla actual: lo unico que se veia era el
+    // outline por defecto del navegador sobre el ultimo boton clickeado, que
+    // no es lo mismo y desaparece al hacer clic en otro lado.
+    lqaIsCurrentMenu(menu) {
+        const current = Number(this.lqaCurrentMenu()?.id || 0);
+        return Boolean(current) && Number(menu?.id || 0) === current;
+    },
+
+    lqaHasCurrentMenu(menu) {
+        const current = Number(this.lqaCurrentMenu()?.id || 0);
+        if (!current || !menu) {
+            return false;
+        }
+        return this.lqaMenuContains(menu, current);
+    },
+
+    lqaItemClass(menu, base) {
+        const classes = [base];
+        if (this.lqaIsCurrentMenu(menu)) {
+            classes.push("is-current");
+        } else if (this.lqaHasCurrentMenu(menu)) {
+            classes.push("has-current");
+        }
+        return classes.join(" ");
     },
 
     lqaCurrentMenu() {
